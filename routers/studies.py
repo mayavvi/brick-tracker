@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
@@ -50,3 +53,40 @@ async def refresh_cache() -> RefreshResult:
     study_dir_cache.invalidate()
     tracker_cache.invalidate()
     return RefreshResult(message="缓存已刷新，新的项目和文件变动将在下次请求时生效")
+
+
+class StorageDiag(BaseModel):
+    projects_base_path: str
+    path_exists: bool
+    is_dir: bool
+    readable: bool
+    uid: int
+    gid: int
+    entries_sample: list[str]
+    error: str
+
+
+@router.get("/debug/storage", response_model=StorageDiag)
+async def debug_storage() -> StorageDiag:
+    """Diagnostic endpoint — check filesystem access to PROJECTS_BASE_PATH."""
+    p = PROJECTS_BASE_PATH
+    result = StorageDiag(
+        projects_base_path=str(p),
+        path_exists=False,
+        is_dir=False,
+        readable=False,
+        uid=os.getuid() if hasattr(os, "getuid") else -1,
+        gid=os.getgid() if hasattr(os, "getgid") else -1,
+        entries_sample=[],
+        error="",
+    )
+    try:
+        result.path_exists = p.exists()
+        result.is_dir = p.is_dir()
+        result.readable = os.access(str(p), os.R_OK)
+        if result.is_dir and result.readable:
+            entries = sorted(e.name for e in p.iterdir() if not e.name.startswith("."))
+            result.entries_sample = entries[:20]
+    except Exception as exc:
+        result.error = f"{type(exc).__name__}: {exc}"
+    return result

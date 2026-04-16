@@ -28,6 +28,11 @@ _LEGACY_JSON = _BASE_DIR / "custom_tasks.json"
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Manage startup / shutdown: DB init, legacy migration, cleanup."""
+    from config import DATABASE_PATH, PROJECTS_BASE_PATH
+
+    logger.info("PROJECTS_BASE_PATH = %s (exists=%s)", PROJECTS_BASE_PATH, PROJECTS_BASE_PATH.exists())
+    logger.info("DATABASE_PATH      = %s", DATABASE_PATH)
+
     await init_db()
 
     migrated = await migrate_legacy_tasks(_LEGACY_JSON)
