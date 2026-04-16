@@ -64,4 +64,4 @@ templates = Jinja2Templates(directory=str(_BASE_DIR / "templates"))
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     """Render the main dashboard page."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
