@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query
 
-from app.config import PROJECTS_BASE_PATH
-from app.models import DashboardFilter, DashboardResponse, TaskItem
-from app.services.cache import tracker_cache
-from app.services.filter import build_dashboard, collect_persons
-from app.services.scanner import discover_studies
+from config import PROJECTS_BASE_PATH
+from models import DashboardFilter, DashboardResponse, TaskItem
+from services.cache import tracker_cache
+from services.filter import build_dashboard, collect_persons
+from services.scanner import discover_studies
 
 router = APIRouter(prefix="/api", tags=["dashboard"])
 

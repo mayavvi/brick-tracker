@@ -10,7 +10,7 @@ from typing import Any
 
 import aiosqlite
 
-from app.config import DATABASE_PATH
+from config import DATABASE_PATH
 
 logger = logging.getLogger(__name__)
 

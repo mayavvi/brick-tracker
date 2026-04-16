@@ -7,8 +7,8 @@ import logging
 import uuid
 from datetime import datetime
 
-from app.database import get_db
-from app.models import CustomTask, CustomTaskCreate
+from database import get_db
+from models import CustomTask, CustomTaskCreate
 
 logger = logging.getLogger(__name__)
 

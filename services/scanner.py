@@ -12,8 +12,8 @@ import threading
 import time
 from pathlib import Path
 
-from app.config import CACHE_TTL_SECONDS, TRACKER_KEYWORD
-from app.models import StudyInfo, TrackerFileInfo
+from config import CACHE_TTL_SECONDS, TRACKER_KEYWORD
+from models import StudyInfo, TrackerFileInfo
 
 logger = logging.getLogger(__name__)
 

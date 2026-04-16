@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from app.models import DashboardFilter, DashboardResponse, StatusSummary, TaskItem
+from models import DashboardFilter, DashboardResponse, StatusSummary, TaskItem
 
 _TIME_RANGE_DAYS: dict[str, tuple[int, int | None]] = {
     "3d": (0, 3),

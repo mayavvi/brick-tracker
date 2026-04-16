@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.auth import User, get_current_user
-from app.models import CustomTask, CustomTaskCreate
-from app.services.custom_tasks import custom_task_store
+from auth import User, get_current_user
+from models import CustomTask, CustomTaskCreate
+from services.custom_tasks import custom_task_store
 
 router = APIRouter(prefix="/api/custom-tasks", tags=["custom-tasks"])
 

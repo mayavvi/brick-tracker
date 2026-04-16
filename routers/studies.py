@@ -5,10 +5,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
-from app.config import PROJECTS_BASE_PATH
-from app.models import StudyInfo
-from app.services.cache import tracker_cache
-from app.services.scanner import (
+from config import PROJECTS_BASE_PATH
+from models import StudyInfo
+from services.cache import tracker_cache
+from services.scanner import (
     discover_compounds,
     discover_studies,
     search_studies,

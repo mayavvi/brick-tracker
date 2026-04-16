@@ -3,7 +3,7 @@
   "locale": "zh-CN",
   "metadata": {
     "appmode": "python-fastapi",
-    "entrypoint": "app.main:app"
+    "entrypoint": "main:app"
   },
   "python": {
     "version": "3.12",

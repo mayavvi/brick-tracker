@@ -12,7 +12,7 @@ from typing import Any
 import openpyxl
 from openpyxl.worksheet.worksheet import Worksheet
 
-from app.models import TaskItem, TrackerFileInfo
+from models import TaskItem, TrackerFileInfo
 
 logger = logging.getLogger(__name__)
 

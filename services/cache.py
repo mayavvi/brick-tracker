@@ -7,8 +7,8 @@ import threading
 from collections import OrderedDict
 from pathlib import Path
 
-from app.models import TaskItem, TrackerFileInfo
-from app.services.parser import parse_tracker_file
+from models import TaskItem, TrackerFileInfo
+from services.parser import parse_tracker_file
 
 logger = logging.getLogger(__name__)
 

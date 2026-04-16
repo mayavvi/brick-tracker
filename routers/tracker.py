@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Body
 
-from app.config import PROJECTS_BASE_PATH
-from app.models import TaskItem
-from app.services.cache import tracker_cache
-from app.services.scanner import discover_studies
+from config import PROJECTS_BASE_PATH
+from models import TaskItem
+from services.cache import tracker_cache
+from services.scanner import discover_studies
 
 router = APIRouter(prefix="/api/tracker", tags=["tracker"])
 

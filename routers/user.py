@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from app.auth import User, get_current_user
-from app.database import get_preferences, save_preferences, upsert_user
-from app.models import UserInfo, UserPreferences
+from auth import User, get_current_user
+from database import get_preferences, save_preferences, upsert_user
+from models import UserInfo, UserPreferences
 
 router = APIRouter(prefix="/api/user", tags=["user"])
 

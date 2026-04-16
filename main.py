@@ -12,8 +12,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.database import close_db, init_db, migrate_legacy_tasks
-from app.routers import custom_tasks, dashboard, studies, tracker, user
+from database import close_db, init_db, migrate_legacy_tasks
+from routers import custom_tasks, dashboard, studies, tracker, user
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 _BASE_DIR = Path(__file__).resolve().parent
-_LEGACY_JSON = _BASE_DIR.parent / "custom_tasks.json"
+_LEGACY_JSON = _BASE_DIR / "custom_tasks.json"
 
 
 @asynccontextmanager

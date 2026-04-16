@@ -26,7 +26,7 @@ CACHE_TTL_SECONDS: int = int(os.environ.get("CACHE_TTL_SECONDS", "300"))
 # ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
-_APP_ROOT = Path(__file__).resolve().parent.parent
+_APP_ROOT = Path(__file__).resolve().parent
 
 DATABASE_PATH: Path = Path(
     os.environ.get(
