@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "locale": "zh-CN",
+  "metadata": {
+    "appmode": "python-fastapi",
+    "entrypoint": "app.main:app"
+  },
+  "python": {
+    "version": "3.12",
+    "package_manager": {
+      "name": "pip",
+      "package_file": "requirements.txt"
+    }
+  }
+}

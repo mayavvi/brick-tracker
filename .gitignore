@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# Runtime data (SQLite DB - must be stored outside app dir on Posit Connect)
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Legacy backup
+*.bak
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Posit Connect / rsconnect
+rsconnect/
+rsconnect-python/

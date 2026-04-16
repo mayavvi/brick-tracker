@@ -1,0 +1,156 @@
+/* Smooth collapse transition for Alpine.js x-collapse */
+[x-collapse] {
+  overflow: hidden;
+}
+
+/* Scrollbar styling - warm tones */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e8d5c0;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d4b896;
+}
+
+/* Prevent table column from being too narrow */
+table th,
+table td {
+  min-width: 60px;
+}
+
+/* ================================================================
+   Sidebar - smooth GPU-accelerated expand / collapse
+   ================================================================ */
+.sidebar-wrapper {
+  will-change: width;
+  transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-x: hidden;
+  overflow-y: hidden;
+  height: 100%;
+}
+
+.sidebar-expanded {
+  width: 20rem; /* w-80 */
+}
+
+.sidebar-collapsed {
+  width: 2.75rem; /* narrow strip */
+}
+
+.sidebar-content {
+  width: 20rem;
+  min-width: 20rem;
+  height: 100%;
+  will-change: opacity, transform;
+  transition: opacity 0.24s ease, transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-content-visible {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+  overflow-y: auto;
+}
+
+.sidebar-content-hidden {
+  opacity: 0;
+  transform: translateX(-1rem);
+  pointer-events: none;
+  position: absolute;
+  overflow-y: hidden;
+}
+
+/* ================================================================
+   Dashboard content enter animation
+   ================================================================ */
+@keyframes dashboardSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard-content-enter {
+  animation: dashboardSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ================================================================
+   Calendar dropdown
+   ================================================================ */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendar-grid .cal-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  cursor: default;
+  transition: background-color 0.15s ease;
+}
+
+.calendar-grid .cal-cell.today {
+  background: linear-gradient(135deg, #f49d37, #e07b1a);
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(244, 157, 55, 0.4);
+}
+
+.calendar-grid .cal-cell.other-month {
+  color: #d1d5db;
+}
+
+/* ================================================================
+   Status card active indicator
+   ================================================================ */
+.status-card-active {
+  border-left-width: 4px;
+}
+
+/* ================================================================
+   Custom task modal backdrop
+   ================================================================ */
+.modal-backdrop {
+  background-color: rgba(107, 54, 16, 0.25);
+  backdrop-filter: blur(4px);
+}
+
+/* ================================================================
+   Warm header gradient
+   ================================================================ */
+.header-warm {
+  background: linear-gradient(135deg, #fffbf0 0%, #fef3e2 50%, #fde6c4 100%);
+  border-bottom: 1px solid #fbd49e;
+}
+
+/* ================================================================
+   Greeting animation
+   ================================================================ */
+@keyframes wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(14deg); }
+  75% { transform: rotate(-8deg); }
+}
+
+.wave-hand {
+  display: inline-block;
+  animation: wave 1.5s ease-in-out 2;
+  transform-origin: 70% 70%;
+}

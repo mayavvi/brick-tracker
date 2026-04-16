@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+{% block body %}
+<div x-data="trackerApp()" x-init="init()" class="flex flex-col h-full">
+
+  <!-- Header -->
+  <header class="header-warm px-6 py-4 shadow-sm flex-shrink-0">
+    <div class="max-w-screen-2xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl wave-hand">☕</span>
+        <div>
+          <h1 class="text-xl font-bold text-warm-800 tracking-tight">
+            打工人の进度小站
+          </h1>
+          <p class="text-xs text-warm-500" x-text="greeting"></p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <!-- User badge -->
+        <div x-show="currentUser" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-warm-200 shadow-sm">
+          <span class="w-6 h-6 rounded-full bg-gradient-to-br from-warm-400 to-warm-600 text-white flex items-center justify-center text-xs font-bold shadow-sm"
+                x-text="currentUser ? (currentUser.display_name || currentUser.username || '?').charAt(0).toUpperCase() : '?'"></span>
+          <span class="text-sm text-warm-800 font-medium"
+                x-text="currentUser ? (currentUser.display_name || currentUser.username) : ''"></span>
+        </div>
+      <div class="relative">
+        <button @click="showCalendar = !showCalendar"
+                class="flex items-center gap-1.5 text-sm text-warm-600 hover:text-warm-800
+                       px-3 py-1.5 rounded-lg hover:bg-white/60 transition-colors duration-200 cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          <span x-text="'今天: ' + todayStr"></span>
+        </button>
+
+        <!-- Mini calendar dropdown -->
+        <div x-show="showCalendar"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
+             x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95 -translate-y-1"
+             @click.outside="showCalendar = false"
+             class="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-warm-200 p-4 z-50">
+          <!-- Calendar header -->
+          <div class="flex items-center justify-between mb-3">
+            <button @click="calPrev()" class="p-1 rounded-lg hover:bg-warm-100 text-warm-500 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <button @click="calToday()" class="text-sm font-semibold text-warm-800 hover:text-warm-600 transition" x-text="calTitle"></button>
+            <button @click="calNext()" class="p-1 rounded-lg hover:bg-warm-100 text-warm-500 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+          <!-- Weekday headers -->
+          <div class="calendar-grid mb-1">
+            <template x-for="wd in ['一','二','三','四','五','六','日']" :key="wd">
+              <div class="cal-cell text-warm-400 font-medium text-xs" x-text="wd"></div>
+            </template>
+          </div>
+          <!-- Days -->
+          <div class="calendar-grid">
+            <template x-for="(d, idx) in calDays" :key="idx">
+              <div class="cal-cell"
+                   :class="{ 'today': d.today, 'other-month': d.other }"
+                   x-text="d.day"></div>
+            </template>
+          </div>
+        </div>
+      </div>
+      </div> <!-- /flex items-center gap-4 -->
+    </div>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden max-w-screen-2xl mx-auto w-full">
+
+    <!-- ==================== Sidebar Wrapper ==================== -->
+    <div class="sidebar-wrapper flex-shrink-0 bg-white/80 backdrop-blur-sm border-r border-warm-200 relative"
+         :class="sidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'">
+
+      <!-- Collapsed toggle strip -->
+      <button x-show="!sidebarOpen" @click="toggleSidebar()"
+              class="absolute inset-0 w-full h-full flex items-start pt-6 justify-center
+                     text-warm-400 hover:text-warm-600 hover:bg-warm-50/50 transition-colors duration-200 cursor-pointer"
+              title="展开面板">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
+        </svg>
+      </button>
+
+      <!-- Sidebar content -->
+      <aside class="sidebar-content p-5 space-y-6"
+             :class="sidebarOpen ? 'sidebar-content-visible' : 'sidebar-content-hidden'">
+
+        <!-- Collapse button -->
+        <div class="flex justify-end -mt-2 -mr-2">
+          <button @click="toggleSidebar()"
+                  class="p-1.5 rounded-lg hover:bg-warm-100 text-warm-400 hover:text-warm-600 transition"
+                  title="收起面板">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
+            </svg>
+          </button>
+        </div>
+
+      <!-- Compound search -->
+      <div>
+        <label class="block text-sm font-semibold text-warm-700 mb-1">🔍 找找项目~</label>
+        <input type="text" x-model="searchQuery"
+               @input.debounce.300ms="searchStudies()"
+               placeholder="输入关键词试试看，如 QLC5508"
+               class="w-full rounded-lg border border-warm-300 px-3 py-2 text-sm focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none bg-white" />
+      </div>
+
+      <!-- Study multi-select -->
+      <div>
+        <label class="block text-sm font-semibold text-warm-700 mb-1">
+          📋 选中它们
+          <span class="text-warm-400 font-normal" x-show="selectedStudies.length > 0"
+                x-text="'(已 pick ' + selectedStudies.length + ' 个)'"></span>
+        </label>
+        <div class="border border-warm-200 rounded-lg max-h-64 overflow-y-auto bg-white">
+          <template x-if="studyList.length === 0 && !loadingStudies">
+            <p class="text-xs text-warm-400 p-3">先搜一搜，项目们在等你翻牌~ ₍ᐢ..ᐢ₎</p>
+          </template>
+          <template x-if="loadingStudies">
+            <p class="text-xs text-warm-400 p-3">搜索中... ⏳</p>
+          </template>
+          <template x-for="study in studyList" :key="study.study_id">
+            <div class="px-3 py-2 border-b border-warm-100 last:border-0">
+              <label class="flex items-center gap-2 hover:bg-warm-50 cursor-pointer text-sm rounded">
+                <input type="checkbox" :value="study.study_id"
+                       x-model="selectedStudies"
+                       @change="onStudyToggle(study)"
+                       class="rounded border-warm-300 text-warm-500 focus:ring-warm-400" />
+                <span class="font-medium" x-text="study.study_id"></span>
+              </label>
+              <div class="flex flex-wrap gap-1 mt-1.5 ml-6" x-show="study.tracker_files.length > 0">
+                <template x-for="tf in study.tracker_files" :key="tf.file_path">
+                  <button type="button"
+                          @click="toggleTrackerFile(study.study_id, tf.file_path)"
+                          :class="isTrackerSelected(study.study_id, tf.file_path)
+                            ? 'bg-warm-500 text-white shadow-sm'
+                            : 'bg-warm-100 text-warm-600 hover:bg-warm-200'"
+                          class="text-xs px-2 py-0.5 rounded-full font-medium transition-all duration-200"
+                          x-text="tf.task_purpose"></button>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Person filter -->
+      <div>
+        <label class="block text-sm font-semibold text-warm-700 mb-1">🧑‍💻 谁在干活？</label>
+        <select x-model="personFilter"
+                class="w-full rounded-lg border border-warm-300 px-3 py-2 text-sm focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none bg-white">
+          <option value="">-- 看看大家的 --</option>
+          <template x-for="p in personList" :key="p">
+            <option :value="p" x-text="p"></option>
+          </template>
+        </select>
+      </div>
+
+      <!-- Role filter -->
+      <div>
+        <label class="block text-sm font-semibold text-warm-700 mb-1">🎭 身份切换</label>
+        <div class="flex gap-2">
+          <template x-for="r in [{v:'all',l:'全部'},{v:'main',l:'搬砖侠'},{v:'qc',l:'找茬王'}]" :key="r.v">
+            <button @click="roleFilter = r.v"
+                    :class="roleFilter === r.v ? 'bg-warm-500 text-white shadow-sm' : 'bg-warm-100 text-warm-700 hover:bg-warm-200'"
+                    class="flex-1 text-sm rounded-lg py-1.5 font-medium transition"
+                    x-text="r.l"></button>
+          </template>
+        </div>
+      </div>
+
+      <!-- Time range filter -->
+      <div>
+        <label class="block text-sm font-semibold text-warm-700 mb-1">⏰ DDL 倒计时</label>
+        <div class="grid grid-cols-2 gap-2">
+          <template x-for="t in [{v:'',l:'都看看'},{v:'3d',l:'💀 3天内'},{v:'5d',l:'😰 5天内'},{v:'10d',l:'😅 10天内'},{v:'15d',l:'🤔 15天内'},{v:'15d+',l:'😌 15天+'}]" :key="t.v">
+            <button @click="timeRange = t.v"
+                    :class="timeRange === t.v ? 'bg-warm-500 text-white shadow-sm' : 'bg-warm-100 text-warm-700 hover:bg-warm-200'"
+                    class="text-sm rounded-lg py-1.5 font-medium transition"
+                    x-text="t.l"></button>
+          </template>
+        </div>
+      </div>
+
+      <!-- Load button -->
+      <button @click="loadDashboard()"
+              :disabled="selectedStudies.length === 0 || loadingDashboard"
+              class="w-full bg-gradient-to-r from-warm-500 to-warm-600 text-white font-semibold py-2.5 rounded-lg
+                     hover:from-warm-600 hover:to-warm-700 disabled:opacity-40 disabled:cursor-not-allowed
+                     transition-all duration-200 shadow-sm hover:shadow-md">
+        <span x-show="!loadingDashboard">开工！看看今天的活儿 ٩(ˊᗜˋ*)و</span>
+        <span x-show="loadingDashboard">努力加载中... (∗❛ᴗ❛∗)</span>
+      </button>
+      </aside>
+    </div>
+
+    <!-- ==================== Main Content ==================== -->
+    <main class="flex-1 overflow-y-auto p-6 space-y-6">
+
+      <!-- Empty state -->
+      <template x-if="!dashboardLoaded && !loadingDashboard">
+        <div class="flex flex-col items-center justify-center h-full gap-6">
+          <div class="text-center text-warm-400 space-y-2">
+            <div class="text-6xl">🍵</div>
+            <p class="text-lg text-warm-600">先选个项目，看看今天的活儿~</p>
+            <p class="text-sm text-warm-400">(ﾉ◕ヮ◕)ﾉ*:・ﾟ✧ 左边选好后点「开工」</p>
+          </div>
+          <button @click="openAddCustomTask('')"
+                  class="px-4 py-2 border-2 border-dashed border-warm-300 rounded-xl text-warm-600
+                         hover:bg-warm-100 hover:border-warm-400 transition-all duration-200
+                         flex items-center gap-2 text-sm font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            或者...自己给自己加活？( •̀ω•́ )
+          </button>
+
+          <!-- Show existing custom projects even without dashboard loaded -->
+          <template x-if="customProjectGroups.length > 0">
+            <div class="w-full space-y-3 mt-2">
+              <template x-for="cg in customProjectGroups" :key="cg.studyId">
+                <div class="bg-white rounded-xl shadow-sm border border-warm-200 overflow-hidden">
+                  <div class="w-full flex items-center justify-between px-5 py-3.5
+                              bg-gradient-to-r from-warm-100 to-white">
+                    <span class="flex items-center gap-3">
+                      <span class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold
+                                   bg-warm-200 text-warm-700">✦</span>
+                      <span class="font-semibold text-gray-800 text-base" x-text="cg.studyId"></span>
+                      <span class="text-xs bg-warm-200 text-warm-700 rounded-full px-2.5 py-0.5 font-medium"
+                            x-text="cg.tasks.length + ' 个自建活儿'"></span>
+                    </span>
+                    <button @click="openAddCustomTask(cg.studyId)"
+                            class="text-xs bg-warm-200 text-warm-700 hover:bg-warm-300 rounded-lg px-2.5 py-1 font-medium transition flex items-center gap-1">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                      </svg>
+                      再加一个
+                    </button>
+                  </div>
+                  <div class="border-t border-warm-100">
+                    <div class="overflow-x-auto">
+                      <table class="min-w-full text-sm">
+                        <thead>
+                          <tr class="bg-warm-50 text-warm-600 text-xs uppercase tracking-wider">
+                            <th class="px-3 py-2 text-left">活儿名</th>
+                            <th class="px-3 py-2 text-left">搬砖侠</th>
+                            <th class="px-3 py-2 text-left">搬砖进度</th>
+                            <th class="px-3 py-2 text-left">找茬王</th>
+                            <th class="px-3 py-2 text-left">找茬结果</th>
+                            <th class="px-3 py-2 text-left">死线 💀</th>
+                            <th class="px-3 py-2 text-left w-16">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-warm-100">
+                          <template x-for="ct in cg.tasks" :key="ct.id">
+                            <tr class="hover:bg-warm-50/60 transition-colors duration-100 group">
+                              <td class="px-3 py-2 text-gray-800 font-medium" x-text="ct.task_name"></td>
+                              <td class="px-3 py-2 whitespace-nowrap text-xs" x-text="ct.main_person || '-'"></td>
+                              <td class="px-3 py-2 whitespace-nowrap">
+                                <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+                                      :class="statusBadge(ct.main_status)" x-text="ct.main_status || '-'"></span>
+                              </td>
+                              <td class="px-3 py-2 whitespace-nowrap text-xs" x-text="ct.qc_person || '-'"></td>
+                              <td class="px-3 py-2 whitespace-nowrap">
+                                <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+                                      :class="statusBadge(ct.qc_status)" x-text="ct.qc_status || '-'"></span>
+                              </td>
+                              <td class="px-3 py-2 whitespace-nowrap font-mono text-xs text-gray-500" x-text="ct.ddl || '-'"></td>
+                              <td class="px-3 py-2 whitespace-nowrap">
+                                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button @click="openEditCustomTask(ct)" class="text-warm-400 hover:text-warm-600 transition p-0.5" title="改改">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                  </button>
+                                  <button @click="deleteCustomTask(ct.id)" class="text-warm-400 hover:text-red-500 transition p-0.5" title="扔掉">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- Summary cards -->
+      <template x-if="dashboardLoaded">
+        <div :key="animationKey" class="dashboard-content-enter">
+          {% include "components/summary_cards.html" %}
+          {% include "components/task_table.html" %}
+        </div>
+      </template>
+    </main>
+  </div>
+
+  <!-- ==================== Custom Task Modal (viewport-centered) ==================== -->
+  <div x-show="showCustomTaskModal"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop"
+       style="margin:0;top:0;left:0;width:100vw;height:100vh;"
+       @click.self="showCustomTaskModal = false">
+    <div x-show="showCustomTaskModal"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95 translate-y-4"
+         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95 translate-y-4"
+         class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden max-h-[90vh] overflow-y-auto border border-warm-200">
+      <!-- Modal header -->
+      <div class="px-6 py-4 border-b border-warm-100 flex items-center justify-between sticky top-0 bg-gradient-to-r from-warm-50 to-white z-10">
+        <h3 class="text-lg font-semibold text-warm-800" x-text="editingCustomTask ? '✏️ 改改这个活儿' : '📝 加个新活儿'"></h3>
+        <button @click="showCustomTaskModal = false" class="text-warm-400 hover:text-warm-600 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <!-- Datalists for autocomplete -->
+      <datalist id="dl-study-ids">
+        <template x-for="sid in selectedStudies" :key="sid">
+          <option :value="sid"></option>
+        </template>
+      </datalist>
+      <datalist id="dl-task-names">
+        <template x-for="tn in _taskNamePresets" :key="tn">
+          <option :value="tn"></option>
+        </template>
+      </datalist>
+      <datalist id="dl-persons">
+        <template x-for="p in personList" :key="p">
+          <option :value="p"></option>
+        </template>
+      </datalist>
+
+      <!-- Modal body -->
+      <div class="px-6 py-5 space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-warm-700 mb-1">📁 属于哪个项目 <span class="text-red-400">*</span></label>
+          <input type="text" x-model="customTaskForm.study_id" list="dl-study-ids"
+                 class="w-full rounded-lg border border-warm-300 px-3 py-2 text-sm focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none"
+                 placeholder="选个已有的或输入新的~" />
+          <div class="flex flex-wrap gap-1.5 mt-1.5" x-show="selectedStudies.length > 0 && !customTaskForm.study_id">
+            <template x-for="sid in selectedStudies" :key="sid">
+              <button type="button" @click="customTaskForm.study_id = sid"
+                      class="text-xs px-2 py-0.5 rounded-full font-medium bg-warm-100 text-warm-700 hover:bg-warm-200 transition-colors"
+                      x-text="sid"></button>
+            </template>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-warm-700 mb-1">🏷️ 叫啥名？ <span class="text-red-400">*</span></label>
+          <input type="text" x-model="customTaskForm.task_name" list="dl-task-names"
+                 class="w-full rounded-lg border border-warm-300 px-3 py-2 text-sm focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none"
+                 placeholder="选个常用的或自己起~" />
+          <div class="flex flex-wrap gap-1.5 mt-1.5">
+            <template x-for="tn in _taskNamePresets" :key="tn">
+              <button type="button" @click="customTaskForm.task_name = tn"
+                      class="text-xs px-2 py-0.5 rounded-full font-medium transition-colors"
+                      :class="customTaskForm.task_name === tn
+                        ? 'bg-warm-500 text-white'
+                        : 'bg-warm-100 text-warm-700 hover:bg-warm-200'"
+                      x-text="tn"></button>
+            </template>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-warm-700 mb-1">💬 备注一下~</label>
+          <textarea x-model="customTaskForm.description" rows="2"
+                    class="w-full rounded-lg border border-warm-300 px-3 py-2 text-sm focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none resize-none"
+                    placeholder="想写点什么就写，不写也行~"></textarea>
+        </div>
+
+        <!-- Main side -->
+        <div class="rounded-lg border border-amber-200 bg-amber-50/30 p-3 space-y-3">
+          <span class="text-xs font-semibold text-amber-700 tracking-wide">🧱 搬砖侧 (Main)</span>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-warm-600 mb-1">谁来搬这块砖</label>
+              <input type="text" x-model="customTaskForm.main_person" list="dl-persons"
+                     class="w-full rounded-lg border border-warm-300 px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none bg-white"
+                     placeholder="填不填随你~" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-warm-600 mb-1">搞到哪了</label>
+              <select x-model="customTaskForm.main_status"
+                      class="w-full rounded-lg border border-warm-300 px-3 py-2 text-sm focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none bg-white">
+                <option value="">-- 还没开始 --</option>
+                <option value="进行中">进行中</option>
+                <option value="已完成，可以QC">已完成，可以QC</option>
+                <option value="有问题，请修改">有问题，请修改</option>
+                <option value="待定，请留意">待定，请留意</option>
+                <option value="关闭问题">关闭问题</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- QC side -->
+        <div class="rounded-lg border border-teal-200 bg-teal-50/30 p-3 space-y-3">
+          <span class="text-xs font-semibold text-teal-700 tracking-wide">🔍 找茬侧 (QC)</span>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-warm-600 mb-1">谁来找茬</label>
+              <input type="text" x-model="customTaskForm.qc_person" list="dl-persons"
+                     class="w-full rounded-lg border border-warm-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none bg-white"
+                     placeholder="填不填随你~" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-warm-600 mb-1">找到啥了</label>
+              <select x-model="customTaskForm.qc_status"
+                      class="w-full rounded-lg border border-warm-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-400 focus:border-teal-400 outline-none bg-white">
+                <option value="">-- 还没开始 --</option>
+                <option value="进行中">进行中</option>
+                <option value="已完成，可以QC">已完成，可以QC</option>
+                <option value="有问题，请修改">有问题，请修改</option>
+                <option value="待定，请留意">待定，请留意</option>
+                <option value="关闭问题">关闭问题</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-warm-700 mb-1">💀 死线 <span class="text-red-400">*</span></label>
+            <input type="date" x-model="customTaskForm.ddl" required
+                   class="w-full rounded-lg border border-warm-300 px-3 py-2 text-sm focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-warm-700 mb-1">🏷️ 贴个标签</label>
+            <input type="text" x-model="customTaskForm.tags"
+                   class="w-full rounded-lg border border-warm-300 px-3 py-2 text-sm focus:ring-2 focus:ring-warm-400 focus:border-warm-400 outline-none"
+                   placeholder="逗号分隔, 如: 紧急, 文档" />
+          </div>
+        </div>
+      </div>
+      <!-- Modal footer -->
+      <div class="px-6 py-4 border-t border-warm-100 flex justify-end gap-3 sticky bottom-0 bg-white">
+        <button @click="showCustomTaskModal = false"
+                class="px-4 py-2 text-sm font-medium text-warm-600 bg-warm-100 rounded-lg hover:bg-warm-200 transition">
+          算了算了
+        </button>
+        <button @click="saveCustomTask()"
+                :disabled="!customTaskForm.task_name.trim() || !customTaskForm.study_id.trim() || !customTaskForm.ddl"
+                class="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-warm-500 to-warm-600 rounded-lg
+                       hover:from-warm-600 hover:to-warm-700 disabled:opacity-40 transition shadow-sm">
+          <span x-text="editingCustomTask ? '改好了！' : '就这么定了！'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

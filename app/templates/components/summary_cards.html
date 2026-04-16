@@ -1,0 +1,85 @@
+<!-- Summary cards row - clickable to filter tasks by status -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+  <!-- Total -->
+  <button @click="setStatusFilter('total')"
+          class="text-left rounded-xl shadow-sm border p-4 transition-all duration-200 cursor-pointer"
+          :class="statusFilter === 'total'
+            ? 'bg-warm-100 border-warm-400 ring-2 ring-warm-200 shadow-md scale-[1.02]'
+            : 'bg-white border-warm-200 hover:shadow-md hover:scale-[1.01] border-l-4 border-l-warm-400'">
+    <p class="text-xs text-warm-500 uppercase tracking-wide font-medium">📊 全部活儿</p>
+    <p class="text-3xl font-bold text-gray-900 mt-1" x-text="summary.total"></p>
+  </button>
+
+  <!-- In progress -->
+  <button @click="setStatusFilter('in_progress')"
+          class="text-left rounded-xl shadow-sm border p-4 transition-all duration-200 cursor-pointer"
+          :class="statusFilter === 'in_progress'
+            ? 'bg-warm-100 border-warm-400 ring-2 ring-warm-200 shadow-md scale-[1.02]'
+            : 'bg-white border-warm-200 hover:shadow-md hover:scale-[1.01] border-l-4 border-l-yellow-400'">
+    <p class="text-xs text-warm-500 uppercase tracking-wide font-medium">🔨 搬砖中</p>
+    <p class="text-3xl font-bold text-yellow-600 mt-1" x-text="summary.in_progress"></p>
+  </button>
+
+  <!-- Completed, ready QC -->
+  <button @click="setStatusFilter('completed_ready_qc')"
+          class="text-left rounded-xl shadow-sm border p-4 transition-all duration-200 cursor-pointer"
+          :class="statusFilter === 'completed_ready_qc'
+            ? 'bg-warm-100 border-warm-400 ring-2 ring-warm-200 shadow-md scale-[1.02]'
+            : 'bg-white border-warm-200 hover:shadow-md hover:scale-[1.01] border-l-4 border-l-blue-400'">
+    <p class="text-xs text-warm-500 uppercase tracking-wide font-medium">✅ 搬完了</p>
+    <p class="text-3xl font-bold text-blue-600 mt-1" x-text="summary.completed_ready_qc"></p>
+  </button>
+
+  <!-- Has issues -->
+  <button @click="setStatusFilter('has_issues')"
+          class="text-left rounded-xl shadow-sm border p-4 transition-all duration-200 cursor-pointer"
+          :class="statusFilter === 'has_issues'
+            ? 'bg-warm-100 border-warm-400 ring-2 ring-warm-200 shadow-md scale-[1.02]'
+            : 'bg-white border-warm-200 hover:shadow-md hover:scale-[1.01] border-l-4 border-l-red-400'">
+    <p class="text-xs text-warm-500 uppercase tracking-wide font-medium">🐛 有坑</p>
+    <p class="text-3xl font-bold text-red-600 mt-1" x-text="summary.has_issues"></p>
+  </button>
+
+  <!-- Pending -->
+  <button @click="setStatusFilter('pending')"
+          class="text-left rounded-xl shadow-sm border p-4 transition-all duration-200 cursor-pointer"
+          :class="statusFilter === 'pending'
+            ? 'bg-warm-100 border-warm-400 ring-2 ring-warm-200 shadow-md scale-[1.02]'
+            : 'bg-white border-warm-200 hover:shadow-md hover:scale-[1.01] border-l-4 border-l-gray-400'">
+    <p class="text-xs text-warm-500 uppercase tracking-wide font-medium">⏸️ 先放放</p>
+    <p class="text-3xl font-bold text-gray-500 mt-1" x-text="summary.pending"></p>
+  </button>
+
+  <!-- Closed -->
+  <button @click="setStatusFilter('closed')"
+          class="text-left rounded-xl shadow-sm border p-4 transition-all duration-200 cursor-pointer"
+          :class="statusFilter === 'closed'
+            ? 'bg-warm-100 border-warm-400 ring-2 ring-warm-200 shadow-md scale-[1.02]'
+            : 'bg-white border-warm-200 hover:shadow-md hover:scale-[1.01] border-l-4 border-l-green-400'">
+    <p class="text-xs text-warm-500 uppercase tracking-wide font-medium">🎉 收工啦</p>
+    <p class="text-3xl font-bold text-green-600 mt-1" x-text="summary.closed"></p>
+  </button>
+</div>
+
+<!-- Active filter indicator -->
+<div x-show="statusFilter" x-transition
+     class="mt-3 flex items-center gap-2 text-sm text-warm-700 bg-warm-100 rounded-lg px-4 py-2 border border-warm-200">
+  <span>🎯</span>
+  <span>
+    正在看:
+    <strong x-text="{
+      total: '所有活儿',
+      in_progress: '搬砖中的',
+      completed_ready_qc: '搬完了的',
+      has_issues: '有坑的',
+      pending: '先放着的',
+      closed: '收工了的',
+    }[statusFilter]"></strong>
+    <span class="text-warm-400 ml-1" x-text="'(' + tasks.length + ' / ' + allTasks.length + ')'"></span>
+  </span>
+  <button @click="setStatusFilter(statusFilter)" class="ml-auto text-warm-400 hover:text-warm-700 transition">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+    </svg>
+  </button>
+</div>

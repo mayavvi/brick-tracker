@@ -1,0 +1,231 @@
+<!-- Task table: 3-level collapsible hierarchy (study -> purpose -> sheet -> rows) -->
+<div class="mt-6 space-y-3" x-ref="taskArea">
+  <template x-for="study in taskGroups" :key="study.studyId">
+    <div class="bg-white rounded-xl shadow-sm border border-warm-200 overflow-hidden
+                transform transition-all duration-300 ease-out">
+
+      <!-- Level 1: Study / Project -->
+      <button @click="study.open = !study.open"
+              class="w-full flex items-center justify-between px-5 py-3.5
+                     bg-gradient-to-r from-warm-50 to-white hover:from-warm-100 hover:to-white
+                     transition-all duration-200 group">
+        <span class="flex items-center gap-3">
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold
+                       bg-warm-200 text-warm-700 group-hover:bg-warm-500 group-hover:text-white transition-colors">
+            📂
+          </span>
+          <span class="font-semibold text-gray-800 text-base" x-text="study.studyId"></span>
+        </span>
+        <span class="flex items-center gap-3">
+          <span class="text-xs bg-warm-200 text-warm-700 rounded-full px-2.5 py-0.5 font-medium"
+                x-text="study.taskCount + ' 个活儿'"></span>
+          <span class="text-xs text-warm-400" x-text="study.purposes.length + ' 份日志'"></span>
+          <svg :class="study.open ? 'rotate-180' : ''"
+               class="w-4 h-4 text-warm-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </span>
+      </button>
+
+      <!-- Level 2: Purpose -->
+      <div x-show="study.open" x-collapse>
+        <div class="border-t border-warm-100">
+          <template x-for="purpose in study.purposes" :key="purpose.purpose">
+            <div class="border-b border-warm-50 last:border-0">
+              <button @click="purpose.open = !purpose.open"
+                      class="w-full flex items-center justify-between px-5 py-2.5 pl-10
+                             hover:bg-warm-50 transition-colors duration-150">
+                <span class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-warm-400"></span>
+                  <span class="font-medium text-gray-700 text-sm" x-text="purpose.purpose"></span>
+                </span>
+                <span class="flex items-center gap-3">
+                  <span class="text-xs bg-warm-100 text-warm-600 rounded-full px-2 py-0.5"
+                        x-text="purpose.taskCount + ' 条'"></span>
+                  <svg :class="purpose.open ? 'rotate-180' : ''"
+                       class="w-3.5 h-3.5 text-warm-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </span>
+              </button>
+
+              <!-- Level 3: Sheet type -->
+              <div x-show="purpose.open" x-collapse>
+                <template x-for="sheet in purpose.sheets" :key="sheet.sheetType">
+                  <div class="ml-10 mr-3 mb-2">
+                    <button @click="sheet.open = !sheet.open"
+                            class="w-full flex items-center justify-between px-4 py-2
+                                   rounded-lg bg-warm-50 hover:bg-warm-100 transition-colors duration-150">
+                      <span class="flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-warm-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span class="text-sm font-medium text-warm-600" x-text="sheet.sheetType"></span>
+                      </span>
+                      <span class="flex items-center gap-2">
+                        <span class="text-xs text-warm-400" x-text="sheet.tasks.length + ' 行'"></span>
+                        <svg :class="sheet.open ? 'rotate-180' : ''"
+                             class="w-3 h-3 text-warm-400 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                      </span>
+                    </button>
+                    <div x-show="sheet.open" x-collapse>
+                      <div class="overflow-x-auto mt-1 rounded-lg border border-warm-200">
+                        <table class="min-w-full text-sm">
+                          <thead>
+                            <tr class="bg-warm-50 text-warm-600 text-xs uppercase tracking-wider">
+                              <th class="px-3 py-2 text-left">分类</th>
+                              <th class="px-3 py-2 text-left">名称</th>
+                              <th class="px-3 py-2 text-left">搬砖侠</th>
+                              <th class="px-3 py-2 text-left">搬砖日期</th>
+                              <th class="px-3 py-2 text-left">搬砖进度</th>
+                              <th class="px-3 py-2 text-left">找茬王</th>
+                              <th class="px-3 py-2 text-left">找茬日期</th>
+                              <th class="px-3 py-2 text-left">找茬结果</th>
+                              <th class="px-3 py-2 text-left">死线 💀</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-warm-100">
+                            <template x-for="(task, idx) in sheet.tasks" :key="idx">
+                              <tr class="hover:bg-warm-50/60 transition-colors duration-100" :class="ddlUrgencyClass(task)">
+                                <td class="px-3 py-2 whitespace-nowrap text-gray-600 text-xs" x-text="task.category || '-'"></td>
+                                <td class="px-3 py-2 text-gray-800 font-medium max-w-xs truncate" :title="task.item_name" x-text="task.item_name || '-'"></td>
+                                <td class="px-3 py-2 whitespace-nowrap text-xs" x-text="task.main_person || '-'"></td>
+                                <td class="px-3 py-2 whitespace-nowrap text-gray-500 text-xs" x-text="task.main_date || '-'"></td>
+                                <td class="px-3 py-2 whitespace-nowrap">
+                                  <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+                                        :class="statusBadge(task.main_status)"
+                                        x-text="task.main_status || '进行中'"></span>
+                                </td>
+                                <td class="px-3 py-2 whitespace-nowrap text-xs" x-text="task.qc_person || '-'"></td>
+                                <td class="px-3 py-2 whitespace-nowrap text-gray-500 text-xs" x-text="task.qc_date || '-'"></td>
+                                <td class="px-3 py-2 whitespace-nowrap">
+                                  <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+                                        :class="statusBadge(task.qc_status)"
+                                        x-text="task.qc_status || '进行中'"></span>
+                                </td>
+                                <td class="px-3 py-2 whitespace-nowrap font-mono text-xs"
+                                    :class="ddlTextClass(task)"
+                                    x-text="task.ddl || '-'"></td>
+                              </tr>
+                            </template>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ==================== Custom Project Groups ==================== -->
+  <template x-for="cg in customProjectGroups" :key="cg.studyId">
+    <div class="bg-white rounded-xl shadow-sm border border-warm-300 overflow-hidden">
+      <div class="w-full flex items-center justify-between px-5 py-3.5
+                  bg-gradient-to-r from-warm-100 to-white">
+        <span class="flex items-center gap-3">
+          <span class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold
+                       bg-warm-200 text-warm-700">✦</span>
+          <span class="font-semibold text-gray-800 text-base" x-text="cg.studyId"></span>
+          <span class="text-xs bg-warm-200 text-warm-700 rounded-full px-2.5 py-0.5 font-medium"
+                x-text="cg.tasks.length + ' 个自建活儿'"></span>
+        </span>
+        <button @click="openAddCustomTask(cg.studyId)"
+                class="text-xs bg-warm-200 text-warm-700 hover:bg-warm-300 rounded-lg px-2.5 py-1 font-medium transition flex items-center gap-1">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          再加一个
+        </button>
+      </div>
+      <div class="border-t border-warm-100">
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="bg-warm-50 text-warm-600 text-xs uppercase tracking-wider">
+                <th class="px-3 py-2 text-left">活儿名</th>
+                <th class="px-3 py-2 text-left">备注</th>
+                <th class="px-3 py-2 text-left">搬砖侠</th>
+                <th class="px-3 py-2 text-left">搬砖进度</th>
+                <th class="px-3 py-2 text-left">找茬王</th>
+                <th class="px-3 py-2 text-left">找茬结果</th>
+                <th class="px-3 py-2 text-left">死线 💀</th>
+                <th class="px-3 py-2 text-left">标签</th>
+                <th class="px-3 py-2 text-left w-16">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-warm-100">
+              <template x-for="ct in cg.tasks" :key="ct.id">
+                <tr class="hover:bg-warm-50/60 transition-colors duration-100 group">
+                  <td class="px-3 py-2 text-gray-800 font-medium" x-text="ct.task_name"></td>
+                  <td class="px-3 py-2 text-gray-500 text-xs max-w-xs truncate" :title="ct.description" x-text="ct.description || '-'"></td>
+                  <td class="px-3 py-2 whitespace-nowrap text-xs" x-text="ct.main_person || '-'"></td>
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+                          :class="statusBadge(ct.main_status)"
+                          x-text="ct.main_status || '-'"></span>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap text-xs" x-text="ct.qc_person || '-'"></td>
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
+                          :class="statusBadge(ct.qc_status)"
+                          x-text="ct.qc_status || '-'"></span>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap font-mono text-xs text-gray-500" x-text="ct.ddl || '-'"></td>
+                  <td class="px-3 py-2">
+                    <template x-for="tag in (ct.tags || [])" :key="tag">
+                      <span class="text-xs bg-warm-200 text-warm-700 rounded px-1.5 py-0.5 mr-1" x-text="tag"></span>
+                    </template>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button @click="openEditCustomTask(ct)" class="text-warm-400 hover:text-warm-600 transition p-0.5" title="改改">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                      </button>
+                      <button @click="deleteCustomTask(ct.id)" class="text-warm-400 hover:text-red-500 transition p-0.5" title="扔掉">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Add custom project button -->
+  <template x-if="dashboardLoaded">
+    <button @click="openAddCustomTask('')"
+            class="w-full py-3 border-2 border-dashed border-warm-300 rounded-xl text-warm-600
+                   hover:bg-warm-100 hover:border-warm-400 transition-all duration-200
+                   flex items-center justify-center gap-2 text-sm font-medium">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      自己给自己加点活？( •̀ω•́ )
+    </button>
+  </template>
+
+  <!-- No results -->
+  <template x-if="dashboardLoaded && taskGroups.length === 0 && customProjectGroups.length === 0">
+    <div class="text-center py-12 text-warm-400">
+      <div class="text-4xl mb-3">🎊</div>
+      <p class="text-lg text-warm-600">空空如也~ 摸鱼时间到？</p>
+      <p class="text-sm mt-1">(｡◕‿◕｡) 试试调整一下筛选条件</p>
+    </div>
+  </template>
+</div>

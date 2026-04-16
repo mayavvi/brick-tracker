@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}打工人の进度小站{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            warm: {
+              50:  '#fffbf0',
+              100: '#fef3e2',
+              200: '#fde6c4',
+              300: '#fbd49e',
+              400: '#f7b267',
+              500: '#f49d37',
+              600: '#e07b1a',
+              700: '#b85d14',
+              800: '#8e4712',
+              900: '#6b3610',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body class="h-full bg-warm-50 text-gray-800 antialiased">
+  {% block body %}{% endblock %}
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
