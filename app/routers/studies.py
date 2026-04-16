@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
 
 from app.config import PROJECTS_BASE_PATH
 from app.models import StudyInfo
-from app.services.scanner import discover_compounds, discover_studies, search_studies
+from app.services.cache import tracker_cache
+from app.services.scanner import (
+    discover_compounds,
+    discover_studies,
+    search_studies,
+    study_dir_cache,
+)
 
 router = APIRouter(prefix="/api", tags=["studies"])
 
@@ -27,3 +34,19 @@ async def list_studies(compound: str | None = Query(None)) -> list[StudyInfo]:
 async def search(q: str = Query("", min_length=1)) -> list[StudyInfo]:
     """Fuzzy-search compounds / studies by keyword."""
     return search_studies(PROJECTS_BASE_PATH, q)
+
+
+class RefreshResult(BaseModel):
+    message: str
+
+
+@router.post("/cache/refresh", response_model=RefreshResult)
+async def refresh_cache() -> RefreshResult:
+    """Clear the directory scan cache and tracker parse cache.
+
+    After this call the next request will re-scan the filesystem and
+    pick up newly added / removed studies and tracker files.
+    """
+    study_dir_cache.invalidate()
+    tracker_cache.invalidate()
+    return RefreshResult(message="缓存已刷新，新的项目和文件变动将在下次请求时生效")

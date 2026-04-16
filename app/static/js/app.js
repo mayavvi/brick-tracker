@@ -34,6 +34,7 @@ function trackerApp() {
     statusFilter: "",
     loadingStudies: false,
     loadingDashboard: false,
+    refreshingCache: false,
     dashboardLoaded: false,
     summary: {
       total: 0,
@@ -214,6 +215,21 @@ function trackerApp() {
         if (arr) paths.push(...arr);
       }
       return paths;
+    },
+
+    // --- cache refresh ---
+    async refreshProjectList() {
+      this.refreshingCache = true;
+      try {
+        await fetch("/api/cache/refresh", { method: "POST" });
+        if (this.searchQuery.trim().length > 0) {
+          await this.searchStudies();
+        }
+      } catch (e) {
+        console.error("Cache refresh failed:", e);
+      } finally {
+        this.refreshingCache = false;
+      }
     },
 
     // --- methods ---

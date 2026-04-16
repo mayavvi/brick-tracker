@@ -1,18 +1,69 @@
-"""Service for discovering compounds, studies, and tracker files on disk."""
+"""Service for discovering compounds, studies, and tracker files on disk.
+
+Directory scan results are cached with a configurable TTL to avoid
+hammering the (possibly network-mounted) filesystem on every request.
+"""
 
 from __future__ import annotations
 
 import logging
 import re
+import threading
+import time
 from pathlib import Path
 
-from app.config import TRACKER_KEYWORD
+from app.config import CACHE_TTL_SECONDS, TRACKER_KEYWORD
 from app.models import StudyInfo, TrackerFileInfo
 
 logger = logging.getLogger(__name__)
 
 _TRACKER_DIR_PATTERN = re.compile(r"^\d+_Tracker$", re.IGNORECASE)
 
+
+# ---------------------------------------------------------------------------
+# Directory-level TTL cache
+# ---------------------------------------------------------------------------
+
+class _StudyDirectoryCache:
+    """Thread-safe cache for ``discover_studies()`` results.
+
+    The cache key is *compound* (``None`` means "all compounds").
+    Each entry expires after ``ttl`` seconds.  A manual ``invalidate()``
+    clears everything immediately so the next call re-scans disk.
+    """
+
+    def __init__(self, ttl: int = CACHE_TTL_SECONDS) -> None:
+        self._ttl = ttl
+        self._store: dict[str | None, tuple[float, list[StudyInfo]]] = {}
+        self._lock = threading.Lock()
+
+    def get(self, compound: str | None) -> list[StudyInfo] | None:
+        with self._lock:
+            entry = self._store.get(compound)
+            if entry is None:
+                return None
+            ts, data = entry
+            if time.monotonic() - ts > self._ttl:
+                del self._store[compound]
+                return None
+            return data
+
+    def put(self, compound: str | None, data: list[StudyInfo]) -> None:
+        with self._lock:
+            self._store[compound] = (time.monotonic(), data)
+
+    def invalidate(self) -> None:
+        with self._lock:
+            self._store.clear()
+        logger.info("Study directory cache invalidated")
+
+
+study_dir_cache = _StudyDirectoryCache()
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 def discover_compounds(base_path: Path) -> list[str]:
     """Return sorted list of compound folder names under *base_path*."""
@@ -25,7 +76,36 @@ def discover_compounds(base_path: Path) -> list[str]:
 
 
 def discover_studies(base_path: Path, compound: str | None = None) -> list[StudyInfo]:
-    """Return ``StudyInfo`` for every study under *compound* (or all compounds)."""
+    """Return ``StudyInfo`` for every study under *compound* (or all).
+
+    Results are served from an in-memory TTL cache when available.
+    """
+    cached = study_dir_cache.get(compound)
+    if cached is not None:
+        return cached
+
+    results = _scan_studies(base_path, compound)
+    study_dir_cache.put(compound, results)
+    return results
+
+
+def search_studies(base_path: Path, query: str) -> list[StudyInfo]:
+    """Fuzzy-search compounds / studies by keyword (case-insensitive)."""
+    q = query.strip().upper()
+    all_studies = discover_studies(base_path)
+    return [
+        s for s in all_studies
+        if q in s.compound.upper() or q in s.study_id.upper()
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _scan_studies(base_path: Path, compound: str | None = None) -> list[StudyInfo]:
+    """Actually walk the filesystem — the expensive part."""
+    t0 = time.monotonic()
     compounds = [compound] if compound else discover_compounds(base_path)
     results: list[StudyInfo] = []
     for comp in compounds:
@@ -46,17 +126,12 @@ def discover_studies(base_path: Path, compound: str | None = None) -> list[Study
                     tracker_files=tracker_files,
                 )
             )
+    elapsed = (time.monotonic() - t0) * 1000
+    logger.info(
+        "Directory scan: %d studies across %d compounds in %.0f ms",
+        len(results), len(compounds), elapsed,
+    )
     return results
-
-
-def search_studies(base_path: Path, query: str) -> list[StudyInfo]:
-    """Fuzzy-search compounds / studies by keyword (case-insensitive)."""
-    q = query.strip().upper()
-    all_studies = discover_studies(base_path)
-    return [
-        s for s in all_studies
-        if q in s.compound.upper() or q in s.study_id.upper()
-    ]
 
 
 def find_tracker_folder(study_path: Path) -> Path | None:
