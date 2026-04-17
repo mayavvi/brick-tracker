@@ -86,33 +86,44 @@ def discover_studies(base_path: Path, compound: str | None = None) -> list[Study
     return results
 
 
+def _is_subsequence(query: str, target: str) -> bool:
+    """Check if every character in *query* appears in *target* in order."""
+    it = iter(target.upper())
+    return all(c in it for c in query.upper())
+
+
+def _matches(query: str, text: str) -> bool:
+    """Substring match OR subsequence match (case-insensitive)."""
+    t = text.upper()
+    return query in t or _is_subsequence(query, t)
+
+
 def search_studies(base_path: Path, query: str) -> list[StudyInfo]:
     """Fuzzy-search compounds / studies by keyword (case-insensitive).
 
+    Matches both substring (``QLC5508`` in ``QLC5508-201``) and
+    subsequence (``QL1706`` matches ``QLC1706``).
+
     Optimised for network-mounted filesystems: instead of scanning every
     compound, we first check which compound folders match the query and
-    only scan those.  This avoids a full-tree walk when the user types a
-    compound name prefix (the common case).
+    only scan those.
     """
     q = query.strip().upper()
     all_compounds = discover_compounds(base_path)
 
-    # Compounds whose name contains the query string
-    matching_compounds = [c for c in all_compounds if q in c.upper()]
+    matching_compounds = [c for c in all_compounds if _matches(q, c)]
 
     if matching_compounds:
-        # Only scan the matching compounds — much faster on large trees
         results: list[StudyInfo] = []
         for comp in matching_compounds:
             results.extend(discover_studies(base_path, comp))
         return results
 
     # Fallback: query may be a study-ID fragment — scan everything
-    # (results come from cache after the first full scan)
     all_studies = discover_studies(base_path)
     return [
         s for s in all_studies
-        if q in s.compound.upper() or q in s.study_id.upper()
+        if _matches(q, s.compound) or _matches(q, s.study_id)
     ]
 
 

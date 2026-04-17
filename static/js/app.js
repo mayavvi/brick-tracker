@@ -49,6 +49,7 @@ function trackerApp() {
     studyList: [],
     selectedStudies: [],
     selectedTrackerFiles: {},
+    _studyCache: {},
     personList: [],
     personFilter: "",
     roleFilter: "all",
@@ -205,8 +206,10 @@ function trackerApp() {
       const sid = study.study_id;
       if (this.selectedStudies.includes(sid)) {
         this.selectedTrackerFiles[sid] = study.tracker_files.map((tf) => tf.file_path);
+        this._studyCache[sid] = study;
       } else {
         delete this.selectedTrackerFiles[sid];
+        delete this._studyCache[sid];
       }
       this._scheduleSavePrefs();
     },
@@ -259,17 +262,35 @@ function trackerApp() {
       const q = this.searchQuery.trim();
       if (q.length < 1) {
         this.studyList = [];
+        this._mergeSelectedIntoList();
         return;
       }
       this.loadingStudies = true;
       try {
         const resp = await fetch(`${_API}/api/studies/search?q=${encodeURIComponent(q)}`);
         this.studyList = await resp.json();
+        for (const s of this.studyList) {
+          if (this.selectedStudies.includes(s.study_id)) {
+            this._studyCache[s.study_id] = s;
+          }
+        }
       } catch (e) {
         console.error("Search failed:", e);
         this.studyList = [];
       } finally {
         this.loadingStudies = false;
+      }
+      this._mergeSelectedIntoList();
+    },
+
+    _mergeSelectedIntoList() {
+      const inList = new Set(this.studyList.map((s) => s.study_id));
+      for (const sid of this.selectedStudies) {
+        if (!inList.has(sid)) {
+          this.studyList.push(
+            this._studyCache[sid] || { compound: "", study_id: sid, tracker_files: [] }
+          );
+        }
       }
     },
 
