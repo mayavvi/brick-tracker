@@ -90,24 +90,23 @@ def build_summary(
     """
     summary = StatusSummary(total=len(tasks))
     for t in tasks:
+        # --- in_progress: the relevant side has no status ---
         if role == "main":
-            side_status = t.main_status
+            is_in_progress = not t.main_status
         elif role == "qc":
-            side_status = t.qc_status
+            is_in_progress = not t.qc_status
         else:
-            side_status = t.main_status or t.qc_status
+            is_in_progress = not t.main_status or not t.qc_status
 
-        if not side_status:
+        if is_in_progress:
             summary.in_progress += 1
-            continue
 
-        main_key = _STATUS_MAP.get(side_status or "")
+        # --- main side ---
+        main_key = _STATUS_MAP.get(t.main_status or "")
         if main_key == "completed_ready_qc":
             summary.completed_ready_qc += 1
 
-        if main_key == "in_progress":
-            summary.in_progress += 1
-
+        # --- qc side ---
         qc_key = _STATUS_MAP.get(t.qc_status or "")
         if qc_key == "has_issues":
             summary.has_issues += 1

@@ -29,7 +29,7 @@ function trackerApp() {
     in_progress: (t, role) => {
       if (role === "main") return !t.main_status;
       if (role === "qc") return !t.qc_status;
-      return !t.main_status && !t.qc_status;
+      return !t.main_status || !t.qc_status;
     },
     completed_ready_qc: (t) => t.main_status === "已完成，可以QC",
     has_issues: (t) => t.qc_status === "有问题，请修改",
