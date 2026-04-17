@@ -4,13 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}打工人の进度小站{% endblock %}</title>
-  <link rel="stylesheet" href="/static/css/tailwind.css" />
-  <link rel="stylesheet" href="/static/css/style.css" />
-  <script defer src="/static/js/vendor/alpine-collapse.min.js"></script>
-  <script defer src="/static/js/vendor/alpine.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/tailwind.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}" />
+  <script defer src="{{ url_for('static', path='js/vendor/alpine-collapse.min.js') }}"></script>
+  <script defer src="{{ url_for('static', path='js/vendor/alpine.min.js') }}"></script>
 </head>
 <body class="h-full bg-warm-50 text-gray-800 antialiased">
   {% block body %}{% endblock %}
-  <script src="/static/js/app.js"></script>
+  <script src="{{ url_for('static', path='js/app.js') }}"></script>
 </body>
 </html>
