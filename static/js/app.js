@@ -1,6 +1,8 @@
 /**
  * Alpine.js application state for the tracker dashboard.
  */
+const _API = window.API_BASE || "";
+
 function trackerApp() {
   const STATUS_FILTERS = {
     total: () => true,
@@ -100,7 +102,7 @@ function trackerApp() {
     // --- user identity ---
     async _loadUser() {
       try {
-        const resp = await fetch("/api/user/me");
+        const resp = await fetch(_API + "/api/user/me");
         this.currentUser = await resp.json();
       } catch (e) {
         console.error("Failed to load user:", e);
@@ -111,7 +113,7 @@ function trackerApp() {
     // --- preferences ---
     async _restorePreferences() {
       try {
-        const resp = await fetch("/api/user/preferences");
+        const resp = await fetch(_API + "/api/user/preferences");
         const prefs = await resp.json();
         if (prefs.selected_studies && prefs.selected_studies.length > 0) {
           this.selectedStudies = prefs.selected_studies;
@@ -146,7 +148,7 @@ function trackerApp() {
         search_query: this.searchQuery,
       };
       try {
-        await fetch("/api/user/preferences", {
+        await fetch(_API + "/api/user/preferences", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -221,7 +223,7 @@ function trackerApp() {
     async refreshProjectList() {
       this.refreshingCache = true;
       try {
-        await fetch("/api/cache/refresh", { method: "POST" });
+        await fetch(_API + "/api/cache/refresh", { method: "POST" });
         if (this.searchQuery.trim().length > 0) {
           await this.searchStudies();
         }
@@ -241,7 +243,7 @@ function trackerApp() {
       }
       this.loadingStudies = true;
       try {
-        const resp = await fetch(`/api/studies/search?q=${encodeURIComponent(q)}`);
+        const resp = await fetch(`${_API}/api/studies/search?q=${encodeURIComponent(q)}`);
         this.studyList = await resp.json();
       } catch (e) {
         console.error("Search failed:", e);
@@ -255,7 +257,7 @@ function trackerApp() {
       if (this.selectedStudies.length === 0) return;
       this.loadingDashboard = true;
       try {
-        const pUrl = `/api/persons?${this.selectedStudies.map((s) => `study_ids=${encodeURIComponent(s)}`).join("&")}`;
+        const pUrl = `${_API}/api/persons?${this.selectedStudies.map((s) => `study_ids=${encodeURIComponent(s)}`).join("&")}`;
         const pResp = await fetch(pUrl);
         this.personList = await pResp.json();
 
@@ -267,7 +269,7 @@ function trackerApp() {
           time_range: this.timeRange || null,
           role: this.roleFilter,
         };
-        const dResp = await fetch("/api/dashboard", {
+        const dResp = await fetch(_API + "/api/dashboard", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -321,7 +323,7 @@ function trackerApp() {
     // --- custom tasks CRUD ---
     async _loadCustomTasks() {
       try {
-        const resp = await fetch("/api/custom-tasks");
+        const resp = await fetch(_API + "/api/custom-tasks");
         this.customTasks = await resp.json();
       } catch (e) {
         console.error("Failed to load custom tasks:", e);
@@ -422,13 +424,13 @@ function trackerApp() {
       };
       try {
         if (this.editingCustomTask) {
-          await fetch(`/api/custom-tasks/${this.editingCustomTask}`, {
+          await fetch(`${_API}/api/custom-tasks/${this.editingCustomTask}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
         } else {
-          await fetch("/api/custom-tasks", {
+          await fetch(_API + "/api/custom-tasks", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -444,7 +446,7 @@ function trackerApp() {
     async deleteCustomTask(taskId) {
       if (!confirm("真的要扔掉这个活儿吗？(つ﹏⊂) 扔了就捡不回来了哦~")) return;
       try {
-        await fetch(`/api/custom-tasks/${taskId}`, { method: "DELETE" });
+        await fetch(`${_API}/api/custom-tasks/${taskId}`, { method: "DELETE" });
         await this._loadCustomTasks();
       } catch (e) {
         console.error("Failed to delete custom task:", e);
