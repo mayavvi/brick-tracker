@@ -1,7 +1,18 @@
 /**
  * Alpine.js application state for the tracker dashboard.
  */
-const _API = window.API_BASE || "";
+const _API = (() => {
+  // Primary: server-injected value from template
+  if (typeof window.API_BASE === "string" && window.API_BASE !== "") return window.API_BASE;
+  // Fallback: derive from this script's own URL (always correct if the script loaded)
+  const src = document.currentScript && document.currentScript.src;
+  if (src) {
+    const path = new URL(src).pathname;
+    const i = path.indexOf("/static/");
+    if (i > 0) return path.substring(0, i);
+  }
+  return "";
+})();
 
 function trackerApp() {
   const STATUS_FILTERS = {
