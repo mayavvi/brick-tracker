@@ -171,11 +171,17 @@ def _scan_studies(base_path: Path, compound: str | None = None) -> list[StudyInf
     return results
 
 
+def _is_numbered_doc_folder(name: str) -> bool:
+    """True for folders like ``01_Protocol``, ``02_SAP`` — not phase folders."""
+    return len(name) > 2 and name[0].isdigit() and "_" in name
+
+
 def find_tracker_folder(study_path: Path) -> list[Path]:
     """Locate directories whose name contains 'tracker' under ``SP/documents/``.
 
-    Searches both ``SP/documents/`` directly and one level deeper
-    (e.g. ``SP/documents/PhaseII/09_Tracker``).
+    Searches ``SP/documents/`` directly, and also one level deeper inside
+    phase-like subdirectories (e.g. ``II期/``, ``Phase1/``).  Numbered
+    document folders (``01_Protocol``, ``02_SAP``, …) are skipped.
     """
     docs_dir = study_path / "SP" / "documents"
     if not docs_dir.is_dir():
@@ -183,21 +189,20 @@ def find_tracker_folder(study_path: Path) -> list[Path]:
     results: list[Path] = []
     try:
         children = list(docs_dir.iterdir())
-    except (PermissionError, OSError) as exc:
-        logger.warning("Cannot list documents dir %s: %s", docs_dir, exc)
+    except Exception:
         return []
     for child in children:
         if not child.is_dir():
             continue
         if "tracker" in child.name.lower():
             results.append(child)
-        else:
+        elif not _is_numbered_doc_folder(child.name):
             try:
                 for grandchild in child.iterdir():
                     if grandchild.is_dir() and "tracker" in grandchild.name.lower():
                         results.append(grandchild)
-            except (PermissionError, OSError) as exc:
-                logger.warning("Cannot list subdir %s: %s", child, exc)
+            except Exception:
+                pass
     return results
 
 
