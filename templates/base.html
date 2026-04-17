@@ -11,7 +11,20 @@
 </head>
 <body class="h-full bg-warm-50 text-gray-800 antialiased">
   {% block body %}{% endblock %}
-  <script>window.API_BASE = new URL("{{ url_for('static', path='_') }}", location.href).pathname.replace(/\/static\/_$/, "");</script>
+  <script>
+  (function() {
+    var base = window.location.pathname.replace(/\/+$/, "");
+    window.API_BASE = base;
+    if (!base) return;
+    var _f = window.fetch;
+    window.fetch = function(input) {
+      if (typeof input === "string" && input.startsWith("/api/")) {
+        arguments[0] = base + input;
+      }
+      return _f.apply(this, arguments);
+    };
+  })();
+  </script>
   <script src="{{ url_for('static', path='js/app.js') }}"></script>
 </body>
 </html>
