@@ -55,6 +55,34 @@ async def refresh_cache() -> RefreshResult:
     return RefreshResult(message="缓存已刷新，新的项目和文件变动将在下次请求时生效")
 
 
+class ScanDiag(BaseModel):
+    compound: str
+    studies_found: int
+    studies: list[str]
+    tracker_files_total: int
+    error: str
+
+
+@router.get("/debug/scan-compound", response_model=ScanDiag)
+async def debug_scan_compound(compound: str = Query(...)) -> ScanDiag:
+    """Diagnostic: scan one compound only and return what was found."""
+    result = ScanDiag(
+        compound=compound,
+        studies_found=0,
+        studies=[],
+        tracker_files_total=0,
+        error="",
+    )
+    try:
+        studies = discover_studies(PROJECTS_BASE_PATH, compound)
+        result.studies_found = len(studies)
+        result.studies = [s.study_id for s in studies]
+        result.tracker_files_total = sum(len(s.tracker_files) for s in studies)
+    except Exception as exc:
+        result.error = f"{type(exc).__name__}: {exc}"
+    return result
+
+
 class StorageDiag(BaseModel):
     projects_base_path: str
     path_exists: bool

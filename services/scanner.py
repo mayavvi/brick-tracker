@@ -112,13 +112,23 @@ def _scan_studies(base_path: Path, compound: str | None = None) -> list[StudyInf
         comp_dir = base_path / comp
         if not comp_dir.is_dir():
             continue
-        for study_dir in sorted(comp_dir.iterdir()):
+        try:
+            study_dirs = sorted(comp_dir.iterdir())
+        except PermissionError as exc:
+            logger.warning("Cannot list compound dir %s: %s", comp_dir, exc)
+            continue
+        for study_dir in study_dirs:
             if not study_dir.is_dir():
                 continue
-            tracker_folder = find_tracker_folder(study_dir)
-            tracker_files: list[TrackerFileInfo] = []
-            if tracker_folder is not None:
-                tracker_files = find_tracker_files(tracker_folder, comp, study_dir.name)
+            try:
+                tracker_folder = find_tracker_folder(study_dir)
+                tracker_files: list[TrackerFileInfo] = []
+                if tracker_folder is not None:
+                    tracker_files = find_tracker_files(tracker_folder, comp, study_dir.name)
+            except Exception as exc:
+                logger.warning("Error scanning study %s: %s", study_dir, exc)
+                tracker_files = []
+                tracker_folder = None
             results.append(
                 StudyInfo(
                     compound=comp,
