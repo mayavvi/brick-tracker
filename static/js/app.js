@@ -3,8 +3,17 @@
  */
 const _API = (() => {
   // Primary: server-injected value from template
-  if (typeof window.API_BASE === "string" && window.API_BASE !== "") return window.API_BASE;
-  // Fallback: derive from this script's own URL (always correct if the script loaded)
+  if (typeof window.API_BASE === "string" && window.API_BASE !== "") {
+    return window.API_BASE.replace(/\/+$/, "");
+  }
+
+  // Fallback 1: derive from current page path (works with vanity/content URL prefixes)
+  const pagePath = window.location.pathname || "";
+  if (pagePath && pagePath !== "/") {
+    return pagePath.replace(/\/+$/, "");
+  }
+
+  // Fallback 2: derive from this script's own URL
   const src = document.currentScript && document.currentScript.src;
   if (src) {
     const path = new URL(src).pathname;
