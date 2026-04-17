@@ -22,19 +22,19 @@ router = APIRouter(prefix="/api", tags=["studies"])
 
 
 @router.get("/compounds", response_model=list[str])
-async def list_compounds() -> list[str]:
+def list_compounds() -> list[str]:
     """Return all compound folder names."""
     return discover_compounds(PROJECTS_BASE_PATH)
 
 
 @router.get("/studies", response_model=list[StudyInfo])
-async def list_studies(compound: str | None = Query(None)) -> list[StudyInfo]:
+def list_studies(compound: str | None = Query(None)) -> list[StudyInfo]:
     """Return studies, optionally filtered by compound."""
     return discover_studies(PROJECTS_BASE_PATH, compound)
 
 
 @router.get("/studies/search", response_model=list[StudyInfo])
-async def search(q: str = Query("", min_length=1)) -> list[StudyInfo]:
+def search(q: str = Query("", min_length=1)) -> list[StudyInfo]:
     """Fuzzy-search compounds / studies by keyword."""
     return search_studies(PROJECTS_BASE_PATH, q)
 
@@ -44,7 +44,7 @@ class RefreshResult(BaseModel):
 
 
 @router.post("/cache/refresh", response_model=RefreshResult)
-async def refresh_cache() -> RefreshResult:
+def refresh_cache() -> RefreshResult:
     """Clear the directory scan cache and tracker parse cache.
 
     After this call the next request will re-scan the filesystem and
@@ -64,7 +64,7 @@ class ScanDiag(BaseModel):
 
 
 @router.get("/debug/scan-compound", response_model=ScanDiag)
-async def debug_scan_compound(compound: str = Query(...)) -> ScanDiag:
+def debug_scan_compound(compound: str = Query(...)) -> ScanDiag:
     """Diagnostic: scan one compound only and return what was found."""
     result = ScanDiag(
         compound=compound,
@@ -95,7 +95,7 @@ class StorageDiag(BaseModel):
 
 
 @router.get("/debug/storage", response_model=StorageDiag)
-async def debug_storage() -> StorageDiag:
+def debug_storage() -> StorageDiag:
     """Diagnostic endpoint — check filesystem access to PROJECTS_BASE_PATH."""
     p = PROJECTS_BASE_PATH
     result = StorageDiag(

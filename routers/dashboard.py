@@ -33,7 +33,7 @@ def _load_tasks_for_studies(
 
 
 @router.post("/dashboard", response_model=DashboardResponse)
-async def dashboard(filters: DashboardFilter) -> DashboardResponse:
+def dashboard(filters: DashboardFilter) -> DashboardResponse:
     """Return filtered and summarised dashboard data."""
     tasks = _load_tasks_for_studies(
         filters.study_ids,
@@ -43,7 +43,7 @@ async def dashboard(filters: DashboardFilter) -> DashboardResponse:
 
 
 @router.get("/persons", response_model=list[str])
-async def list_persons(
+def list_persons(
     study_ids: list[str] = Query(default=[]),
 ) -> list[str]:
     """Return all person names found in the given studies."""
