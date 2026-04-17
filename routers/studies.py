@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
@@ -34,9 +37,13 @@ def list_studies(compound: str | None = Query(None)) -> list[StudyInfo]:
 
 
 @router.get("/studies/search", response_model=list[StudyInfo])
-def search(q: str = Query("", min_length=1)) -> list[StudyInfo]:
+def search(q: str = Query("", min_length=2)) -> list[StudyInfo]:
     """Fuzzy-search compounds / studies by keyword."""
-    return search_studies(PROJECTS_BASE_PATH, q)
+    try:
+        return search_studies(PROJECTS_BASE_PATH, q)
+    except Exception:
+        logger.exception("Search failed for q=%r", q)
+        return []
 
 
 class RefreshResult(BaseModel):

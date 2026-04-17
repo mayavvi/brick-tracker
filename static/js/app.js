@@ -260,7 +260,7 @@ function trackerApp() {
     // --- methods ---
     async searchStudies() {
       const q = this.searchQuery.trim();
-      if (q.length < 1) {
+      if (q.length < 2) {
         this.studyList = [];
         this._mergeSelectedIntoList();
         return;
@@ -268,6 +268,7 @@ function trackerApp() {
       this.loadingStudies = true;
       try {
         const resp = await fetch(`${_API}/api/studies/search?q=${encodeURIComponent(q)}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         this.studyList = await resp.json();
         for (const s of this.studyList) {
           if (this.selectedStudies.includes(s.study_id)) {
