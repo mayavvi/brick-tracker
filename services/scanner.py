@@ -64,12 +64,16 @@ study_dir_cache = _StudyDirectoryCache()
 
 def discover_compounds(base_path: Path) -> list[str]:
     """Return sorted list of compound folder names under *base_path*."""
-    if not base_path.is_dir():
-        logger.warning("Base path does not exist: %s", base_path)
+    try:
+        if not base_path.is_dir():
+            logger.warning("Base path does not exist: %s", base_path)
+            return []
+        return sorted(
+            d.name for d in base_path.iterdir() if d.is_dir() and not d.name.startswith(".")
+        )
+    except Exception as exc:
+        logger.warning("Cannot list base path %s: %s", base_path, exc)
         return []
-    return sorted(
-        d.name for d in base_path.iterdir() if d.is_dir() and not d.name.startswith(".")
-    )
 
 
 def discover_studies(base_path: Path, compound: str | None = None) -> list[StudyInfo]:
@@ -138,15 +142,19 @@ def _scan_studies(base_path: Path, compound: str | None = None) -> list[StudyInf
     results: list[StudyInfo] = []
     for comp in compounds:
         comp_dir = base_path / comp
-        if not comp_dir.is_dir():
-            continue
         try:
+            if not comp_dir.is_dir():
+                continue
             study_dirs = sorted(comp_dir.iterdir())
-        except PermissionError as exc:
+        except Exception as exc:
             logger.warning("Cannot list compound dir %s: %s", comp_dir, exc)
             continue
         for study_dir in study_dirs:
-            if not study_dir.is_dir():
+            try:
+                is_dir = study_dir.is_dir()
+            except Exception:
+                continue
+            if not is_dir:
                 continue
             try:
                 tracker_folders = find_tracker_folder(study_dir)
