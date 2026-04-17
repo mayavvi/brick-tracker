@@ -7,7 +7,6 @@ hammering the (possibly network-mounted) filesystem on every request.
 from __future__ import annotations
 
 import logging
-import re
 import threading
 import time
 from pathlib import Path
@@ -16,8 +15,6 @@ from config import CACHE_TTL_SECONDS, TRACKER_KEYWORD
 from models import StudyInfo, TrackerFileInfo
 
 logger = logging.getLogger(__name__)
-
-_TRACKER_DIR_PATTERN = re.compile(r"^\d+_Tracker$", re.IGNORECASE)
 
 
 # ---------------------------------------------------------------------------
@@ -141,14 +138,13 @@ def _scan_studies(base_path: Path, compound: str | None = None) -> list[StudyInf
             if not study_dir.is_dir():
                 continue
             try:
-                tracker_folder = find_tracker_folder(study_dir)
+                tracker_folders = find_tracker_folder(study_dir)
                 tracker_files: list[TrackerFileInfo] = []
-                if tracker_folder is not None:
-                    tracker_files = find_tracker_files(tracker_folder, comp, study_dir.name)
+                for tf_dir in tracker_folders:
+                    tracker_files.extend(find_tracker_files(tf_dir, comp, study_dir.name))
             except Exception as exc:
                 logger.warning("Error scanning study %s: %s", study_dir, exc)
                 tracker_files = []
-                tracker_folder = None
             results.append(
                 StudyInfo(
                     compound=comp,
@@ -164,15 +160,26 @@ def _scan_studies(base_path: Path, compound: str | None = None) -> list[StudyInf
     return results
 
 
-def find_tracker_folder(study_path: Path) -> Path | None:
-    """Locate the ``XX_Tracker`` directory inside ``SP/documents/``."""
+def find_tracker_folder(study_path: Path) -> list[Path]:
+    """Locate directories whose name contains 'tracker' under ``SP/documents/``.
+
+    Searches both ``SP/documents/`` directly and one level deeper
+    (e.g. ``SP/documents/PhaseII/09_Tracker``).
+    """
     docs_dir = study_path / "SP" / "documents"
     if not docs_dir.is_dir():
-        return None
+        return []
+    results: list[Path] = []
     for child in docs_dir.iterdir():
-        if child.is_dir() and _TRACKER_DIR_PATTERN.match(child.name):
-            return child
-    return None
+        if not child.is_dir():
+            continue
+        if "tracker" in child.name.lower():
+            results.append(child)
+        else:
+            for grandchild in child.iterdir():
+                if grandchild.is_dir() and "tracker" in grandchild.name.lower():
+                    results.append(grandchild)
+    return results
 
 
 def _extract_task_purpose(filename: str) -> str:
