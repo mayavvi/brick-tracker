@@ -181,15 +181,23 @@ def find_tracker_folder(study_path: Path) -> list[Path]:
     if not docs_dir.is_dir():
         return []
     results: list[Path] = []
-    for child in docs_dir.iterdir():
+    try:
+        children = list(docs_dir.iterdir())
+    except (PermissionError, OSError) as exc:
+        logger.warning("Cannot list documents dir %s: %s", docs_dir, exc)
+        return []
+    for child in children:
         if not child.is_dir():
             continue
         if "tracker" in child.name.lower():
             results.append(child)
         else:
-            for grandchild in child.iterdir():
-                if grandchild.is_dir() and "tracker" in grandchild.name.lower():
-                    results.append(grandchild)
+            try:
+                for grandchild in child.iterdir():
+                    if grandchild.is_dir() and "tracker" in grandchild.name.lower():
+                        results.append(grandchild)
+            except (PermissionError, OSError) as exc:
+                logger.warning("Cannot list subdir %s: %s", child, exc)
     return results
 
 
