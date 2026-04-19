@@ -40,3 +40,6 @@ Thumbs.db
 # Posit Connect / rsconnect
 rsconnect/
 rsconnect-python/
+
+# Claude Code local settings
+.claude/
