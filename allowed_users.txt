@@ -1,0 +1,5 @@
+# Allowed usernames, one per line (case-insensitive).
+# Lines starting with # are comments.
+yawei.ma
+xia2.gao
+hao34.wang

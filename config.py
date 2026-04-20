@@ -50,10 +50,21 @@ ALLOW_ANONYMOUS: bool = os.environ.get("ALLOW_ANONYMOUS", "0") == "1"
 # Disable after confirming auth works correctly in production.
 ENABLE_AUTH_DEBUG: bool = os.environ.get("ENABLE_AUTH_DEBUG", "0") == "1"
 
-# Comma-separated allowlist of Posit usernames that may use the app.
-# Example: ALLOWED_USERS=zhangsan,lisi,wangwu
-# Empty string = no restriction (everyone allowed).
-# Read at request time via get_allowed_users() to handle late env injection.
+# Allowlist of Posit usernames that may use the app.
+# Reads from env var ALLOWED_USERS (comma-separated) first,
+# then falls back to allowed_users.txt (one username per line).
+# Empty = no restriction (everyone allowed).
+_ALLOWED_USERS_FILE = Path(__file__).resolve().parent / "allowed_users.txt"
+
+
 def get_allowed_users() -> set[str]:
     raw = os.environ.get("ALLOWED_USERS", "")
-    return {u.strip().lower() for u in raw.split(",") if u.strip()}
+    if raw.strip():
+        return {u.strip().lower() for u in raw.split(",") if u.strip()}
+    if _ALLOWED_USERS_FILE.is_file():
+        try:
+            text = _ALLOWED_USERS_FILE.read_text(encoding="utf-8")
+            return {l.strip().lower() for l in text.splitlines() if l.strip() and not l.startswith("#")}
+        except Exception:
+            return set()
+    return set()
