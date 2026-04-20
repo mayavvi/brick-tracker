@@ -66,13 +66,17 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 # Auth middleware — redirect unauthenticated users to /login
 # ---------------------------------------------------------------------------
-_PUBLIC_PREFIXES = ("/login", "/api/auth/", "/api/debug/", "/static/")
+_PUBLIC_SUFFIXES = ("/login", "/api/auth/", "/api/debug/", "/static/")
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):  # type: ignore[override]
         path = request.url.path
-        if any(path.startswith(p) for p in _PUBLIC_PREFIXES):
+        # Strip reverse-proxy prefix so checks work behind /brick-tracker/ etc.
+        root = request.scope.get("root_path", "")
+        rel = path[len(root):] if root and path.startswith(root) else path
+
+        if any(rel.startswith(p) for p in _PUBLIC_SUFFIXES):
             return await call_next(request)
 
         username = request.cookies.get(COOKIE_NAME, "").strip().lower()
@@ -81,8 +85,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if allowed and (not username or username not in allowed):
             accept = request.headers.get("accept", "")
             if "text/html" in accept:
-                prefix = request.scope.get("root_path", "")
-                return RedirectResponse(url=prefix + "/login", status_code=302)
+                return RedirectResponse(url=root + "/login", status_code=302)
             from fastapi.responses import JSONResponse
             return JSONResponse({"detail": "未登录"}, status_code=401)
 
