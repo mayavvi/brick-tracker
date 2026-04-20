@@ -90,11 +90,11 @@
     });
   </script>
 
-  <script src="/static/js/greetings.js"></script>
+  <script src="{{ url_for('static', path='js/greetings.js') }}"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}" />
 </head>
 
 <body class="h-full bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans antialiased transition-colors duration-200">
@@ -225,7 +225,21 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js"></script>
-  <script src="/static/js/charts.js"></script>
+  <script>
+  (function() {
+    var base = window.location.pathname.replace(/\/+$/, "");
+    window.API_BASE = base;
+    if (!base) return;
+    var _f = window.fetch;
+    window.fetch = function(input) {
+      if (typeof input === "string" && input.startsWith("/api/")) {
+        arguments[0] = base + input;
+      }
+      return _f.apply(this, arguments);
+    };
+  })();
+  </script>
+  <script src="{{ url_for('static', path='js/app.js') }}"></script>
+  <script src="{{ url_for('static', path='js/charts.js') }}"></script>
 </body>
 </html>

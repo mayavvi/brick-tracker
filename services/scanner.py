@@ -7,7 +7,6 @@ hammering the (possibly network-mounted) filesystem on every request.
 from __future__ import annotations
 
 import logging
-import re
 import threading
 import time
 from pathlib import Path
@@ -16,8 +15,6 @@ from config import CACHE_TTL_SECONDS, TRACKER_KEYWORD
 from models import StudyInfo, TrackerFileInfo
 
 logger = logging.getLogger(__name__)
-
-_TRACKER_DIR_PATTERN = re.compile(r"^\d+_Tracker$", re.IGNORECASE)
 
 
 # ---------------------------------------------------------------------------
@@ -67,12 +64,16 @@ study_dir_cache = _StudyDirectoryCache()
 
 def discover_compounds(base_path: Path) -> list[str]:
     """Return sorted list of compound folder names under *base_path*."""
-    if not base_path.is_dir():
-        logger.warning("Base path does not exist: %s", base_path)
+    try:
+        if not base_path.is_dir():
+            logger.warning("Base path does not exist: %s", base_path)
+            return []
+        return sorted(
+            d.name for d in base_path.iterdir() if d.is_dir() and not d.name.startswith(".")
+        )
+    except Exception as exc:
+        logger.warning("Cannot list base path %s: %s", base_path, exc)
         return []
-    return sorted(
-        d.name for d in base_path.iterdir() if d.is_dir() and not d.name.startswith(".")
-    )
 
 
 def discover_studies(base_path: Path, compound: str | None = None) -> list[StudyInfo]:
@@ -89,13 +90,44 @@ def discover_studies(base_path: Path, compound: str | None = None) -> list[Study
     return results
 
 
+def _is_subsequence(query: str, target: str) -> bool:
+    """Check if every character in *query* appears in *target* in order."""
+    it = iter(target.upper())
+    return all(c in it for c in query.upper())
+
+
+def _matches(query: str, text: str) -> bool:
+    """Substring match OR subsequence match (case-insensitive)."""
+    t = text.upper()
+    return query in t or _is_subsequence(query, t)
+
+
 def search_studies(base_path: Path, query: str) -> list[StudyInfo]:
-    """Fuzzy-search compounds / studies by keyword (case-insensitive)."""
+    """Fuzzy-search compounds / studies by keyword (case-insensitive).
+
+    Matches both substring (``QLC5508`` in ``QLC5508-201``) and
+    subsequence (``QL1706`` matches ``QLC1706``).
+
+    Optimised for network-mounted filesystems: instead of scanning every
+    compound, we first check which compound folders match the query and
+    only scan those.
+    """
     q = query.strip().upper()
+    all_compounds = discover_compounds(base_path)
+
+    matching_compounds = [c for c in all_compounds if _matches(q, c)]
+
+    if matching_compounds:
+        results: list[StudyInfo] = []
+        for comp in matching_compounds:
+            results.extend(discover_studies(base_path, comp))
+        return results
+
+    # Fallback: query may be a study-ID fragment — scan everything
     all_studies = discover_studies(base_path)
     return [
         s for s in all_studies
-        if q in s.compound.upper() or q in s.study_id.upper()
+        if _matches(q, s.compound) or _matches(q, s.study_id)
     ]
 
 
@@ -110,15 +142,28 @@ def _scan_studies(base_path: Path, compound: str | None = None) -> list[StudyInf
     results: list[StudyInfo] = []
     for comp in compounds:
         comp_dir = base_path / comp
-        if not comp_dir.is_dir():
-            continue
-        for study_dir in sorted(comp_dir.iterdir()):
-            if not study_dir.is_dir():
+        try:
+            if not comp_dir.is_dir():
                 continue
-            tracker_folder = find_tracker_folder(study_dir)
-            tracker_files: list[TrackerFileInfo] = []
-            if tracker_folder is not None:
-                tracker_files = find_tracker_files(tracker_folder, comp, study_dir.name)
+            study_dirs = sorted(comp_dir.iterdir())
+        except Exception as exc:
+            logger.warning("Cannot list compound dir %s: %s", comp_dir, exc)
+            continue
+        for study_dir in study_dirs:
+            try:
+                is_dir = study_dir.is_dir()
+            except Exception:
+                continue
+            if not is_dir:
+                continue
+            try:
+                tracker_folders = find_tracker_folder(study_dir)
+                tracker_files: list[TrackerFileInfo] = []
+                for tf_dir in tracker_folders:
+                    tracker_files.extend(find_tracker_files(tf_dir, comp, study_dir.name))
+            except Exception as exc:
+                logger.warning("Error scanning study %s: %s", study_dir, exc)
+                tracker_files = []
             results.append(
                 StudyInfo(
                     compound=comp,
@@ -134,15 +179,39 @@ def _scan_studies(base_path: Path, compound: str | None = None) -> list[StudyInf
     return results
 
 
-def find_tracker_folder(study_path: Path) -> Path | None:
-    """Locate the ``XX_Tracker`` directory inside ``SP/documents/``."""
+def _is_numbered_doc_folder(name: str) -> bool:
+    """True for folders like ``01_Protocol``, ``02_SAP`` — not phase folders."""
+    return len(name) > 2 and name[0].isdigit() and "_" in name
+
+
+def find_tracker_folder(study_path: Path) -> list[Path]:
+    """Locate directories whose name contains 'tracker' under ``SP/documents/``.
+
+    Searches ``SP/documents/`` directly, and also one level deeper inside
+    phase-like subdirectories (e.g. ``II期/``, ``Phase1/``).  Numbered
+    document folders (``01_Protocol``, ``02_SAP``, …) are skipped.
+    """
     docs_dir = study_path / "SP" / "documents"
     if not docs_dir.is_dir():
-        return None
-    for child in docs_dir.iterdir():
-        if child.is_dir() and _TRACKER_DIR_PATTERN.match(child.name):
-            return child
-    return None
+        return []
+    results: list[Path] = []
+    try:
+        children = list(docs_dir.iterdir())
+    except Exception:
+        return []
+    for child in children:
+        if not child.is_dir():
+            continue
+        if "tracker" in child.name.lower():
+            results.append(child)
+        elif not _is_numbered_doc_folder(child.name):
+            try:
+                for grandchild in child.iterdir():
+                    if grandchild.is_dir() and "tracker" in grandchild.name.lower():
+                        results.append(grandchild)
+            except Exception:
+                pass
+    return results
 
 
 def _extract_task_purpose(filename: str) -> str:

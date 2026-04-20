@@ -37,6 +37,9 @@ Thumbs.db
 # Logs
 *.log
 
+# Node.js (Tailwind CSS build tooling only)
+node_modules/
+
 # Posit Connect / rsconnect
 rsconnect/
 rsconnect-python/

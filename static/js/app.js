@@ -9,7 +9,7 @@ function trackerApp() {
     in_progress: (t, role) => {
       if (role === "main") return !t.main_status;
       if (role === "qc") return !t.qc_status;
-      return !t.main_status && !t.qc_status;
+      return !t.main_status || !t.qc_status;
     },
     completed_ready_qc: (t) => t.main_status === "已完成，可以QC",
     has_issues: (t) => t.qc_status === "有问题，请修改",
@@ -33,6 +33,7 @@ function trackerApp() {
     studyList: [],
     selectedStudies: [],
     selectedTrackerFiles: {},
+    _studyCache: {},
     personList: [],
     personFilter: "",
     roleFilter: "all",
@@ -237,8 +238,10 @@ function trackerApp() {
       const sid = study.study_id;
       if (this.selectedStudies.includes(sid)) {
         this.selectedTrackerFiles[sid] = study.tracker_files.map((tf) => tf.file_path);
+        this._studyCache[sid] = study;
       } else {
         delete this.selectedTrackerFiles[sid];
+        delete this._studyCache[sid];
       }
       this._scheduleSavePrefs();
     },
@@ -291,8 +294,9 @@ function trackerApp() {
     // --- methods ---
     async searchStudies() {
       const q = this.searchQuery.trim();
-      if (q.length < 1) {
+      if (q.length < 2) {
         this.studyList = [];
+        this._mergeSelectedIntoList();
         return;
       }
       this.loadingStudies = true;
@@ -300,11 +304,28 @@ function trackerApp() {
         const resp = await fetch(`/api/studies/search?q=${encodeURIComponent(q)}`);
         if (!resp.ok) throw new Error(resp.status);
         this.studyList = await resp.json();
+        for (const s of this.studyList) {
+          if (this.selectedStudies.includes(s.study_id)) {
+            this._studyCache[s.study_id] = s;
+          }
+        }
       } catch (e) {
         Alpine.store('toast').push("搜索出错了：" + e, "error");
         this.studyList = [];
       } finally {
         this.loadingStudies = false;
+      }
+      this._mergeSelectedIntoList();
+    },
+
+    _mergeSelectedIntoList() {
+      const inList = new Set(this.studyList.map((s) => s.study_id));
+      for (const sid of this.selectedStudies) {
+        if (!inList.has(sid)) {
+          this.studyList.push(
+            this._studyCache[sid] || { compound: "", study_id: sid, tracker_files: [] }
+          );
+        }
       }
     },
 

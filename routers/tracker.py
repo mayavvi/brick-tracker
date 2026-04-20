@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/tracker", tags=["tracker"])
 
 
 @router.post("/parse", response_model=list[TaskItem])
-async def parse_trackers(
+def parse_trackers(
     study_ids: list[str] = Body(..., embed=True),
 ) -> list[TaskItem]:
     """Parse tracker files for the given study IDs and return all tasks."""
