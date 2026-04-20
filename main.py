@@ -9,13 +9,15 @@ from pathlib import Path
 from typing import AsyncIterator
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.base import BaseHTTPMiddleware
 
-from config import ENABLE_AUTH_DEBUG, IS_POSIT_CONNECT
+from auth import COOKIE_NAME
+from config import ALLOWED_USERS, ENABLE_AUTH_DEBUG, IS_POSIT_CONNECT
 from database import close_db, init_db, migrate_legacy_tasks
-from routers import custom_tasks, dashboard, me, studies, tracker, user
+from routers import auth, custom_tasks, dashboard, me, studies, tracker, user
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +36,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     logger.info("PROJECTS_BASE_PATH = %s (exists=%s)", PROJECTS_BASE_PATH, PROJECTS_BASE_PATH.exists())
     logger.info("DATABASE_PATH      = %s", DATABASE_PATH)
+    logger.info("ALLOWED_USERS      = %s", ALLOWED_USERS or "(no restriction)")
 
     await init_db()
 
@@ -59,9 +62,38 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+# ---------------------------------------------------------------------------
+# Auth middleware — redirect unauthenticated users to /login
+# ---------------------------------------------------------------------------
+_PUBLIC_PREFIXES = ("/login", "/api/auth/", "/static/")
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):  # type: ignore[override]
+        path = request.url.path
+        if any(path.startswith(p) for p in _PUBLIC_PREFIXES):
+            return await call_next(request)
+
+        username = request.cookies.get(COOKIE_NAME, "").strip().lower()
+        has_allowlist = bool(ALLOWED_USERS)
+
+        if has_allowlist and (not username or username not in ALLOWED_USERS):
+            accept = request.headers.get("accept", "")
+            if "text/html" in accept:
+                return RedirectResponse(url="/login", status_code=302)
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "未登录"}, status_code=401)
+
+        return await call_next(request)
+
+
+app.add_middleware(AuthMiddleware)
+
 # ---------------------------------------------------------------------------
 # Routers
 # ---------------------------------------------------------------------------
+app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(studies.router)
 app.include_router(tracker.router)
@@ -79,6 +111,11 @@ if ENABLE_AUTH_DEBUG:
 # ---------------------------------------------------------------------------
 app.mount("/static", StaticFiles(directory=_BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=str(_BASE_DIR / "templates"))
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "login.html")
 
 
 @app.get("/", response_class=HTMLResponse)

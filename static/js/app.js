@@ -146,6 +146,10 @@ function trackerApp() {
     async _loadUser() {
       try {
         const resp = await fetch("/api/user/me");
+        if (resp.status === 401 || resp.status === 403) {
+          window.location.href = "/login";
+          return;
+        }
         if (!resp.ok) throw new Error(resp.status);
         this.currentUser = await resp.json();
       } catch (e) {

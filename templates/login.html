@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full antialiased">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>登录 — 打工人の进度小站</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            warm: {
+              50: '#FFF8EB', 100: '#FEECCA', 200: '#FCD592', 300: '#FAB955',
+              400: '#F79625', 500: '#E97A0E', 600: '#C75E0A', 700: '#A04A0C',
+              800: '#7F3B0F', 900: '#663112', 950: '#3A1906',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="h-full bg-stone-50 font-sans flex items-center justify-center">
+
+  <div id="login-card" class="w-full max-w-sm mx-4">
+    <div class="text-center mb-8">
+      <div class="text-4xl mb-3">🧱</div>
+      <h1 class="text-xl font-bold text-stone-800">打工人の进度小站</h1>
+      <p class="text-sm text-stone-500 mt-1">请输入你的 Posit 用户名登录</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg ring-1 ring-stone-200/60 p-6">
+      <form id="login-form" onsubmit="return handleLogin(event)">
+        <label for="username" class="block text-sm font-medium text-stone-700 mb-1.5">
+          用户名
+        </label>
+        <input id="username" name="username" type="text" required autofocus
+               placeholder="你的 Posit Connect 用户名"
+               class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-stone-300
+                      focus:outline-none focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400
+                      placeholder:text-stone-400 transition" />
+
+        <p id="error-msg" class="text-sm text-rose-600 mt-2 hidden"></p>
+
+        <button type="submit" id="login-btn"
+                class="w-full mt-4 h-10 text-sm font-semibold text-white
+                       bg-warm-500 hover:bg-warm-600 active:bg-warm-700
+                       rounded-xl shadow-sm transition">
+          登 录
+        </button>
+      </form>
+    </div>
+
+    <p class="text-center text-xs text-stone-400 mt-6">
+      没有权限？请联系管理员将你加入允许列表
+    </p>
+  </div>
+
+  <script>
+  (function() {
+    var base = window.location.pathname.replace(/\/login\/?$/, '').replace(/\/+$/, '');
+    window._base = base;
+  })();
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    var btn = document.getElementById('login-btn');
+    var errEl = document.getElementById('error-msg');
+    var username = document.getElementById('username').value.trim();
+    errEl.classList.add('hidden');
+
+    if (!username) {
+      errEl.textContent = '请输入用户名';
+      errEl.classList.remove('hidden');
+      return false;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '登录中…';
+
+    try {
+      var resp = await fetch(window._base + '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username }),
+      });
+      var data = await resp.json();
+      if (data.ok) {
+        window.location.href = window._base + '/';
+      } else {
+        errEl.textContent = data.message || '登录失败';
+        errEl.classList.remove('hidden');
+      }
+    } catch (err) {
+      errEl.textContent = '网络错误：' + err;
+      errEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '登 录';
+    }
+    return false;
+  }
+  </script>
+</body>
+</html>
