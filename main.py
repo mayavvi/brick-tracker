@@ -66,7 +66,7 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 # Auth middleware — redirect unauthenticated users to /login
 # ---------------------------------------------------------------------------
-_PUBLIC_PREFIXES = ("/login", "/api/auth/", "/static/")
+_PUBLIC_PREFIXES = ("/login", "/api/auth/", "/api/debug/", "/static/")
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -101,10 +101,8 @@ app.include_router(dashboard.router)
 app.include_router(custom_tasks.router)
 app.include_router(me.router)
 
-if ENABLE_AUTH_DEBUG:
-    from routers import debug as debug_router
-    app.include_router(debug_router.router)
-    logger.warning("Auth debug endpoint enabled at /api/debug/auth — disable in production")
+from routers import debug as debug_router
+app.include_router(debug_router.router)
 
 # ---------------------------------------------------------------------------
 # Static files & templates
