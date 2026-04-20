@@ -1,156 +1,263 @@
-/* Smooth collapse transition for Alpine.js x-collapse */
-[x-collapse] {
-  overflow: hidden;
+/* ================================================================
+   Brick Tracker · Design System
+   Refined craftsman aesthetic — typography-first, subtle depth,
+   generous whitespace, warmth without kitsch.
+   ================================================================ */
+
+:root {
+  --accent: 233 122 14;          /* warm-500 */
+  --accent-soft: 250 185 85;     /* warm-300 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Scrollbar styling - warm tones */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #e8d5c0;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #d4b896;
+[x-cloak] { display: none !important; }
+[x-collapse] { overflow: hidden; }
+
+/* ================================================================
+   Typography base
+   ================================================================ */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
 }
 
-/* Prevent table column from being too narrow */
-table th,
-table td {
-  min-width: 60px;
+body {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
 }
 
 /* ================================================================
-   Sidebar - smooth GPU-accelerated expand / collapse
+   Scrollbar — thin, quiet
+   ================================================================ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(214 211 209) transparent;
+}
+.dark * { scrollbar-color: rgb(68 64 60) transparent; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: rgb(214 211 209);
+  border-radius: 10px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: rgb(168 162 158); background-clip: padding-box; }
+.dark ::-webkit-scrollbar-thumb { background-color: rgb(68 64 60); background-clip: padding-box; }
+.dark ::-webkit-scrollbar-thumb:hover { background-color: rgb(87 83 78); background-clip: padding-box; }
+
+/* ================================================================
+   Sidebar — smooth width animation
    ================================================================ */
 .sidebar-wrapper {
   will-change: width;
-  transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow-x: hidden;
-  overflow-y: hidden;
+  transition: width 280ms var(--ease-out);
+  overflow: hidden;
   height: 100%;
 }
-
-.sidebar-expanded {
-  width: 20rem; /* w-80 */
-}
-
-.sidebar-collapsed {
-  width: 2.75rem; /* narrow strip */
-}
+.sidebar-expanded  { width: 19.5rem; }
+.sidebar-collapsed { width: 2.75rem; }
 
 .sidebar-content {
-  width: 20rem;
-  min-width: 20rem;
+  width: 19.5rem;
+  min-width: 19.5rem;
   height: 100%;
-  will-change: opacity, transform;
-  transition: opacity 0.24s ease, transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 180ms ease, transform 220ms var(--ease-out);
 }
-
 .sidebar-content-visible {
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;
   overflow-y: auto;
 }
-
 .sidebar-content-hidden {
   opacity: 0;
-  transform: translateX(-1rem);
+  transform: translateX(-8px);
   pointer-events: none;
   position: absolute;
-  overflow-y: hidden;
+  overflow: hidden;
 }
 
 /* ================================================================
-   Dashboard content enter animation
-   ================================================================ */
-@keyframes dashboardSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.dashboard-content-enter {
-  animation: dashboardSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* ================================================================
-   Calendar dropdown
+   Calendar
    ================================================================ */
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
 }
-
-.calendar-grid .cal-cell {
+.cal-cell {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
+  width: 34px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: rgb(68 64 60);
   cursor: default;
-  transition: background-color 0.15s ease;
+  transition: background-color 120ms ease, color 120ms ease;
 }
+.dark .cal-cell { color: rgb(214 211 209); }
 
-.calendar-grid .cal-cell.today {
-  background: linear-gradient(135deg, #f49d37, #e07b1a);
+.cal-cell.today {
+  background: rgb(var(--accent));
   color: white;
-  font-weight: 700;
-  box-shadow: 0 2px 6px rgba(244, 157, 55, 0.4);
+  font-weight: 600;
+  box-shadow: 0 4px 14px -4px rgb(var(--accent) / 0.55);
 }
-
-.calendar-grid .cal-cell.other-month {
-  color: #d1d5db;
-}
+.cal-cell.other-month { color: rgb(168 162 158); opacity: 0.5; }
+.dark .cal-cell.other-month { color: rgb(87 83 78); opacity: 0.55; }
 
 /* ================================================================
-   Status card active indicator
+   Dashboard enter animation
    ================================================================ */
-.status-card-active {
-  border-left-width: 4px;
+@keyframes dash-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.dashboard-content-enter { animation: dash-in 320ms var(--ease-out) both; }
+
+/* ================================================================
+   Skeleton
+   ================================================================ */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg,
+    rgb(245 245 244) 0%,
+    rgb(231 229 228) 40%,
+    rgb(245 245 244) 80%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 6px;
+}
+.dark .skeleton {
+  background: linear-gradient(90deg,
+    rgb(38 32 28) 0%,
+    rgb(58 50 44) 40%,
+    rgb(38 32 28) 80%);
+  background-size: 200% 100%;
 }
 
 /* ================================================================
-   Custom task modal backdrop
+   Modal backdrop — consistent backdrop across all overlays
    ================================================================ */
 .modal-backdrop {
-  background-color: rgba(107, 54, 16, 0.25);
-  backdrop-filter: blur(4px);
+  background: rgba(28 25 23 / 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.dark .modal-backdrop {
+  background: rgba(0 0 0 / 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-/* ================================================================
-   Warm header gradient
-   ================================================================ */
+/* Wave animation removed — kept class as no-op for any stray references */
+.wave-hand { display: inline-block; }
+
+/* Legacy header class — now a plain white header with bottom border */
 .header-warm {
-  background: linear-gradient(135deg, #fffbf0 0%, #fef3e2 50%, #fde6c4 100%);
-  border-bottom: 1px solid #fbd49e;
+  background: #ffffff;
+  border-bottom: 1px solid rgb(231 229 228);
+}
+.dark .header-warm {
+  background: rgb(28 25 23);
+  border-bottom-color: rgb(41 37 36);
 }
 
 /* ================================================================
-   Greeting animation
+   Chart container
    ================================================================ */
-@keyframes wave {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(14deg); }
-  75% { transform: rotate(-8deg); }
+.chart-container {
+  position: relative;
+  height: 188px;
 }
 
-.wave-hand {
-  display: inline-block;
-  animation: wave 1.5s ease-in-out 2;
-  transform-origin: 70% 70%;
+/* ================================================================
+   Keyboard shortcut chip
+   ================================================================ */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: rgb(87 83 78);
+  background: rgb(245 245 244);
+  border: 1px solid rgb(214 211 209);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  letter-spacing: 0;
+}
+.dark kbd {
+  color: rgb(214 211 209);
+  background: rgb(41 37 36);
+  border-color: rgb(68 64 60);
+}
+
+/* ================================================================
+   Form elements
+   ================================================================ */
+input[type="checkbox"],
+input[type="radio"] { accent-color: rgb(var(--accent)); }
+
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none;
+}
+
+/* ================================================================
+   Ddl row urgency — subtle left accent bar
+   ================================================================ */
+.ddl-overdue, .ddl-urgent {
+  position: relative;
+}
+.ddl-overdue::before, .ddl-urgent::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+}
+.ddl-overdue::before { background: rgb(225 29 72); }
+.ddl-urgent::before  { background: rgb(234 88 12); }
+.ddl-soon::before    { background: rgb(217 119 6); }
+
+.ddl-overdue { background: rgb(254 242 242 / 0.5); }
+.ddl-urgent  { background: rgb(255 247 237 / 0.5); }
+.dark .ddl-overdue { background: rgb(76 5 25 / 0.3); }
+.dark .ddl-urgent  { background: rgb(67 20 7 / 0.3); }
+
+/* ================================================================
+   Reduced motion respect
+   ================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ================================================================
+   Subtle text selection
+   ================================================================ */
+::selection {
+  background: rgb(var(--accent) / 0.2);
+  color: rgb(var(--accent) / 1);
+}
+.dark ::selection {
+  background: rgb(var(--accent) / 0.3);
+  color: rgb(var(--accent-soft) / 1);
 }

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
@@ -12,8 +13,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from config import ENABLE_AUTH_DEBUG, IS_POSIT_CONNECT
 from database import close_db, init_db, migrate_legacy_tasks
-from routers import custom_tasks, dashboard, studies, tracker, user
+from routers import custom_tasks, dashboard, me, studies, tracker, user
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,6 +41,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if migrated:
         logger.info("Migrated %d legacy custom tasks into SQLite", migrated)
 
+    logger.info(
+        "Auth mode: %s | ALLOW_ANONYMOUS=%s | ENABLE_AUTH_DEBUG=%s",
+        "posit-connect" if IS_POSIT_CONNECT else "dev",
+        os.environ.get("ALLOW_ANONYMOUS", "0"),
+        os.environ.get("ENABLE_AUTH_DEBUG", "0"),
+    )
+
     yield
 
     await close_db()
@@ -58,6 +67,12 @@ app.include_router(studies.router)
 app.include_router(tracker.router)
 app.include_router(dashboard.router)
 app.include_router(custom_tasks.router)
+app.include_router(me.router)
+
+if ENABLE_AUTH_DEBUG:
+    from routers import debug as debug_router
+    app.include_router(debug_router.router)
+    logger.warning("Auth debug endpoint enabled at /api/debug/auth — disable in production")
 
 # ---------------------------------------------------------------------------
 # Static files & templates

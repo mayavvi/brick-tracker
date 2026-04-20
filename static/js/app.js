@@ -1,29 +1,9 @@
 /**
  * Alpine.js application state for the tracker dashboard.
  */
-const _API = (() => {
-  // Primary: server-injected value from template
-  if (typeof window.API_BASE === "string" && window.API_BASE !== "") {
-    return window.API_BASE.replace(/\/+$/, "");
-  }
-
-  // Fallback 1: derive from current page path (works with vanity/content URL prefixes)
-  const pagePath = window.location.pathname || "";
-  if (pagePath && pagePath !== "/") {
-    return pagePath.replace(/\/+$/, "");
-  }
-
-  // Fallback 2: derive from this script's own URL
-  const src = document.currentScript && document.currentScript.src;
-  if (src) {
-    const path = new URL(src).pathname;
-    const i = path.indexOf("/static/");
-    if (i > 0) return path.substring(0, i);
-  }
-  return "";
-})();
-
 function trackerApp() {
+  // Keyboard shortcuts wired to the app instance (set in init)
+  let _keyHandler = null;
   const STATUS_FILTERS = {
     total: () => true,
     in_progress: (t, role) => {
@@ -43,6 +23,10 @@ function trackerApp() {
     // --- user ---
     currentUser: null,
     prefsLoaded: false,
+
+    // --- theme & charts ---
+    showCharts: true,
+    chartsReady: false,
 
     // --- state ---
     searchQuery: "",
@@ -76,14 +60,9 @@ function trackerApp() {
     sidebarCollapsing: false,
     animationKey: 0,
     todayStr: new Date().toLocaleDateString("zh-CN"),
-    greeting: (() => {
-      const h = new Date().getHours();
-      if (h < 9) return "早安~ 新的一天，元气满满！☀️";
-      if (h < 12) return "上午好！冲一杯咖啡开始搬砖吧 ☕";
-      if (h < 14) return "中午好！吃饱了才有力气干活 🍱";
-      if (h < 18) return "下午好！续杯咖啡，继续肝 ☕";
-      return "晚上好！今天辛苦啦~ 早点回家 🌙";
-    })(),
+    greeting: (window.BrickGreetings ? window.BrickGreetings.pickFor(new Date().getHours()) : ""),
+    _greetingHour: new Date().getHours(),
+    _greetingTimer: null,
 
     // --- custom tasks ---
     customTasks: [],
@@ -95,6 +74,7 @@ function trackerApp() {
     async init() {
       await this._loadUser();
       await this._restorePreferences();
+      this._setupKeyboard();
 
       this.$watch("personFilter", () => {
         if (this.dashboardLoaded) this.loadDashboard();
@@ -118,15 +98,58 @@ function trackerApp() {
         await this.searchStudies();
         await this.loadDashboard();
       }
+
+      this._startGreetingTimer();
+    },
+
+    _startGreetingTimer() {
+      if (this._greetingTimer) clearInterval(this._greetingTimer);
+      this._greetingTimer = setInterval(() => {
+        const h = new Date().getHours();
+        if (h !== this._greetingHour && window.BrickGreetings) {
+          this._greetingHour = h;
+          this.greeting = window.BrickGreetings.pickFor(h);
+        }
+      }, 60000);
+    },
+
+    _setupKeyboard() {
+      var self = this;
+      var gPressed = false, gTimer = null;
+      document.addEventListener('keydown', function(e) {
+        // Skip when focus is in an input/select/textarea
+        var tag = (document.activeElement || {}).tagName;
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') {
+          if (e.key === 'Escape') { document.activeElement.blur(); }
+          return;
+        }
+        if (e.key === '/') {
+          e.preventDefault();
+          var el = document.getElementById('study-search-input');
+          if (el) el.focus();
+        } else if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
+          self.refreshProjectList();
+        } else if (e.key === 'd' && !e.ctrlKey && !e.metaKey) {
+          Alpine.store('theme').toggle();
+          self._scheduleSavePrefs();
+        } else if (e.key === 'g') {
+          gPressed = true;
+          clearTimeout(gTimer);
+          gTimer = setTimeout(function() { gPressed = false; }, 800);
+        } else if (e.key === 'm' && gPressed) {
+          window.location.href = '/me';
+        }
+      });
     },
 
     // --- user identity ---
     async _loadUser() {
       try {
-        const resp = await fetch(_API + "/api/user/me");
+        const resp = await fetch("/api/user/me");
+        if (!resp.ok) throw new Error(resp.status);
         this.currentUser = await resp.json();
       } catch (e) {
-        console.error("Failed to load user:", e);
+        Alpine.store('toast').push("加载用户信息失败 " + e, "error");
         this.currentUser = { username: "unknown", display_name: "" };
       }
     },
@@ -134,7 +157,7 @@ function trackerApp() {
     // --- preferences ---
     async _restorePreferences() {
       try {
-        const resp = await fetch(_API + "/api/user/preferences");
+        const resp = await fetch("/api/user/preferences");
         const prefs = await resp.json();
         if (prefs.selected_studies && prefs.selected_studies.length > 0) {
           this.selectedStudies = prefs.selected_studies;
@@ -146,9 +169,16 @@ function trackerApp() {
         if (prefs.role_filter) this.roleFilter = prefs.role_filter;
         if (prefs.time_range) this.timeRange = prefs.time_range;
         if (prefs.search_query) this.searchQuery = prefs.search_query;
+        if (typeof prefs.show_charts === 'boolean') this.showCharts = prefs.show_charts;
+        // Apply saved theme (server-side prefs override localStorage as source-of-truth)
+        if (prefs.theme === 'dark' || prefs.theme === 'light') {
+          const wantDark = prefs.theme === 'dark';
+          document.documentElement.classList.toggle('dark', wantDark);
+          localStorage.setItem('brick-theme', prefs.theme);
+          Alpine.store('theme').dark = wantDark;
+        }
         this.prefsLoaded = true;
       } catch (e) {
-        console.error("Failed to restore preferences:", e);
         this.prefsLoaded = true;
       }
     },
@@ -167,15 +197,17 @@ function trackerApp() {
         role_filter: this.roleFilter,
         time_range: this.timeRange,
         search_query: this.searchQuery,
+        theme: Alpine.store('theme').dark ? 'dark' : 'light',
+        show_charts: this.showCharts,
       };
       try {
-        await fetch(_API + "/api/user/preferences", {
+        await fetch("/api/user/preferences", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-      } catch (e) {
-        console.error("Failed to save preferences:", e);
+      } catch (_) {
+        // Silently ignore preference save failures to avoid toast spam
       }
     },
 
@@ -246,12 +278,14 @@ function trackerApp() {
     async refreshProjectList() {
       this.refreshingCache = true;
       try {
-        await fetch(_API + "/api/cache/refresh", { method: "POST" });
+        const resp = await fetch("/api/cache/refresh", { method: "POST" });
+        if (!resp.ok) throw new Error(resp.status);
+        Alpine.store('toast').push("缓存已刷新，正在重新加载~", "success");
         if (this.searchQuery.trim().length > 0) {
           await this.searchStudies();
         }
       } catch (e) {
-        console.error("Cache refresh failed:", e);
+        Alpine.store('toast').push("刷新失败：" + e, "error");
       } finally {
         this.refreshingCache = false;
       }
@@ -267,8 +301,8 @@ function trackerApp() {
       }
       this.loadingStudies = true;
       try {
-        const resp = await fetch(`${_API}/api/studies/search?q=${encodeURIComponent(q)}`);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const resp = await fetch(`/api/studies/search?q=${encodeURIComponent(q)}`);
+        if (!resp.ok) throw new Error(resp.status);
         this.studyList = await resp.json();
         for (const s of this.studyList) {
           if (this.selectedStudies.includes(s.study_id)) {
@@ -276,7 +310,7 @@ function trackerApp() {
           }
         }
       } catch (e) {
-        console.error("Search failed:", e);
+        Alpine.store('toast').push("搜索出错了：" + e, "error");
         this.studyList = [];
       } finally {
         this.loadingStudies = false;
@@ -299,7 +333,7 @@ function trackerApp() {
       if (this.selectedStudies.length === 0) return;
       this.loadingDashboard = true;
       try {
-        const pUrl = `${_API}/api/persons?${this.selectedStudies.map((s) => `study_ids=${encodeURIComponent(s)}`).join("&")}`;
+        const pUrl = `/api/persons?${this.selectedStudies.map((s) => `study_ids=${encodeURIComponent(s)}`).join("&")}`;
         const pResp = await fetch(pUrl);
         this.personList = await pResp.json();
 
@@ -311,7 +345,7 @@ function trackerApp() {
           time_range: this.timeRange || null,
           role: this.roleFilter,
         };
-        const dResp = await fetch(_API + "/api/dashboard", {
+        const dResp = await fetch("/api/dashboard", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -326,10 +360,28 @@ function trackerApp() {
         this.dashboardLoaded = true;
         this.animationKey++;
         await this._loadCustomTasks();
+        // Render charts after data is loaded
+        this.$nextTick(() => { this._renderCharts(); });
       } catch (e) {
-        console.error("Dashboard load failed:", e);
+        Alpine.store('toast').push("加载看板失败：" + e, "error");
       } finally {
         this.loadingDashboard = false;
+      }
+    },
+
+    _renderCharts() {
+      if (!this.showCharts || typeof TrackerCharts === 'undefined') return;
+      TrackerCharts.initDonut('chart-donut', this.summary);
+      TrackerCharts.initBar('chart-bar', this.allTasks);
+      TrackerCharts.initTimeline('chart-timeline', this.allTasks);
+      this.chartsReady = true;
+    },
+
+    toggleCharts() {
+      this.showCharts = !this.showCharts;
+      this._scheduleSavePrefs();
+      if (this.showCharts && this.dashboardLoaded) {
+        this.$nextTick(() => { this._renderCharts(); });
       }
     },
 
@@ -365,10 +417,11 @@ function trackerApp() {
     // --- custom tasks CRUD ---
     async _loadCustomTasks() {
       try {
-        const resp = await fetch(_API + "/api/custom-tasks");
+        const resp = await fetch("/api/custom-tasks");
+        if (!resp.ok) throw new Error(resp.status);
         this.customTasks = await resp.json();
       } catch (e) {
-        console.error("Failed to load custom tasks:", e);
+        Alpine.store('toast').push("加载自定义任务失败：" + e, "error");
       }
       this._refreshSummaryWithCustomTasks();
     },
@@ -455,8 +508,9 @@ function trackerApp() {
     },
 
     async saveCustomTask() {
-      if (!this.customTaskForm.ddl) {
-        alert("别忘了填死线呀~ 没有 deadline 的活等于没有活（不是）");
+      // Validate required fields
+      if (!this.customTaskForm.study_id.trim() || !this.customTaskForm.task_name.trim() || !this.customTaskForm.ddl) {
+        Alpine.store('toast').push("项目名、活儿名和死线都是必填的哦~", "warning");
         return;
       }
       const payload = {
@@ -465,33 +519,39 @@ function trackerApp() {
         ddl: this.customTaskForm.ddl,
       };
       try {
+        let resp;
         if (this.editingCustomTask) {
-          await fetch(`${_API}/api/custom-tasks/${this.editingCustomTask}`, {
+          resp = await fetch(`/api/custom-tasks/${this.editingCustomTask}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
         } else {
-          await fetch(_API + "/api/custom-tasks", {
+          resp = await fetch("/api/custom-tasks", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
         }
+        if (!resp.ok) throw new Error(resp.status);
         this.showCustomTaskModal = false;
+        Alpine.store('toast').push(this.editingCustomTask ? "改好了！" : "加上了！冲！", "success");
         await this._loadCustomTasks();
       } catch (e) {
-        console.error("Failed to save custom task:", e);
+        Alpine.store('toast').push("保存失败：" + e, "error");
       }
     },
 
     async deleteCustomTask(taskId) {
-      if (!confirm("真的要扔掉这个活儿吗？(つ﹏⊂) 扔了就捡不回来了哦~")) return;
+      const ok = await Alpine.store('confirm').ask("真的要扔掉这个活儿吗？(つ﹏⊂) 扔了就捡不回来了哦~");
+      if (!ok) return;
       try {
-        await fetch(`${_API}/api/custom-tasks/${taskId}`, { method: "DELETE" });
+        const resp = await fetch(`/api/custom-tasks/${taskId}`, { method: "DELETE" });
+        if (!resp.ok) throw new Error(resp.status);
+        Alpine.store('toast').push("活儿扔了，轻装上阵！", "success");
         await this._loadCustomTasks();
       } catch (e) {
-        console.error("Failed to delete custom task:", e);
+        Alpine.store('toast').push("删除失败：" + e, "error");
       }
     },
 
@@ -561,13 +621,13 @@ function trackerApp() {
     // --- UI helpers ---
     statusBadge(status) {
       const m = {
-        关闭问题: "bg-emerald-100 text-emerald-700",
-        "已完成，可以QC": "bg-sky-100 text-sky-700",
-        进行中: "bg-amber-100 text-amber-700",
-        "有问题，请修改": "bg-rose-100 text-rose-700",
-        "待定，请留意": "bg-stone-100 text-stone-500",
+        关闭问题: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-800/60",
+        "已完成，可以QC": "bg-sky-50 text-sky-700 ring-1 ring-sky-200/70 dark:bg-sky-900/30 dark:text-sky-300 dark:ring-sky-800/60",
+        进行中: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-800/60",
+        "有问题，请修改": "bg-rose-50 text-rose-700 ring-1 ring-rose-200/70 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-800/60",
+        "待定，请留意": "bg-stone-100 text-stone-600 ring-1 ring-stone-200/70 dark:bg-stone-800 dark:text-stone-300 dark:ring-stone-700",
       };
-      return m[status] || "bg-stone-50 text-stone-400";
+      return m[status] || "bg-stone-50 text-stone-400 ring-1 ring-stone-200/70 dark:bg-stone-800/60 dark:text-stone-500 dark:ring-stone-700";
     },
 
     _ddlDaysLeft(task) {
@@ -581,21 +641,20 @@ function trackerApp() {
     ddlUrgencyClass(task) {
       const days = this._ddlDaysLeft(task);
       if (days === null) return "";
-      if (days < 0) return "bg-red-50";
-      if (days <= 3) return "bg-red-50";
-      if (days <= 5) return "bg-orange-50";
-      if (days <= 10) return "bg-yellow-50";
+      if (days < 0) return "ddl-overdue";
+      if (days <= 3) return "ddl-urgent";
+      if (days <= 10) return "ddl-soon";
       return "";
     },
 
     ddlTextClass(task) {
       const days = this._ddlDaysLeft(task);
-      if (days === null) return "text-gray-400";
-      if (days < 0) return "text-red-600 font-bold";
-      if (days <= 3) return "text-red-600 font-semibold";
-      if (days <= 5) return "text-orange-500 font-semibold";
-      if (days <= 10) return "text-yellow-600";
-      return "text-gray-500";
+      if (days === null) return "text-stone-400 dark:text-stone-600";
+      if (days < 0) return "text-rose-600 dark:text-rose-400 font-semibold";
+      if (days <= 3) return "text-rose-600 dark:text-rose-400 font-semibold";
+      if (days <= 5) return "text-amber-600 dark:text-amber-400 font-medium";
+      if (days <= 10) return "text-amber-700 dark:text-amber-500";
+      return "text-stone-500 dark:text-stone-400";
     },
   };
 }

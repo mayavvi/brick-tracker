@@ -9,7 +9,7 @@ from pathlib import Path
 
 def _default_base_path() -> str:
     if platform.system() == "Windows":
-        return r"E:\Dev_2026\mnt\Development\Projects02"
+        return r"E:\2026\mnt\Development\Projects02"
     return "/mnt/Development/Projects02"
 
 
@@ -41,3 +41,11 @@ DATABASE_PATH: Path = Path(
 DEV_USERNAME: str = os.environ.get("DEV_USERNAME", "dev-user")
 
 IS_POSIT_CONNECT: bool = os.environ.get("RSTUDIO_PRODUCT") == "CONNECT"
+
+# Set to "1" to allow requests that can't be identified to proceed as "anonymous".
+# Keep "0" (default) in production so identity failures surface as 401.
+ALLOW_ANONYMOUS: bool = os.environ.get("ALLOW_ANONYMOUS", "0") == "1"
+
+# Set to "1" to expose /api/debug/auth for diagnosing Connect header issues.
+# Disable after confirming auth works correctly in production.
+ENABLE_AUTH_DEBUG: bool = os.environ.get("ENABLE_AUTH_DEBUG", "0") == "1"
