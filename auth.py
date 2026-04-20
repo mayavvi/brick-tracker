@@ -7,7 +7,7 @@ import logging
 from fastapi import HTTPException, Request
 from pydantic import BaseModel
 
-from config import ALLOWED_USERS, DEV_USERNAME
+from config import DEV_USERNAME, get_allowed_users
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +31,15 @@ def get_current_user(request: Request) -> User:
 
     username = request.cookies.get(COOKIE_NAME, "").strip().lower()
 
+    allowed = get_allowed_users()
+
     if not username:
-        if not ALLOWED_USERS:
+        if not allowed:
             username = DEV_USERNAME
         else:
             raise HTTPException(status_code=401, detail="未登录")
 
-    if ALLOWED_USERS and username not in ALLOWED_USERS:
+    if allowed and username not in allowed:
         raise HTTPException(status_code=403, detail="用户不在允许列表中")
 
     user = User(username=username, display_name=username)

@@ -7,7 +7,7 @@ import os
 from fastapi import APIRouter, Request
 
 from auth import COOKIE_NAME, User, get_current_user
-from config import ALLOWED_USERS
+from config import get_allowed_users
 
 router = APIRouter(prefix="/api/debug", tags=["debug"])
 
@@ -25,7 +25,7 @@ async def debug_auth(request: Request) -> dict:
         "resolved_user": resolved_dict,
         "cookie_present": bool(request.cookies.get(COOKIE_NAME, "")),
         "cookie_value": request.cookies.get(COOKIE_NAME, "<missing>"),
-        "allowed_users": sorted(ALLOWED_USERS) if ALLOWED_USERS else "(no restriction)",
+        "allowed_users": sorted(get_allowed_users()) or "(no restriction)",
         "relevant_env": {
             k: os.environ.get(k, "<not set>")
             for k in [

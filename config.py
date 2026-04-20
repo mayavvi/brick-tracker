@@ -53,8 +53,7 @@ ENABLE_AUTH_DEBUG: bool = os.environ.get("ENABLE_AUTH_DEBUG", "0") == "1"
 # Comma-separated allowlist of Posit usernames that may use the app.
 # Example: ALLOWED_USERS=zhangsan,lisi,wangwu
 # Empty string = no restriction (everyone allowed).
-ALLOWED_USERS: set[str] = {
-    u.strip().lower()
-    for u in os.environ.get("ALLOWED_USERS", "").split(",")
-    if u.strip()
-}
+# Read at request time via get_allowed_users() to handle late env injection.
+def get_allowed_users() -> set[str]:
+    raw = os.environ.get("ALLOWED_USERS", "")
+    return {u.strip().lower() for u in raw.split(",") if u.strip()}

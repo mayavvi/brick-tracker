@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from auth import COOKIE_NAME
-from config import ALLOWED_USERS, ENABLE_AUTH_DEBUG, IS_POSIT_CONNECT
+from config import ENABLE_AUTH_DEBUG, IS_POSIT_CONNECT, get_allowed_users
 from database import close_db, init_db, migrate_legacy_tasks
 from routers import auth, custom_tasks, dashboard, me, studies, tracker, user
 
@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     logger.info("PROJECTS_BASE_PATH = %s (exists=%s)", PROJECTS_BASE_PATH, PROJECTS_BASE_PATH.exists())
     logger.info("DATABASE_PATH      = %s", DATABASE_PATH)
-    logger.info("ALLOWED_USERS      = %s", ALLOWED_USERS or "(no restriction)")
+    logger.info("ALLOWED_USERS      = %s", get_allowed_users() or "(no restriction)")
 
     await init_db()
 
@@ -76,9 +76,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         username = request.cookies.get(COOKIE_NAME, "").strip().lower()
-        has_allowlist = bool(ALLOWED_USERS)
+        allowed = get_allowed_users()
 
-        if has_allowlist and (not username or username not in ALLOWED_USERS):
+        if allowed and (not username or username not in allowed):
             accept = request.headers.get("accept", "")
             if "text/html" in accept:
                 return RedirectResponse(url="/login", status_code=302)

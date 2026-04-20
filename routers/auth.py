@@ -6,7 +6,7 @@ from fastapi import APIRouter, Response
 from pydantic import BaseModel
 
 from auth import COOKIE_NAME
-from config import ALLOWED_USERS
+from config import get_allowed_users
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -27,7 +27,8 @@ def login(body: LoginRequest, response: Response) -> LoginResponse:
     if not username:
         return LoginResponse(ok=False, message="用户名不能为空")
 
-    if ALLOWED_USERS and username not in ALLOWED_USERS:
+    allowed = get_allowed_users()
+    if allowed and username not in allowed:
         return LoginResponse(ok=False, message="你不在允许访问的用户列表中，请联系管理员")
 
     response.set_cookie(
