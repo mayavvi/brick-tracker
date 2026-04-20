@@ -81,7 +81,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if allowed and (not username or username not in allowed):
             accept = request.headers.get("accept", "")
             if "text/html" in accept:
-                return RedirectResponse(url="/login", status_code=302)
+                prefix = request.scope.get("root_path", "")
+                return RedirectResponse(url=prefix + "/login", status_code=302)
             from fastapi.responses import JSONResponse
             return JSONResponse({"detail": "未登录"}, status_code=401)
 

@@ -147,7 +147,7 @@ function trackerApp() {
       try {
         const resp = await fetch("/api/user/me");
         if (resp.status === 401 || resp.status === 403) {
-          window.location.href = "/login";
+          window.location.reload();
           return;
         }
         if (!resp.ok) throw new Error(resp.status);
