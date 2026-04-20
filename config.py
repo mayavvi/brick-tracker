@@ -49,3 +49,12 @@ ALLOW_ANONYMOUS: bool = os.environ.get("ALLOW_ANONYMOUS", "0") == "1"
 # Set to "1" to expose /api/debug/auth for diagnosing Connect header issues.
 # Disable after confirming auth works correctly in production.
 ENABLE_AUTH_DEBUG: bool = os.environ.get("ENABLE_AUTH_DEBUG", "0") == "1"
+
+# Comma-separated allowlist of Posit usernames that may use the app.
+# Example: ALLOWED_USERS=zhangsan,lisi,wangwu
+# Empty string = no restriction (everyone allowed).
+ALLOWED_USERS: set[str] = {
+    u.strip().lower()
+    for u in os.environ.get("ALLOWED_USERS", "").split(",")
+    if u.strip()
+}
