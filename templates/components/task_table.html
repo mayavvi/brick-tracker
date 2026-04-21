@@ -1,4 +1,23 @@
 <!-- Task table: 3-level collapsible hierarchy (study -> purpose -> sheet -> rows) -->
+<style>
+  .task-grid-wrap { width: 100%; }
+  .task-grid-row {
+    display: grid;
+    grid-template-columns:
+      72px
+      minmax(90px, 1.3fr)
+      minmax(90px, 1fr)
+      100px
+      minmax(120px, 1.2fr)
+      minmax(90px, 1fr)
+      100px
+      minmax(120px, 1.2fr)
+      100px;
+    align-items: center;
+  }
+  .task-grid-row > div { min-width: 0; overflow: hidden; }
+  .task-grid-head > div { white-space: nowrap; overflow: visible; }
+</style>
 <div class="space-y-3" x-ref="taskArea">
   <template x-for="study in taskGroups" :key="study.studyId">
     <div class="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 overflow-hidden">
@@ -56,51 +75,45 @@
                       <span class="tabular-nums" x-text="sheet.tasks.length"></span>
                     </button>
                     <div x-show="sheet.open" x-collapse>
-                      <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
-                          <thead>
-                            <tr class="bg-stone-50 dark:bg-stone-950/60 text-stone-500 dark:text-stone-400 text-[11px] uppercase tracking-wider border-t border-stone-100 dark:border-stone-800">
-                              <th class="px-3 py-2 text-left font-medium">分类</th>
-                              <th class="px-3 py-2 text-left font-medium">名称</th>
-                              <th class="px-3 py-2 text-left font-medium">主做</th>
-                              <th class="px-3 py-2 text-left font-medium">完成日</th>
-                              <th class="px-3 py-2 text-left font-medium">状态</th>
-                              <th class="px-3 py-2 text-left font-medium">QC</th>
-                              <th class="px-3 py-2 text-left font-medium">QC 日</th>
-                              <th class="px-3 py-2 text-left font-medium">QC 状态</th>
-                              <th class="px-3 py-2 text-left font-medium">DDL</th>
-                            </tr>
-                          </thead>
-                          <tbody class="divide-y divide-stone-100 dark:divide-stone-800">
-                            <template x-for="(task, idx) in sheet.tasks" :key="idx">
-                              <tr class="cfx-row-sweep hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors"
-                                  :class="[ddlUrgencyClass(task), reconHeld && reconTask === task ? 'cfx-row-recon' : '']"
-                                  @mouseenter="reconEnter($event, task)"
-                                  @mousemove="reconMove($event, task)"
-                                  @mouseleave="reconLeave()">
-                                <td class="px-3 py-2 whitespace-nowrap text-stone-500 dark:text-stone-500 text-xs" x-text="task.category || '—'"></td>
-                                <td class="px-3 py-2 text-stone-800 dark:text-stone-200 font-medium max-w-xs truncate" :title="task.item_name" x-text="task.item_name || '—'"></td>
-                                <td class="px-3 py-2 whitespace-nowrap text-xs text-stone-600 dark:text-stone-400" x-text="task.main_person || '—'"></td>
-                                <td class="px-3 py-2 whitespace-nowrap text-stone-400 dark:text-stone-500 text-xs tabular-nums" x-text="task.main_date || '—'"></td>
-                                <td class="px-3 py-2 whitespace-nowrap">
-                                  <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
-                                        :class="statusBadge(task.main_status)"
-                                        x-text="task.main_status || '进行中'"></span>
-                                </td>
-                                <td class="px-3 py-2 whitespace-nowrap text-xs text-stone-600 dark:text-stone-400" x-text="task.qc_person || '—'"></td>
-                                <td class="px-3 py-2 whitespace-nowrap text-stone-400 dark:text-stone-500 text-xs tabular-nums" x-text="task.qc_date || '—'"></td>
-                                <td class="px-3 py-2 whitespace-nowrap">
-                                  <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
-                                        :class="statusBadge(task.qc_status)"
-                                        x-text="task.qc_status || '进行中'"></span>
-                                </td>
-                                <td class="px-3 py-2 whitespace-nowrap font-mono text-xs tabular-nums"
-                                    :class="ddlTextClass(task)"
-                                    x-text="task.ddl || '—'"></td>
-                              </tr>
-                            </template>
-                          </tbody>
-                        </table>
+                      <div class="task-grid-wrap">
+                        <div class="task-grid-row task-grid-head bg-stone-50 dark:bg-stone-950/60 text-stone-500 dark:text-stone-400 text-[11px] uppercase tracking-wider border-t border-stone-100 dark:border-stone-800 font-medium">
+                          <div class="px-3 py-2">分类</div>
+                          <div class="px-3 py-2">名称</div>
+                          <div class="px-3 py-2">主做</div>
+                          <div class="px-3 py-2">完成日</div>
+                          <div class="px-3 py-2">状态</div>
+                          <div class="px-3 py-2">QC</div>
+                          <div class="px-3 py-2">QC 日</div>
+                          <div class="px-3 py-2">QC 状态</div>
+                          <div class="px-3 py-2">DDL</div>
+                        </div>
+                        <template x-for="(task, idx) in sheet.tasks" :key="idx">
+                          <div class="task-grid-row cfx-row-sweep hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors border-t border-stone-100 dark:border-stone-800 text-sm"
+                               :class="[ddlUrgencyClass(task), reconHeld && reconTask === task ? 'cfx-row-recon' : '']"
+                               @mouseenter="reconEnter($event, task)"
+                               @mousemove="reconMove($event, task)"
+                               @mouseleave="reconLeave()">
+                            <div class="px-3 py-2 text-stone-500 dark:text-stone-500 text-xs truncate" x-text="task.category || '—'"></div>
+                            <div class="px-3 py-2 text-stone-800 dark:text-stone-200 font-medium truncate" :title="task.item_name" x-text="task.item_name || '—'"></div>
+                            <div class="px-3 py-2 text-xs text-stone-600 dark:text-stone-400 truncate" x-text="task.main_person || '—'"></div>
+                            <div class="px-3 py-2 text-stone-400 dark:text-stone-500 text-xs tabular-nums truncate" x-text="task.main_date || '—'"></div>
+                            <div class="px-3 py-2 min-w-0">
+                              <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
+                                    :class="statusBadge(task.main_status)"
+                                    x-text="task.main_status || '进行中'"></span>
+                            </div>
+                            <div class="px-3 py-2 text-xs text-stone-600 dark:text-stone-400 truncate" x-text="task.qc_person || '—'"></div>
+                            <div class="px-3 py-2 text-stone-400 dark:text-stone-500 text-xs tabular-nums truncate" x-text="task.qc_date || '—'"></div>
+                            <div class="px-3 py-2 min-w-0">
+                              <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
+                                    :class="statusBadge(task.qc_status)"
+                                    x-text="task.qc_status || '进行中'"></span>
+                            </div>
+                            <div class="px-3 py-2 font-mono text-xs tabular-nums truncate"
+                                 :class="ddlTextClass(task)"
+                                 x-text="task.ddl || '—'"></div>
+                          </div>
+                        </template>
                       </div>
                     </div>
                   </div>

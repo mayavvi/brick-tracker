@@ -815,6 +815,28 @@ header, main, aside, .sidebar-wrapper, [x-data] { position: relative; z-index: 2
 }
 
 /* ================================================================
+   Task grid — 9-column layout shared by header + data rows
+   Guarantees column alignment regardless of content width.
+   ================================================================ */
+.task-grid-wrap { width: 100%; }
+.task-grid-row {
+  display: grid;
+  grid-template-columns:
+    72px                    /* 分类 */
+    minmax(90px, 1.3fr)     /* 名称 */
+    minmax(90px, 1fr)       /* 主做 */
+    100px                   /* 完成日 */
+    minmax(120px, 1.2fr)    /* 状态 badge */
+    minmax(90px, 1fr)       /* QC */
+    100px                   /* QC 日 */
+    minmax(120px, 1.2fr)    /* QC 状态 badge */
+    100px;                  /* DDL */
+  align-items: center;
+}
+.task-grid-row > div { min-width: 0; overflow: hidden; }
+.task-grid-head > div { white-space: nowrap; overflow: visible; }
+
+/* ================================================================
    L3 · Task row diagonal light sweep on hover
    ================================================================ */
 .cfx-row-sweep { position: relative; }
