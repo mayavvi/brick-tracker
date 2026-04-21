@@ -1,98 +1,104 @@
-<!-- Summary cards: compact, monochrome, color only in the status dot & active state -->
-<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+<!-- Summary cards · CYBER NEON L2 — corner brackets, 3D tilt, count-up -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3"
+     x-init="$watch('summary', s => { $nextTick(() => {
+       Object.keys(s).forEach(k => {
+         const el = $root.querySelector('[data-stat=\"' + k + '\"]');
+         if (el && window.CyberFX) CyberFX.countUp(el, s[k]);
+       });
+     }); })">
   <!-- Total -->
-  <button @click="setStatusFilter('total')"
-          class="group text-left rounded-lg border bg-white dark:bg-stone-900 px-4 py-3 transition"
+  <button @click="setStatusFilter('total')" data-cfx-tilt="5" data-cfx-spot
+          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible"
           :class="statusFilter === 'total'
-            ? 'border-warm-500 ring-1 ring-warm-500/30 bg-warm-50 dark:bg-warm-950/30'
-            : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'">
-    <div class="flex items-center gap-2 mb-1.5">
-      <span class="w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-      <span class="text-[11px] font-medium text-stone-500 dark:text-stone-400">全部</span>
+            ? 'neon-card-active border-transparent'
+            : 'border-stone-700/40 hover:border-warm-400/40 hover:shadow-[0_0_16px_rgba(6,182,212,0.18)]'">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-gradient-to-br from-warm-300 to-neon-300 shadow-[0_0_8px_#06B6D4]"></span>
+      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">ALL · 总量</span>
     </div>
-    <p class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums leading-none" x-text="summary.total"></p>
+    <p class="stat-num stat-num-glow text-3xl font-bold leading-none" data-stat="total" x-text="summary.total">0</p>
   </button>
 
   <!-- In progress -->
-  <button @click="setStatusFilter('in_progress')"
-          class="group text-left rounded-lg border bg-white dark:bg-stone-900 px-4 py-3 transition"
+  <button @click="setStatusFilter('in_progress')" data-cfx-tilt="5" data-cfx-spot
+          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible"
           :class="statusFilter === 'in_progress'
-            ? 'border-amber-400 ring-1 ring-amber-400/30 bg-amber-50 dark:bg-amber-950/20'
-            : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'">
-    <div class="flex items-center gap-2 mb-1.5">
-      <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-      <span class="text-[11px] font-medium text-stone-500 dark:text-stone-400">进行中</span>
+            ? 'border-amber-400 ring-1 ring-amber-400/40 shadow-[0_0_22px_rgba(251,191,36,0.3)] bg-amber-500/10'
+            : 'border-stone-700/40 hover:border-amber-400/50 hover:shadow-[0_0_14px_rgba(251,191,36,0.18)]'">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#FBBF24]"></span>
+      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">RUN · 进行</span>
     </div>
-    <p class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums leading-none" x-text="summary.in_progress"></p>
+    <p class="stat-num text-3xl font-bold leading-none text-amber-300 [text-shadow:0_0_16px_rgba(251,191,36,0.5)]" data-stat="in_progress" x-text="summary.in_progress">0</p>
   </button>
 
   <!-- Completed ready QC -->
-  <button @click="setStatusFilter('completed_ready_qc')"
-          class="group text-left rounded-lg border bg-white dark:bg-stone-900 px-4 py-3 transition"
+  <button @click="setStatusFilter('completed_ready_qc')" data-cfx-tilt="5" data-cfx-spot
+          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible"
           :class="statusFilter === 'completed_ready_qc'
-            ? 'border-sky-400 ring-1 ring-sky-400/30 bg-sky-50 dark:bg-sky-950/20'
-            : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'">
-    <div class="flex items-center gap-2 mb-1.5">
-      <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
-      <span class="text-[11px] font-medium text-stone-500 dark:text-stone-400">待 QC</span>
+            ? 'border-sky-400 ring-1 ring-sky-400/40 shadow-[0_0_22px_rgba(56,189,248,0.35)] bg-sky-500/10'
+            : 'border-stone-700/40 hover:border-sky-400/50 hover:shadow-[0_0_14px_rgba(56,189,248,0.2)]'">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38BDF8]"></span>
+      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">QC · 待检</span>
     </div>
-    <p class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums leading-none" x-text="summary.completed_ready_qc"></p>
+    <p class="stat-num text-3xl font-bold leading-none text-sky-300 [text-shadow:0_0_16px_rgba(56,189,248,0.55)]" data-stat="completed_ready_qc" x-text="summary.completed_ready_qc">0</p>
   </button>
 
   <!-- Has issues -->
-  <button @click="setStatusFilter('has_issues')"
-          class="group text-left rounded-lg border bg-white dark:bg-stone-900 px-4 py-3 transition"
+  <button @click="setStatusFilter('has_issues')" data-cfx-tilt="5" data-cfx-spot
+          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible"
           :class="statusFilter === 'has_issues'
-            ? 'border-rose-400 ring-1 ring-rose-400/30 bg-rose-50 dark:bg-rose-950/20'
-            : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'">
-    <div class="flex items-center gap-2 mb-1.5">
-      <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-      <span class="text-[11px] font-medium text-stone-500 dark:text-stone-400">有问题</span>
+            ? 'border-rose-400 ring-1 ring-rose-400/40 shadow-[0_0_22px_rgba(244,63,94,0.4)] bg-rose-500/10'
+            : 'border-stone-700/40 hover:border-rose-400/50 hover:shadow-[0_0_14px_rgba(244,63,94,0.22)]'">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-rose-400 shadow-[0_0_10px_#FB7185] animate-pulse"></span>
+      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">ERR · 异常</span>
     </div>
-    <p class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums leading-none" x-text="summary.has_issues"></p>
+    <p class="stat-num text-3xl font-bold leading-none text-rose-300 [text-shadow:0_0_16px_rgba(244,63,94,0.6)]" data-stat="has_issues" x-text="summary.has_issues">0</p>
   </button>
 
   <!-- Pending -->
-  <button @click="setStatusFilter('pending')"
-          class="group text-left rounded-lg border bg-white dark:bg-stone-900 px-4 py-3 transition"
+  <button @click="setStatusFilter('pending')" data-cfx-tilt="5" data-cfx-spot
+          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible"
           :class="statusFilter === 'pending'
-            ? 'border-stone-400 ring-1 ring-stone-400/30 bg-stone-100 dark:bg-stone-800/40'
-            : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'">
-    <div class="flex items-center gap-2 mb-1.5">
-      <span class="w-1.5 h-1.5 rounded-full bg-stone-500"></span>
-      <span class="text-[11px] font-medium text-stone-500 dark:text-stone-400">暂缓</span>
+            ? 'border-stone-400 ring-1 ring-stone-400/30 shadow-[0_0_18px_rgba(148,163,184,0.25)] bg-stone-500/10'
+            : 'border-stone-700/40 hover:border-stone-400/40'">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-stone-400 shadow-[0_0_6px_#A8A29E]"></span>
+      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">HOLD · 暂缓</span>
     </div>
-    <p class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums leading-none" x-text="summary.pending"></p>
+    <p class="stat-num text-3xl font-bold leading-none text-stone-300" data-stat="pending" x-text="summary.pending">0</p>
   </button>
 
   <!-- Closed -->
-  <button @click="setStatusFilter('closed')"
-          class="group text-left rounded-lg border bg-white dark:bg-stone-900 px-4 py-3 transition"
+  <button @click="setStatusFilter('closed')" data-cfx-tilt="5" data-cfx-spot
+          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible"
           :class="statusFilter === 'closed'
-            ? 'border-emerald-400 ring-1 ring-emerald-400/30 bg-emerald-50 dark:bg-emerald-950/20'
-            : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700'">
-    <div class="flex items-center gap-2 mb-1.5">
-      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-      <span class="text-[11px] font-medium text-stone-500 dark:text-stone-400">已完成</span>
+            ? 'border-emerald-400 ring-1 ring-emerald-400/40 shadow-[0_0_22px_rgba(52,211,153,0.35)] bg-emerald-500/10'
+            : 'border-stone-700/40 hover:border-emerald-400/50 hover:shadow-[0_0_14px_rgba(52,211,153,0.2)]'">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34D399]"></span>
+      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400">DONE · 归档</span>
     </div>
-    <p class="text-2xl font-semibold text-stone-900 dark:text-stone-100 tabular-nums leading-none" x-text="summary.closed"></p>
+    <p class="stat-num text-3xl font-bold leading-none text-emerald-300 [text-shadow:0_0_16px_rgba(52,211,153,0.55)]" data-stat="closed" x-text="summary.closed">0</p>
   </button>
 </div>
 
 <!-- Active filter indicator -->
 <div x-show="statusFilter" x-transition
-     class="flex items-center gap-2 text-xs text-stone-600 dark:text-stone-400 bg-white dark:bg-stone-900 rounded-md px-3 py-1.5 border border-stone-200 dark:border-stone-800">
-  <span class="text-stone-400">筛选：</span>
-  <strong class="text-stone-800 dark:text-stone-200 font-medium" x-text="{
+     class="flex items-center gap-2 text-xs text-stone-300 bg-ink-900/60 backdrop-blur rounded-md px-3 py-1.5 border border-warm-400/30 shadow-[0_0_12px_rgba(6,182,212,0.15)] font-mono">
+  <span class="cfx-filter-caret text-warm-300">FILTER:</span>
+  <strong class="text-warm-200 font-semibold" x-text="{
     total: '全部',
     in_progress: '进行中',
     completed_ready_qc: '待 QC',
-    has_issues: '有问题',
+    has_issues: '有异常',
     pending: '暂缓',
-    closed: '已完成',
+    closed: '已归档',
   }[statusFilter]"></strong>
-  <span class="text-stone-400 font-mono tabular-nums" x-text="'(' + tasks.length + ' / ' + allTasks.length + ')'"></span>
-  <button @click="setStatusFilter(statusFilter)" class="ml-auto text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition">
+  <span class="text-stone-500 tabular-nums" x-text="'[ ' + tasks.length + ' / ' + allTasks.length + ' ]'"></span>
+  <button @click="setStatusFilter(statusFilter)" class="ml-auto text-stone-500 hover:text-neon-300 transition">
     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
     </svg>

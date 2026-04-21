@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}打工人の进度小站{% endblock %}</title>
 
-  <!-- Theme flash prevention -->
+  <!-- Theme flash prevention — dark-first -->
   <script>
     (function () {
       try {
         var t = localStorage.getItem('brick-theme');
-        if (t === 'dark') document.documentElement.classList.add('dark');
-      } catch (e) {}
+        if (t !== 'light') document.documentElement.classList.add('dark');
+      } catch (e) { document.documentElement.classList.add('dark'); }
     })();
   </script>
 
@@ -22,30 +22,73 @@
       theme: {
         extend: {
           colors: {
+            // "warm" 保留名字但重新绑定到电子青（主色）
             warm: {
-              50:  '#FFF8EB',
-              100: '#FEECCA',
-              200: '#FCD592',
-              300: '#FAB955',
-              400: '#F79625',
-              500: '#E97A0E',
-              600: '#C75E0A',
-              700: '#A04A0C',
-              800: '#7F3B0F',
-              900: '#663112',
-              950: '#3A1906',
-            }
+              50:  '#E6FEFF',
+              100: '#B8FAFF',
+              200: '#7FF3FF',
+              300: '#36E7FF',
+              400: '#0DD1F2',
+              500: '#06B6D4',  // cyan-500
+              600: '#0891B2',
+              700: '#0E7490',
+              800: '#155E75',
+              900: '#164E63',
+              950: '#083344',
+            },
+            // 次色 — 品红 / 紫
+            neon: {
+              50:  '#FDF2FF',
+              100: '#FAE0FF',
+              200: '#F5BBFF',
+              300: '#EE87FF',
+              400: '#E247FF',
+              500: '#D01FF6',
+              600: '#B011D4',
+              700: '#8C12A8',
+              800: '#6B1384',
+              900: '#4D1163',
+            },
+            // 背景 — 近黑深靛
+            ink: {
+              950: '#05070E',
+              900: '#0A0E1A',
+              850: '#0F1524',
+              800: '#151B2E',
+              700: '#1E2741',
+              600: '#2A3454',
+            },
           },
           fontFamily: {
-            sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont',
-                   '"Segoe UI"', 'Roboto', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
-            mono: ['ui-monospace', 'SFMono-Regular', '"SF Mono"', 'Menlo', 'Consolas', 'monospace'],
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
           },
           boxShadow: {
-            'soft':  '0 1px 2px 0 rgb(28 25 23 / 0.04), 0 1px 1px 0 rgb(28 25 23 / 0.02)',
-            'card':  '0 1px 3px 0 rgb(28 25 23 / 0.04), 0 1px 2px -1px rgb(28 25 23 / 0.03)',
-            'pop':   '0 12px 32px -8px rgb(28 25 23 / 0.12), 0 4px 12px -4px rgb(28 25 23 / 0.06)',
-          }
+            'soft':  '0 1px 2px 0 rgb(0 0 0 / 0.3)',
+            'card':  '0 4px 16px -4px rgb(0 0 0 / 0.4)',
+            'pop':   '0 20px 50px -12px rgb(0 0 0 / 0.7), 0 0 30px -6px rgb(6 182 212 / 0.15)',
+            'glow':  '0 0 20px rgb(6 182 212 / 0.35), 0 0 40px rgb(6 182 212 / 0.15)',
+            'glow-lg': '0 0 28px rgb(6 182 212 / 0.5), 0 0 60px rgb(208 31 246 / 0.2)',
+            'glow-neon': '0 0 20px rgb(208 31 246 / 0.4), 0 0 40px rgb(208 31 246 / 0.15)',
+          },
+          backgroundImage: {
+            'neon-grad': 'linear-gradient(135deg, #06B6D4 0%, #D01FF6 100%)',
+            'neon-grad-h': 'linear-gradient(90deg, #06B6D4 0%, #D01FF6 50%, #06B6D4 100%)',
+          },
+          animation: {
+            'gradient-x': 'gradient-x 4s ease infinite',
+            'pulse-glow': 'pulse-glow 2.5s ease-in-out infinite',
+          },
+          keyframes: {
+            'gradient-x': {
+              '0%, 100%': { 'background-position': '0% 50%' },
+              '50%':      { 'background-position': '100% 50%' },
+            },
+            'pulse-glow': {
+              '0%, 100%': { 'box-shadow': '0 0 16px rgb(6 182 212 / 0.35)' },
+              '50%':      { 'box-shadow': '0 0 26px rgb(6 182 212 / 0.65), 0 0 40px rgb(208 31 246 / 0.25)' },
+            },
+          },
         }
       }
     }
@@ -91,13 +134,16 @@
   </script>
 
   <script src="{{ url_for('static', path='js/greetings.js') }}"></script>
+  <script src="{{ url_for('static', path='js/cyber-fx.js') }}"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}" />
 </head>
 
-<body class="h-full bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans antialiased transition-colors duration-200">
+<body class="h-full bg-ink-950 text-stone-100 font-sans antialiased transition-colors duration-200 cyber-bg">
+  <canvas id="cfx-particles" class="cfx-particles" aria-hidden="true"></canvas>
+
   {% block body %}{% endblock %}
 
   <!-- ============ Toast stack ============ -->
@@ -110,7 +156,7 @@
            x-transition:leave="transition ease-in duration-200"
            x-transition:leave-start="opacity-100"
            x-transition:leave-end="opacity-0 translate-x-2"
-           class="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-pop ring-1 text-sm bg-white dark:bg-stone-900"
+           class="pointer-events-auto relative overflow-hidden flex items-start gap-3 px-4 py-3 rounded-xl shadow-pop ring-1 text-sm bg-white dark:bg-stone-900"
            :class="{
              'ring-emerald-200 dark:ring-emerald-900/60': toast.type === 'success',
              'ring-rose-200 dark:ring-rose-900/60':       toast.type === 'error',
@@ -144,6 +190,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
+        <span class="cfx-toast-bar"></span>
       </div>
     </template>
   </div>
@@ -160,7 +207,7 @@
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 scale-95"
          x-transition:enter-end="opacity-100 scale-100"
-         class="bg-white dark:bg-stone-900 rounded-2xl shadow-pop ring-1 ring-stone-200 dark:ring-stone-800 max-w-sm w-full mx-4 p-6">
+         class="cfx-corners bg-white dark:bg-stone-900 rounded-2xl shadow-pop ring-1 ring-stone-200 dark:ring-stone-800 max-w-sm w-full mx-4 p-6">
       <div class="flex items-start gap-4 mb-5">
         <div class="flex-shrink-0 w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-950/40 ring-1 ring-rose-200 dark:ring-rose-900/60 flex items-center justify-center">
           <svg class="w-5 h-5 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -198,7 +245,7 @@
            x-transition:enter="transition ease-out duration-200"
            x-transition:enter-start="opacity-0 scale-95"
            x-transition:enter-end="opacity-100 scale-100"
-           class="bg-white dark:bg-stone-900 rounded-2xl shadow-pop ring-1 ring-stone-200 dark:ring-stone-800 max-w-sm w-full mx-4 p-6">
+           class="cfx-corners bg-white dark:bg-stone-900 rounded-2xl shadow-pop ring-1 ring-stone-200 dark:ring-stone-800 max-w-sm w-full mx-4 p-6">
         <div class="flex items-center justify-between mb-5">
           <div class="flex items-center gap-2">
             <svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -219,6 +266,7 @@
           <div class="flex justify-between items-center py-1"><span>刷新数据</span><kbd>r</kbd></div>
           <div class="flex justify-between items-center py-1"><span>切换主题</span><kbd>d</kbd></div>
           <div class="flex justify-between items-center py-1"><span>关闭弹窗</span><kbd>Esc</kbd></div>
+          <div class="flex justify-between items-center py-1"><span>战术侦察 · 悬停看详情</span><kbd>Space</kbd></div>
           <div class="flex justify-between items-center py-1"><span>跳转工作台</span><span class="flex gap-1"><kbd>g</kbd><kbd>m</kbd></span></div>
         </div>
       </div>
@@ -241,5 +289,41 @@
   </script>
   <script src="{{ url_for('static', path='js/app.js') }}"></script>
   <script src="{{ url_for('static', path='js/charts.js') }}"></script>
+  <script src="{{ url_for('static', path='js/radar.js') }}"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (window.CyberFX) {
+        CyberFX.initParticles(document.getElementById('cfx-particles'));
+        CyberFX.autoTilt();
+        CyberFX.bindGlitch();
+        CyberFX.autoSpotlight();
+        const hud = document.getElementById('cfx-hud-ticker');
+        if (hud) CyberFX.initHudTicker(hud);
+        CyberFX.initCommandPalette(function () {
+          const root = document.querySelector('[x-data]');
+          const app = root && root._x_dataStack ? root._x_dataStack[0] : null;
+          const base = window.API_BASE || '';
+          return [
+            { icon: '⚡', label: '装载看板 · Load Dashboard', key: 'Enter', run: () => app && app.loadDashboard && app.loadDashboard() },
+            { icon: '⟲', label: '刷新项目列表 · Sync', key: 'R', run: () => app && app.refreshProjectList && app.refreshProjectList() },
+            { icon: '◐', label: '切换主题 · Toggle Theme', key: 'D', run: () => { Alpine.store('theme').toggle(); app && app._scheduleSavePrefs && app._scheduleSavePrefs(); } },
+            { icon: '◆', label: '展开/收起图表 · Toggle Charts', key: 'C', run: () => app && app.toggleCharts && app.toggleCharts() },
+            { icon: '⌕', label: '聚焦搜索 · Focus Search', key: '/', run: () => { const el = document.getElementById('study-search-input'); if (el) el.focus(); } },
+            { icon: '＋', label: '新增任务 · New Custom Task', run: () => app && app.openAddCustomTask && app.openAddCustomTask('') },
+            { icon: '⌫', label: '清除状态筛选 · Clear Filter', run: () => { if (app) app.statusFilter = ''; } },
+            { icon: '◈', label: '跳转个人工作台 · Go to /me', key: 'G M', run: () => { window.location.href = (base || '') + '/me'; } },
+            { icon: '⌂', label: '回到看板 · Go Home', run: () => { window.location.href = (base || '') + '/'; } },
+            { icon: '?', label: '键盘快捷键', key: '?', run: () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: '?', shiftKey: true })); } },
+          ];
+        });
+      }
+    });
+    // Re-bind on Alpine DOM updates
+    document.addEventListener('alpine:initialized', () => {
+      setTimeout(() => {
+        if (window.CyberFX) { CyberFX.autoTilt(); CyberFX.bindGlitch(); CyberFX.autoSpotlight(); }
+      }, 50);
+    });
+  </script>
 </body>
 </html>

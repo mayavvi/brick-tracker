@@ -5,7 +5,7 @@
 
       <!-- Level 1: Study -->
       <button @click="study.open = !study.open"
-              class="w-full flex items-center justify-between px-4 py-3 border-l-2 border-l-warm-500
+              class="w-full flex items-center justify-between px-4 py-3 border-l-[3px] border-l-transparent [border-image:linear-gradient(180deg,#06B6D4,#D01FF6)_1]
                      hover:bg-stone-50 dark:hover:bg-stone-800/40 transition-colors">
         <span class="flex items-center gap-3">
           <svg :class="study.open ? 'rotate-90' : ''" class="w-3.5 h-3.5 text-stone-400 transition-transform"
@@ -73,7 +73,11 @@
                           </thead>
                           <tbody class="divide-y divide-stone-100 dark:divide-stone-800">
                             <template x-for="(task, idx) in sheet.tasks" :key="idx">
-                              <tr class="hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors" :class="ddlUrgencyClass(task)">
+                              <tr class="cfx-row-sweep hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors"
+                                  :class="[ddlUrgencyClass(task), reconHeld && reconTask === task ? 'cfx-row-recon' : '']"
+                                  @mouseenter="reconEnter($event, task)"
+                                  @mousemove="reconMove($event, task)"
+                                  @mouseleave="reconLeave()">
                                 <td class="px-3 py-2 whitespace-nowrap text-stone-500 dark:text-stone-500 text-xs" x-text="task.category || '—'"></td>
                                 <td class="px-3 py-2 text-stone-800 dark:text-stone-200 font-medium max-w-xs truncate" :title="task.item_name" x-text="task.item_name || '—'"></td>
                                 <td class="px-3 py-2 whitespace-nowrap text-xs text-stone-600 dark:text-stone-400" x-text="task.main_person || '—'"></td>
@@ -112,7 +116,7 @@
   <!-- ==================== Custom Project Groups ==================== -->
   <template x-for="cg in customProjectGroups" :key="cg.studyId">
     <div class="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 overflow-hidden">
-      <div class="flex items-center justify-between px-4 py-3 border-l-2 border-l-warm-500">
+      <div class="flex items-center justify-between px-4 py-3 border-l-[3px] border-l-transparent [border-image:linear-gradient(180deg,#06B6D4,#D01FF6)_1]">
         <span class="flex items-center gap-2.5">
           <span class="font-semibold text-stone-900 dark:text-stone-100 text-sm" x-text="cg.studyId"></span>
           <span class="text-[11px] bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 rounded-full px-2 py-0.5 font-medium"
@@ -143,7 +147,11 @@
           </thead>
           <tbody class="divide-y divide-stone-100 dark:divide-stone-800">
             <template x-for="ct in cg.tasks" :key="ct.id">
-              <tr class="hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors group">
+              <tr class="cfx-row-sweep hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors group"
+                  :class="reconHeld && reconTask === ct ? 'cfx-row-recon' : ''"
+                  @mouseenter="reconEnter($event, ct)"
+                  @mousemove="reconMove($event, ct)"
+                  @mouseleave="reconLeave()">
                 <td class="px-3 py-2 text-stone-800 dark:text-stone-200 font-medium" x-text="ct.task_name"></td>
                 <td class="px-3 py-2 text-stone-500 dark:text-stone-500 text-xs max-w-xs truncate" :title="ct.description" x-text="ct.description || '—'"></td>
                 <td class="px-3 py-2 whitespace-nowrap text-xs text-stone-600 dark:text-stone-400" x-text="ct.main_person || '—'"></td>
@@ -189,26 +197,31 @@
   <!-- Add custom project -->
   <template x-if="dashboardLoaded">
     <button @click="openAddCustomTask('')"
-            class="w-full py-2.5 border border-dashed border-stone-300 dark:border-stone-700 rounded-lg text-sm
-                   text-stone-500 dark:text-stone-400 hover:border-warm-400 hover:text-warm-600 hover:bg-white dark:hover:bg-stone-900 transition
-                   flex items-center justify-center gap-2 font-medium">
+            class="w-full py-2.5 border border-dashed border-warm-400/30 rounded-lg text-sm
+                   text-warm-300 hover:border-warm-400/70 hover:text-warm-200 hover:bg-warm-500/5 hover:shadow-[0_0_18px_rgba(6,182,212,0.2)] transition
+                   flex items-center justify-center gap-2 font-semibold bg-ink-900/30">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
       </svg>
-      新增自定义任务
+      + 注入自定义任务
     </button>
   </template>
 
   <!-- No results -->
   <template x-if="dashboardLoaded && taskGroups.length === 0 && customProjectGroups.length === 0">
     <div class="text-center py-16">
-      <div class="w-12 h-12 mx-auto rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center mb-3">
-        <svg class="w-5 h-5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-        </svg>
+      <div class="relative w-16 h-16 mx-auto mb-4">
+        <div class="absolute inset-0 rounded-full bg-gradient-to-br from-warm-500/20 to-neon-500/20 blur-xl"></div>
+        <div class="relative w-16 h-16 rounded-full border border-warm-400/30 bg-ink-900/60 flex items-center justify-center">
+          <svg class="w-6 h-6 text-warm-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
       </div>
-      <p class="text-sm text-stone-600 dark:text-stone-300 font-medium">没有符合条件的任务</p>
-      <p class="text-xs text-stone-400 dark:text-stone-500 mt-1">试着调整左侧筛选条件</p>
+      <p class="text-sm font-bold">
+        <span class="bg-gradient-to-r from-warm-300 to-neon-300 bg-clip-text text-transparent">// 无匹配结果</span>
+      </p>
+      <p class="text-xs text-stone-500 font-mono mt-1">[ NO_MATCH · 调整左侧过滤条件试试 ]</p>
     </div>
   </template>
 </div>

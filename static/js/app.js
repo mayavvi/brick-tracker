@@ -53,6 +53,7 @@ function trackerApp() {
       not_started: 0,
     },
     _baseSummary: null,
+    _bootedOnce: false,
     allTasks: [],
     tasks: [],
     taskGroups: [],
@@ -69,6 +70,11 @@ function trackerApp() {
     showCustomTaskModal: false,
     editingCustomTask: null,
     customTaskForm: { study_id: "", task_name: "", description: "", main_person: "", main_status: "", qc_person: "", qc_status: "", ddl: "", tags: "" },
+
+    // --- recon mode (hold SPACE + hover row) ---
+    reconHeld: false,
+    reconTask: null,
+    reconPos: { x: 0, y: 0 },
 
     // --- lifecycle ---
     async init() {
@@ -91,6 +97,8 @@ function trackerApp() {
       this.$watch("statusFilter", () => {
         if (this.dashboardLoaded) this._applyStatusFilter();
       });
+      this.$watch("greeting", (v) => this._typeGreeting(v));
+      this.$nextTick(() => this._typeGreeting(this.greeting));
 
       await this._loadCustomTasks();
 
@@ -100,6 +108,17 @@ function trackerApp() {
       }
 
       this._startGreetingTimer();
+    },
+
+    _typeGreeting(text) {
+      const el = document.getElementById('cfx-greeting');
+      if (!el) return;
+      const full = '> ' + (text || '');
+      if (window.CyberFX && CyberFX.typewriter) {
+        CyberFX.typewriter(el, full, 28);
+      } else {
+        el.textContent = full;
+      }
     },
 
     _startGreetingTimer() {
@@ -119,9 +138,21 @@ function trackerApp() {
       document.addEventListener('keydown', function(e) {
         // Skip when focus is in an input/select/textarea
         var tag = (document.activeElement || {}).tagName;
-        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') {
+        var inField = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' ||
+                      (document.activeElement && document.activeElement.isContentEditable);
+        if (inField) {
           if (e.key === 'Escape') { document.activeElement.blur(); }
           return;
+        }
+        if (e.key === ' ' || e.code === 'Space') {
+          // Recon mode — suppress default page-scroll
+          if (!e.repeat) self.reconHeld = true;
+          e.preventDefault();
+          return;
+        }
+        if (e.key === 'Escape') {
+          self.reconHeld = false;
+          self.reconTask = null;
         }
         if (e.key === '/') {
           e.preventDefault();
@@ -140,6 +171,76 @@ function trackerApp() {
           window.location.href = '/me';
         }
       });
+      document.addEventListener('keyup', function(e) {
+        if (e.key === ' ' || e.code === 'Space') {
+          self.reconHeld = false;
+          self.reconTask = null;
+        }
+      });
+      // Clear on window blur (e.g., alt-tab while holding Space)
+      window.addEventListener('blur', function() {
+        self.reconHeld = false;
+        self.reconTask = null;
+      });
+    },
+
+    // --- Recon Mode ---
+    reconEnter(event, task) {
+      if (!this.reconHeld) return;
+      this.reconTask = task;
+      this.reconPos = { x: event.clientX, y: event.clientY };
+    },
+    reconMove(event, task) {
+      if (!this.reconHeld) return;
+      // Pressing Space while already over a row → adopt task on first move
+      if (!this.reconTask && task) this.reconTask = task;
+      if (!this.reconTask) return;
+      // Clamp so HUD stays on-screen (card ~22rem wide × ~18rem tall)
+      var w = 360, h = 320;
+      var x = Math.min(event.clientX, window.innerWidth  - w - 24);
+      var y = Math.min(event.clientY, window.innerHeight - h - 24);
+      this.reconPos = { x: x, y: y };
+    },
+    reconLeave() {
+      this.reconTask = null;
+    },
+    reconStatusColor(status) {
+      if (!status) return 'text-stone-400';
+      if (status === '已完成，可以QC') return 'text-sky-300';
+      if (status === '有问题，请修改') return 'text-rose-300';
+      if (status === '待定，请留意') return 'text-stone-300';
+      if (status === '关闭问题') return 'text-emerald-300';
+      return 'text-amber-300';
+    },
+    reconDdlCountdown(ddl) {
+      if (!ddl) return '—';
+      var d = new Date(ddl);
+      if (isNaN(d)) return ddl;
+      d.setHours(0, 0, 0, 0);
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      var diff = Math.round((d - today) / 86400000);
+      if (diff < 0) return '逾期 ' + (-diff) + 'd';
+      if (diff === 0) return '今日';
+      return '+' + diff + 'd';
+    },
+    reconDdlText(ddl) {
+      var d = new Date(ddl); if (isNaN(d)) return 'text-stone-300';
+      d.setHours(0,0,0,0);
+      var today = new Date(); today.setHours(0,0,0,0);
+      var diff = Math.round((d - today) / 86400000);
+      if (diff < 0) return 'text-rose-300';
+      if (diff <= 3) return 'text-amber-300';
+      if (diff <= 7) return 'text-warm-300';
+      return 'text-emerald-300';
+    },
+    reconDdlBorder(ddl) {
+      var d = new Date(ddl); if (isNaN(d)) return 'border-stone-700/50 bg-ink-900/60';
+      d.setHours(0,0,0,0);
+      var today = new Date(); today.setHours(0,0,0,0);
+      var diff = Math.round((d - today) / 86400000);
+      if (diff < 0) return 'border-rose-500/50 bg-rose-500/10';
+      if (diff <= 3) return 'border-amber-500/50 bg-amber-500/10';
+      return 'border-stone-700/50 bg-ink-900/60';
     },
 
     // --- user identity ---
@@ -336,6 +437,17 @@ function trackerApp() {
     async loadDashboard() {
       if (this.selectedStudies.length === 0) return;
       this.loadingDashboard = true;
+      const firstLoad = !this._bootedOnce;
+      this._bootedOnce = true;
+      if (firstLoad && window.CyberFX) {
+        CyberFX.bootSequence([
+          '初始化控制台 · INIT_CONSOLE',
+          '连接数据节点 · CONNECT_NODE_' + this.selectedStudies.length + '_TARGETS',
+          '解析任务日志 · PARSE_TRACKER_LOGS',
+          '同步成员负载 · SYNC_OPERATORS',
+          '渲染数据透视 · RENDER_DASHBOARD',
+        ]);
+      }
       try {
         const pUrl = `/api/persons?${this.selectedStudies.map((s) => `study_ids=${encodeURIComponent(s)}`).join("&")}`;
         const pResp = await fetch(pUrl);
@@ -365,7 +477,10 @@ function trackerApp() {
         this.animationKey++;
         await this._loadCustomTasks();
         // Render charts after data is loaded
-        this.$nextTick(() => { this._renderCharts(); });
+        this.$nextTick(() => {
+          this._renderCharts();
+          if (window.CyberFX) { CyberFX.autoTilt(); CyberFX.bindGlitch(); }
+        });
       } catch (e) {
         Alpine.store('toast').push("加载看板失败：" + e, "error");
       } finally {
@@ -378,6 +493,19 @@ function trackerApp() {
       TrackerCharts.initDonut('chart-donut', this.summary);
       TrackerCharts.initBar('chart-bar', this.allTasks);
       TrackerCharts.initTimeline('chart-timeline', this.allTasks);
+      if (typeof TrackerRadar !== 'undefined') {
+        const self = this;
+        TrackerRadar.init('chart-radar', this.allTasks, {
+          onPick(task) {
+            if (task && task.main_person) {
+              self.personFilter = task.main_person;
+              if (Alpine && Alpine.store('toast')) {
+                Alpine.store('toast').push('◎ 已按负责人筛选：' + task.main_person, 'info');
+              }
+            }
+          }
+        });
+      }
       this.chartsReady = true;
     },
 
@@ -631,7 +759,12 @@ function trackerApp() {
         "有问题，请修改": "bg-rose-50 text-rose-700 ring-1 ring-rose-200/70 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-800/60",
         "待定，请留意": "bg-stone-100 text-stone-600 ring-1 ring-stone-200/70 dark:bg-stone-800 dark:text-stone-300 dark:ring-stone-700",
       };
-      return m[status] || "bg-stone-50 text-stone-400 ring-1 ring-stone-200/70 dark:bg-stone-800/60 dark:text-stone-500 dark:ring-stone-700";
+      const base = m[status] || "bg-stone-50 text-stone-400 ring-1 ring-stone-200/70 dark:bg-stone-800/60 dark:text-stone-500 dark:ring-stone-700";
+      // Sheen only on actionable statuses
+      if (status === "已完成，可以QC" || status === "有问题，请修改") {
+        return base + " cfx-sheen";
+      }
+      return base;
     },
 
     _ddlDaysLeft(task) {

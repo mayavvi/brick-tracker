@@ -4,16 +4,19 @@
 <div x-data="meApp()" x-init="init()" class="min-h-full flex flex-col">
 
   <!-- Header -->
-  <header class="header-warm px-6 py-4 shadow-sm flex-shrink-0">
+  <header class="header-warm px-6 py-4 shadow-sm flex-shrink-0 relative">
     <div class="max-w-4xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <a href="/" class="text-warm-400 hover:text-warm-600 transition p-1.5 rounded-lg hover:bg-white/60">
+        <a href="/" class="text-warm-300 hover:text-warm-200 transition p-1.5 rounded-lg hover:bg-warm-500/10 hover:shadow-[0_0_12px_rgba(6,182,212,0.3)]">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
           </svg>
         </a>
-        <span class="text-xl">👤</span>
-        <h1 class="text-xl font-bold text-warm-800 dark:text-warm-300">我的工作台</h1>
+        <h1 class="text-xl font-bold tracking-tight flex items-center gap-2">
+          <span data-cfx-glitch class="bg-gradient-to-r from-warm-300 to-neon-300 bg-clip-text text-transparent">◈ OPERATOR</span>
+          <span class="text-stone-500 font-mono text-xs">//</span>
+          <span class="text-stone-100">个人工作台</span>
+        </h1>
       </div>
       <!-- Dark mode toggle -->
       <button @click="$store.theme.toggle()" aria-label="切换明暗模式"
@@ -26,13 +29,14 @@
         </svg>
       </button>
     </div>
+    <div class="neon-rail absolute bottom-0 left-0 right-0"></div>
   </header>
 
   <main class="flex-1 py-8 px-6">
     <div class="max-w-4xl mx-auto space-y-6">
 
       <!-- User card -->
-      <div class="bg-white dark:bg-stone-900 rounded-2xl border border-warm-200 dark:border-stone-700 p-6 flex items-center gap-6 shadow-sm">
+      <div class="cfx-corners bg-white dark:bg-stone-900 rounded-2xl border border-warm-200 dark:border-stone-700 p-6 flex items-center gap-6 shadow-sm">
         <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-warm-400 to-warm-600 text-white flex items-center justify-center text-2xl font-bold shadow-md flex-shrink-0">
           {{ (user.display_name or user.username or '?')[0] | upper }}
         </div>
@@ -66,8 +70,11 @@
       <!-- Custom tasks -->
       <div class="bg-white dark:bg-stone-900 rounded-2xl border border-warm-200 dark:border-stone-700 overflow-hidden shadow-sm">
         <div class="px-6 py-4 border-b border-warm-100 dark:border-stone-700 flex items-center justify-between">
-          <h3 class="font-semibold text-warm-800 dark:text-warm-300">📋 我的自定义任务</h3>
-          <span class="text-xs text-warm-500" x-text="customTasks.length + ' 个'"></span>
+          <h3 class="font-bold text-warm-300 tracking-wide flex items-center gap-2">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-warm-400 shadow-[0_0_8px_#06B6D4]"></span>
+            ▸ 我的任务清单
+          </h3>
+          <span class="text-xs text-warm-300 font-mono" x-text="'[ ' + customTasks.length + ' ]'"></span>
         </div>
 
         <!-- Loading state -->
@@ -80,10 +87,16 @@
 
         <!-- Empty state -->
         <template x-if="!loading && customTasks.length === 0">
-          <div class="p-8 text-center">
-            <div class="text-4xl mb-2">📭</div>
-            <p class="text-warm-500 text-sm">还没有自定义任务~ 去主页新建一个？</p>
-            <a href="/" class="mt-3 inline-block text-sm text-warm-600 hover:text-warm-800 font-medium">→ 去主页</a>
+          <div class="p-10 text-center">
+            <div class="relative w-14 h-14 mx-auto mb-3">
+              <div class="absolute inset-0 rounded-full bg-gradient-to-br from-warm-500/30 to-neon-500/30 blur-xl"></div>
+              <div class="relative w-14 h-14 rounded-full border border-warm-400/30 bg-ink-900/60 flex items-center justify-center text-2xl">◌</div>
+            </div>
+            <p class="text-sm font-bold">
+              <span class="bg-gradient-to-r from-warm-300 to-neon-300 bg-clip-text text-transparent">// 清单为空</span>
+            </p>
+            <p class="text-xs text-stone-500 font-mono mt-1">[ EMPTY · 去主页注入任务 ]</p>
+            <a href="/" class="mt-4 inline-flex items-center gap-1 text-xs text-warm-300 hover:text-warm-200 font-semibold font-mono">→ 返回主页</a>
           </div>
         </template>
 
