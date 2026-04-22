@@ -6,7 +6,6 @@
 const TrackerCharts = (() => {
   let _donut = null;
   let _bar = null;
-  let _timeline = null;
 
   const STATUS_COLORS = {
     in_progress:        { bg: '#FBBF24', border: '#F59E0B', glow: 'rgba(251,191,36,0.5)' },
@@ -74,25 +73,33 @@ const TrackerCharts = (() => {
   }
 
   function destroyAll() {
-    if (_donut)    { _donut.destroy();    _donut = null; }
-    if (_bar)      { _bar.destroy();      _bar = null; }
-    if (_timeline) {
-      if (_timeline._pulseInt) clearInterval(_timeline._pulseInt);
-      _timeline.destroy(); _timeline = null;
-    }
+    if (_donut) { _donut.destroy(); _donut = null; }
+    if (_bar)   { _bar.destroy();   _bar = null; }
   }
 
-  function initDonut(canvasId, summary) {
+  function initDonut(canvasId, summary, role) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
     if (_donut) _donut.destroy();
 
-    const keys   = Object.keys(STATUS_COLORS);
+    // Show role-relevant status slices only
+    let keys;
+    if (role === 'main') {
+      keys = ['in_progress', 'completed_ready_qc'];
+    } else if (role === 'qc') {
+      keys = ['has_issues', 'pending', 'closed'];
+    } else {
+      keys = Object.keys(STATUS_COLORS);
+    }
+
     const values = keys.map(k => summary[k] || 0);
     const total  = values.reduce((a, b) => a + b, 0);
     if (total === 0) { ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height); return; }
 
-    const closedPct = total > 0 ? Math.round(((summary.closed || 0) / total) * 100) : 0;
+    // For qc mode: display the QC pool size as the "total"; closed% is relative to QC pool
+    const displayTotal = role === 'qc' ? (summary.completed_ready_qc || 0) : total;
+    const closedBase   = role === 'qc' ? displayTotal : total;
+    const closedPct    = closedBase > 0 ? Math.round(((summary.closed || 0) / closedBase) * 100) : 0;
 
     const centerText = {
       id: 'centerText',
@@ -110,7 +117,7 @@ const TrackerCharts = (() => {
         ctx.shadowBlur = dark ? 14 : 6;
         ctx.fillStyle = dark ? '#7FF3FF' : '#0E7490';
         ctx.font = 'bold 32px "JetBrains Mono", Menlo, monospace';
-        ctx.fillText(total, cx, cy - 8);
+        ctx.fillText(displayTotal || total, cx, cy - 8);
 
         // Subtitle — bigger, better contrast in light mode
         ctx.shadowBlur = 0;
@@ -184,26 +191,45 @@ const TrackerCharts = (() => {
     });
   }
 
-  function initBar(canvasId, tasks) {
+  function initBar(canvasId, tasks, role) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
     if (_bar) _bar.destroy();
 
-    // Aggregate person workload
+    // Aggregate person workload based on role
     const personMap = {};
-    for (const t of tasks) {
-      const persons = new Set();
-      if (t.main_person) persons.add(t.main_person);
-      if (t.qc_person)   persons.add(t.qc_person);
-      for (const p of persons) {
-        if (!personMap[p]) personMap[p] = { in_progress: 0, completed_ready_qc: 0, has_issues: 0, pending: 0, closed: 0 };
-        const mainStatus = t.main_status || '';
-        const qcStatus   = t.qc_status   || '';
-        if (qcStatus === '关闭问题') personMap[p].closed++;
-        else if (qcStatus === '有问题，请修改') personMap[p].has_issues++;
-        else if (qcStatus === '待定，请留意') personMap[p].pending++;
-        else if (mainStatus === '已完成，可以QC') personMap[p].completed_ready_qc++;
+
+    if (role === 'main') {
+      for (const t of tasks) {
+        const p = t.main_person; if (!p) continue;
+        if (!personMap[p]) personMap[p] = { in_progress: 0, completed_ready_qc: 0 };
+        if (t.main_status === '已完成，可以QC') personMap[p].completed_ready_qc++;
         else personMap[p].in_progress++;
+      }
+    } else if (role === 'qc') {
+      for (const t of tasks) {
+        const p = t.qc_person; if (!p) continue;
+        if (!personMap[p]) personMap[p] = { has_issues: 0, pending: 0, closed: 0 };
+        const q = t.qc_status || '';
+        if (q === '关闭问题') personMap[p].closed++;
+        else if (q === '有问题，请修改') personMap[p].has_issues++;
+        else if (q === '待定，请留意') personMap[p].pending++;
+      }
+    } else {
+      for (const t of tasks) {
+        const persons = new Set();
+        if (t.main_person) persons.add(t.main_person);
+        if (t.qc_person)   persons.add(t.qc_person);
+        for (const p of persons) {
+          if (!personMap[p]) personMap[p] = { in_progress: 0, completed_ready_qc: 0, has_issues: 0, pending: 0, closed: 0 };
+          const mainStatus = t.main_status || '';
+          const qcStatus   = t.qc_status   || '';
+          if (qcStatus === '关闭问题') personMap[p].closed++;
+          else if (qcStatus === '有问题，请修改') personMap[p].has_issues++;
+          else if (qcStatus === '待定，请留意') personMap[p].pending++;
+          else if (mainStatus === '已完成，可以QC') personMap[p].completed_ready_qc++;
+          else personMap[p].in_progress++;
+        }
       }
     }
 
@@ -215,7 +241,9 @@ const TrackerCharts = (() => {
 
     if (persons.length === 0) return;
 
-    const statusKeys = ['in_progress', 'completed_ready_qc', 'has_issues', 'pending', 'closed'];
+    const statusKeys = role === 'main' ? ['in_progress', 'completed_ready_qc']
+                     : role === 'qc'   ? ['has_issues', 'pending', 'closed']
+                     : ['in_progress', 'completed_ready_qc', 'has_issues', 'pending', 'closed'];
     const datasets = statusKeys.map(k => ({
       label: STATUS_LABELS[k],
       data: persons.map(p => p[k] || 0),
@@ -275,109 +303,5 @@ const TrackerCharts = (() => {
     });
   }
 
-  function initTimeline(canvasId, tasks) {
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) return;
-    if (_timeline) _timeline.destroy();
-
-    // Count tasks per day in next 30 days
-    const today = new Date(); today.setHours(0,0,0,0);
-    const days = 30;
-    const counts = new Array(days).fill(0);
-    const labels = [];
-    for (let i = 0; i < days; i++) {
-      const d = new Date(today); d.setDate(today.getDate() + i);
-      labels.push(i === 0 ? '今天' : `${d.getMonth()+1}/${d.getDate()}`);
-    }
-
-    for (const t of tasks) {
-      if (!t.ddl) continue;
-      const ddl = new Date(t.ddl); ddl.setHours(0,0,0,0);
-      const diff = Math.round((ddl - today) / 86400000);
-      if (diff >= 0 && diff < days) counts[diff]++;
-    }
-
-    if (counts.every(v => v === 0)) return;
-
-    const bgColors = counts.map((_,i) =>
-      i === 0 ? '#FF2E63' : i < 3 ? '#FF8A00' : i < 7 ? '#FBBF24' : '#34D399'
-    );
-
-    const todayPulse = {
-      id: 'todayPulse',
-      afterDatasetDraw(chart) {
-        const meta = chart.getDatasetMeta(0);
-        const bar = meta.data[0];
-        if (!bar) return;
-        const ctx2 = chart.ctx;
-        const t = (performance.now() % 1600) / 1600;
-        const alpha = 0.35 + 0.45 * Math.abs(Math.sin(t * Math.PI));
-        ctx2.save();
-        ctx2.shadowColor = `rgba(255,46,99,${alpha})`;
-        ctx2.shadowBlur = 22;
-        ctx2.fillStyle = '#FF2E63';
-        ctx2.beginPath();
-        ctx2.arc(bar.x, bar.y - 6, 3.5, 0, Math.PI * 2);
-        ctx2.fill();
-        ctx2.restore();
-      }
-    };
-
-    const tlGlow = {
-      id: 'tlGlow',
-      beforeDatasetsDraw(c) { c.ctx.save(); c.ctx.shadowColor = 'rgba(208,31,246,0.25)'; c.ctx.shadowBlur = 10; },
-      afterDatasetsDraw(c)  { c.ctx.restore(); }
-    };
-
-    _timeline = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          data: counts,
-          backgroundColor: bgColors,
-          borderRadius: 4,
-          borderSkipped: false,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 700 },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: 'rgba(15,21,36,0.92)',
-            borderColor: 'rgba(208,31,246,0.5)',
-            borderWidth: 1,
-            titleColor: '#EE87FF',
-            bodyColor: '#E8EDFA',
-          }
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: {
-              color: textColor(), font: { size: 10, family: '"JetBrains Mono", Menlo, monospace' },
-              maxRotation: 0,
-              maxTicksLimit: 10,
-            }
-          },
-          y: {
-            grid: { color: gridColor() },
-            ticks: { color: textColor(), font: { size: 11, family: '"JetBrains Mono", Menlo, monospace' }, precision: 0 }
-          }
-        }
-      },
-      plugins: [tlGlow, todayPulse],
-    });
-
-    // Drive pulse redraw at ~20fps (cheap)
-    if (_timeline._pulseInt) clearInterval(_timeline._pulseInt);
-    _timeline._pulseInt = setInterval(() => {
-      if (_timeline) _timeline.draw();
-    }, 50);
-  }
-
-  return { initDonut, initBar, initTimeline, destroyAll };
+  return { initDonut, initBar, destroyAll };
 })();

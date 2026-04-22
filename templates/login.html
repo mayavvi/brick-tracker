@@ -4,9 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>登录 — 打工人の进度小站</title>
+
+  <!-- Theme flash prevention — matches base.html logic -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('brick-theme');
+        if (t !== 'light') document.documentElement.classList.add('dark');
+      } catch (e) { document.documentElement.classList.add('dark'); }
+    })();
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
@@ -22,59 +34,89 @@
     }
   </script>
   <style>
-    body {
+    /* ── 深色背景 ── */
+    html.dark body {
       background:
-        radial-gradient(900px 500px at 85% 0%, rgba(208, 31, 246, 0.18), transparent 60%),
-        radial-gradient(700px 400px at 0% 100%, rgba(6, 182, 212, 0.18), transparent 60%),
-        linear-gradient(rgba(6,182,212,0.06) 1px, transparent 1px) 0 0 / 44px 44px,
+        radial-gradient(900px 500px at 85% 0%,  rgba(208,31,246,0.18), transparent 60%),
+        radial-gradient(700px 400px at 0% 100%, rgba(6,182,212,0.18),  transparent 60%),
+        linear-gradient(rgba(6,182,212,0.06)    1px, transparent 1px) 0 0 / 44px 44px,
         linear-gradient(90deg, rgba(6,182,212,0.06) 1px, transparent 1px) 0 0 / 44px 44px,
         #05070E;
       color: #E8EDFA;
     }
+    /* ── 浅色背景 ── */
+    html:not(.dark) body {
+      background:
+        radial-gradient(900px 500px at 85% 0%,  rgba(208,31,246,0.06), transparent 60%),
+        radial-gradient(700px 400px at 0% 100%, rgba(6,182,212,0.07),  transparent 60%),
+        linear-gradient(rgba(6,182,212,0.045)   1px, transparent 1px) 0 0 / 44px 44px,
+        linear-gradient(90deg, rgba(6,182,212,0.045) 1px, transparent 1px) 0 0 / 44px 44px,
+        #FAFBFE;
+      color: #0F1524;
+    }
     @keyframes neon-pulse {
       0%,100% { box-shadow: 0 0 18px rgba(6,182,212,0.45), 0 0 32px rgba(208,31,246,0.25); }
-      50%     { box-shadow: 0 0 28px rgba(6,182,212,0.7),  0 0 50px rgba(208,31,246,0.4); }
+      50%     { box-shadow: 0 0 28px rgba(6,182,212,0.70), 0 0 50px rgba(208,31,246,0.40); }
+    }
+    @keyframes neon-pulse-light {
+      0%,100% { box-shadow: 0 0 14px rgba(6,182,212,0.30), 0 0 24px rgba(208,31,246,0.15); }
+      50%     { box-shadow: 0 0 22px rgba(6,182,212,0.50), 0 0 38px rgba(208,31,246,0.28); }
     }
     .btn-neon {
       background: linear-gradient(90deg, #06B6D4 0%, #D01FF6 100%);
       background-size: 200% 100%;
       transition: background-position 500ms ease;
-      animation: neon-pulse 2.8s ease-in-out infinite;
     }
+    html.dark  .btn-neon { animation: neon-pulse 2.8s ease-in-out infinite; }
+    html:not(.dark) .btn-neon { animation: neon-pulse-light 2.8s ease-in-out infinite; }
     .btn-neon:hover:not(:disabled) { background-position: 100% 50%; }
   </style>
 </head>
 <body class="h-full font-sans flex items-center justify-center">
 
-  <div id="login-card" class="w-full max-w-sm mx-4">
+  <div class="w-full max-w-sm mx-4">
+
+    <!-- Logo & title -->
     <div class="text-center mb-8">
       <div class="relative w-16 h-16 mx-auto mb-4">
         <div class="absolute inset-0 rounded-2xl bg-gradient-to-br from-warm-500 to-neon-500 blur-xl opacity-60"></div>
         <div class="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-warm-500 to-neon-500 flex items-center justify-center text-3xl shadow-2xl">🧱</div>
       </div>
       <h1 class="text-2xl font-bold tracking-tight">
-        <span data-text="BRICK" class="cfx-glitch bg-gradient-to-r from-warm-300 via-neon-400 to-warm-300 bg-clip-text text-transparent">BRICK</span>
-        <span class="text-stone-500 font-mono text-sm">//</span>
-        <span class="text-stone-100">控制台</span>
+        <span class="bg-gradient-to-r from-warm-300 via-neon-400 to-warm-300 bg-clip-text text-transparent">BRICK</span>
+        <span class="dark:text-stone-500 text-stone-400 font-mono text-sm"> // </span>
+        <span class="dark:text-stone-100 text-stone-800">控制台</span>
       </h1>
-      <p class="text-xs font-mono text-warm-300 mt-2 tracking-wider">[ AUTH REQUIRED · 身份验证 ]</p>
+      <p class="text-xs font-mono text-warm-500 dark:text-warm-300 mt-2 tracking-wider">[ AUTH REQUIRED · 身份验证 ]</p>
     </div>
 
+    <!-- Card -->
     <div class="relative">
-      <div class="absolute -inset-[1px] rounded-2xl bg-gradient-to-br from-warm-500/50 via-neon-500/40 to-warm-500/50 blur-[2px]"></div>
-      <div class="relative bg-[#0F1524]/90 backdrop-blur rounded-2xl ring-1 ring-warm-500/30 p-6">
+      <!-- Glow border -->
+      <div class="absolute -inset-[1px] rounded-2xl blur-[2px]
+                  dark:bg-gradient-to-br dark:from-warm-500/50 dark:via-neon-500/40 dark:to-warm-500/50
+                  bg-gradient-to-br from-warm-400/35 via-neon-400/25 to-warm-400/35"></div>
+      <!-- Card surface -->
+      <div class="relative rounded-2xl p-6 backdrop-blur
+                  dark:bg-[#0F1524]/90 dark:ring-1 dark:ring-warm-500/30
+                  bg-white/92 ring-1 ring-warm-400/30 shadow-lg">
         <form id="login-form" onsubmit="return handleLogin(event)">
-          <label for="username" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-warm-300 mb-2 font-mono">
+          <label for="username"
+                 class="block text-[10px] font-bold uppercase tracking-[0.2em] mb-2 font-mono
+                        dark:text-warm-300 text-warm-600">
             ▸ USER_ID · 用户名
           </label>
           <input id="username" name="username" type="text" required autofocus
                  placeholder="// 输入 Posit Connect 账号"
-                 class="w-full px-3.5 py-2.5 text-sm rounded-lg bg-[#05070E]/60 border border-warm-500/30 text-stone-100
+                 class="w-full px-3.5 py-2.5 text-sm rounded-lg border font-mono transition
+                        dark:bg-[#05070E]/60 bg-stone-50
+                        dark:border-warm-500/30 border-stone-300
+                        dark:text-stone-100 text-stone-800
+                        dark:placeholder:text-stone-600 placeholder:text-stone-400
                         focus:outline-none focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400
-                        focus:shadow-[0_0_18px_rgba(6,182,212,0.35)]
-                        placeholder:text-stone-600 font-mono transition" />
+                        focus:shadow-[0_0_18px_rgba(6,182,212,0.25)]" />
 
-          <p id="error-msg" class="text-xs text-rose-400 mt-2 hidden font-mono"></p>
+          <p id="error-msg" class="text-xs text-rose-500 dark:text-rose-400 mt-2 hidden font-mono"></p>
 
           <button type="submit" id="login-btn"
                   class="btn-neon w-full mt-5 h-11 text-sm font-bold text-white rounded-lg tracking-[0.15em]">
@@ -84,7 +126,7 @@
       </div>
     </div>
 
-    <p class="text-center text-[11px] text-stone-500 mt-6 font-mono">
+    <p class="text-center text-[11px] dark:text-stone-500 text-stone-400 mt-6 font-mono">
       // 没有权限？联系管理员加入 ALLOW_LIST
     </p>
   </div>
@@ -119,6 +161,7 @@
       });
       var data = await resp.json();
       if (data.ok) {
+        sessionStorage.setItem('brick-just-logged-in', '1');
         window.location.href = window._base + '/';
       } else {
         errEl.textContent = '[ ERR ] ' + (data.message || '登录失败');

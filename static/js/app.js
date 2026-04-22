@@ -11,6 +11,7 @@ function trackerApp() {
       if (role === "qc") return !t.qc_status;
       return !t.main_status || !t.qc_status;
     },
+    waiting: (t) => t.main_status !== "已完成，可以QC",
     completed_ready_qc: (t) => t.main_status === "已完成，可以QC",
     has_issues: (t) => t.qc_status === "有问题，请修改",
     pending: (t) => t.qc_status === "待定，请留意",
@@ -53,7 +54,6 @@ function trackerApp() {
       not_started: 0,
     },
     _baseSummary: null,
-    _bootedOnce: false,
     allTasks: [],
     tasks: [],
     taskGroups: [],
@@ -437,9 +437,9 @@ function trackerApp() {
     async loadDashboard() {
       if (this.selectedStudies.length === 0) return;
       this.loadingDashboard = true;
-      const firstLoad = !this._bootedOnce;
-      this._bootedOnce = true;
-      if (firstLoad && window.CyberFX) {
+      const justLoggedIn = sessionStorage.getItem('brick-just-logged-in');
+      if (justLoggedIn) sessionStorage.removeItem('brick-just-logged-in');
+      if (justLoggedIn && window.CyberFX) {
         CyberFX.bootSequence([
           '初始化控制台 · INIT_CONSOLE',
           '连接数据节点 · CONNECT_NODE_' + this.selectedStudies.length + '_TARGETS',
@@ -468,7 +468,12 @@ function trackerApp() {
         });
         const data = await dResp.json();
         this._baseSummary = { ...data.summary };
-        this.summary = data.summary;
+        // Derive "waiting": tasks where main hasn't completed (QC can't start yet).
+        // Computed client-side so it always matches the WAIT card's filter exactly.
+        this._baseSummary.waiting = data.tasks.filter(
+          t => t.main_status !== "已完成，可以QC"
+        ).length;
+        this.summary = { ...this._baseSummary };
         this.allTasks = data.tasks;
         this.statusFilter = "";
         this.tasks = data.tasks;
@@ -490,9 +495,8 @@ function trackerApp() {
 
     _renderCharts() {
       if (!this.showCharts || typeof TrackerCharts === 'undefined') return;
-      TrackerCharts.initDonut('chart-donut', this.summary);
-      TrackerCharts.initBar('chart-bar', this.allTasks);
-      TrackerCharts.initTimeline('chart-timeline', this.allTasks);
+      TrackerCharts.initDonut('chart-donut', this.summary, this.roleFilter);
+      TrackerCharts.initBar('chart-bar', this.allTasks, this.roleFilter);
       if (typeof TrackerRadar !== 'undefined') {
         const self = this;
         TrackerRadar.init('chart-radar', this.allTasks, {
@@ -570,6 +574,9 @@ function trackerApp() {
       const s = { ...this._baseSummary };
       for (const ct of this.customTasks) {
         s.total++;
+        // waiting: main hasn't completed
+        if (ct.main_status !== "已完成，可以QC") s.waiting = (s.waiting || 0) + 1;
+
         let sideStatus;
         if (this.roleFilter === "main") sideStatus = ct.main_status;
         else if (this.roleFilter === "qc") sideStatus = ct.qc_status;
