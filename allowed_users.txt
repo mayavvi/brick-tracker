@@ -1,5 +1,5 @@
-# Allowed usernames, one per line (case-insensitive).
-# Lines starting with # are comments.
-yawei.ma
-xia2.gao
-hao34.wang
+# Allowed users: username:$sha256$salt$digest (one per line).
+# Lines starting with # are comments. Set passwords: python add_user.py <user> <password>
+yawei.ma:$sha256$f38673df1e4510557c703cc841d90ceb$8bab4e1df86b7e790e5b188783ac1341658c55172b779eb4141d9db0a934dac2
+xia2.gao:$sha256$c0d937c8c8eb10f03be4bf45fb5b587f$39c1ea44c0b5823cb4417f09d9f9062237df9aa63d2005f144def8ad101d6cca
+hao34.wang:$sha256$05e7e9b4386a055ce6edf2cf3ab3c6ce$994dcd3abcaea0a089b3d3731d18b536be6393aef077c753bb386c2eb33bb6ce

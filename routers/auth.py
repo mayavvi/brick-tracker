@@ -7,12 +7,14 @@ from pydantic import BaseModel
 
 from auth import COOKIE_NAME
 from config import get_allowed_users
+from password_utils import verify_password
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class LoginRequest(BaseModel):
     username: str
+    password: str = ""
 
 
 class LoginResponse(BaseModel):
@@ -28,8 +30,11 @@ def login(body: LoginRequest, response: Response) -> LoginResponse:
         return LoginResponse(ok=False, message="用户名不能为空")
 
     allowed = get_allowed_users()
-    if allowed and username not in allowed:
-        return LoginResponse(ok=False, message="你不在允许访问的用户列表中，请联系管理员")
+    if allowed:
+        if username not in allowed:
+            return LoginResponse(ok=False, message="用户名或密码错误")
+        if not verify_password(body.password, allowed[username]):
+            return LoginResponse(ok=False, message="用户名或密码错误")
 
     response.set_cookie(
         key=COOKIE_NAME,

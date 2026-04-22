@@ -36,7 +36,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     logger.info("PROJECTS_BASE_PATH = %s (exists=%s)", PROJECTS_BASE_PATH, PROJECTS_BASE_PATH.exists())
     logger.info("DATABASE_PATH      = %s", DATABASE_PATH)
-    logger.info("ALLOWED_USERS      = %s", get_allowed_users() or "(no restriction)")
+    _au = get_allowed_users()
+    logger.info(
+        "ALLOWED_USERS      = %s",
+        sorted(_au.keys()) if _au else "(no restriction)",
+    )
 
     await init_db()
 

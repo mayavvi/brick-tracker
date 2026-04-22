@@ -51,20 +51,42 @@ ALLOW_ANONYMOUS: bool = os.environ.get("ALLOW_ANONYMOUS", "0") == "1"
 ENABLE_AUTH_DEBUG: bool = os.environ.get("ENABLE_AUTH_DEBUG", "0") == "1"
 
 # Allowlist of Posit usernames that may use the app.
-# Reads from env var ALLOWED_USERS (comma-separated) first,
-# then falls back to allowed_users.txt (one username per line).
+# Reads from env var ALLOWED_USERS first (comma-separated entries),
+# then falls back to allowed_users.txt.
+# Each entry: username:$sha256$salt_hex$digest_hex (see password_utils.hash_password).
 # Empty = no restriction (everyone allowed).
 _ALLOWED_USERS_FILE = Path(__file__).resolve().parent / "allowed_users.txt"
 
 
-def get_allowed_users() -> set[str]:
+def get_allowed_users() -> dict[str, str]:
+    """Return mapping username (lower) -> password hash string."""
     raw = os.environ.get("ALLOWED_USERS", "")
     if raw.strip():
-        return {u.strip().lower() for u in raw.split(",") if u.strip()}
+        out: dict[str, str] = {}
+        for segment in raw.split(","):
+            segment = segment.strip()
+            if not segment or ":" not in segment:
+                continue
+            name, h = segment.split(":", 1)
+            name = name.strip().lower()
+            if name:
+                out[name] = h.strip()
+        return out
     if _ALLOWED_USERS_FILE.is_file():
         try:
             text = _ALLOWED_USERS_FILE.read_text(encoding="utf-8")
-            return {l.strip().lower() for l in text.splitlines() if l.strip() and not l.startswith("#")}
+            out: dict[str, str] = {}
+            for line in text.splitlines():
+                s = line.strip()
+                if not s or s.startswith("#"):
+                    continue
+                if ":" not in s:
+                    continue
+                name, h = s.split(":", 1)
+                name = name.strip().lower()
+                if name:
+                    out[name] = h.strip()
+            return out
         except Exception:
-            return set()
-    return set()
+            return {}
+    return {}
