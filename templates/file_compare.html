@@ -34,13 +34,13 @@
       </div>
 
       <div class="mt-3 flex items-center gap-2">
-        <button type="button" @click="activeTab='browse'"
+        <button type="button" @click="switchTab('browse')"
                 :class="activeTab==='browse' ? 'bg-warm-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
                 class="px-3 py-1.5 rounded-md text-xs font-semibold transition">浏览预览</button>
-        <button type="button" @click="activeTab='compare'"
+        <button type="button" @click="switchTab('compare')"
                 :class="activeTab==='compare' ? 'bg-neon-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
                 class="px-3 py-1.5 rounded-md text-xs font-semibold transition">程序对比</button>
-        <button type="button" @click="activeTab='qc'"
+        <button type="button" @click="switchTab('qc')"
                 :class="activeTab==='qc' ? 'bg-neon-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
                 class="px-3 py-1.5 rounded-md text-xs font-semibold transition">QC 时间检查</button>
       </div>
@@ -314,6 +314,20 @@
             </button>
           </div>
           <div class="flex flex-wrap items-center gap-3">
+            <div class="inline-flex rounded-md border border-stone-300 dark:border-stone-700 overflow-hidden">
+              <button type="button"
+                      @click="setDiffViewMode('side-by-side')"
+                      :class="diffViewMode === 'side-by-side' ? 'bg-neon-500 text-white' : 'bg-white dark:bg-stone-950 text-stone-600 dark:text-stone-300'"
+                      class="px-2.5 h-7 text-[11px] font-semibold transition">
+                side-by-side
+              </button>
+              <button type="button"
+                      @click="setDiffViewMode('unified')"
+                      :class="diffViewMode === 'unified' ? 'bg-neon-500 text-white' : 'bg-white dark:bg-stone-950 text-stone-600 dark:text-stone-300'"
+                      class="px-2.5 h-7 text-[11px] font-semibold transition border-l border-stone-300 dark:border-stone-700">
+                unified
+              </button>
+            </div>
             <label class="text-[11px] text-stone-600 dark:text-stone-400 flex items-center gap-1.5">
               <input type="checkbox" x-model="diffIgnoreWhitespace" @change="rerunDiffWithOptions()" />
               忽略空白
@@ -346,7 +360,7 @@
               <span class="text-[11px] text-stone-400">→</span>
               <span class="text-[11px] font-mono text-stone-500 truncate" x-text="diffResult.b_label"></span>
             </div>
-            <div class="flex-1 min-h-0 overflow-auto">
+            <div class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'side-by-side'">
               <table class="w-full border-collapse text-[12px]">
                 <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
                   <tr class="text-[11px] text-stone-500">
@@ -372,12 +386,117 @@
                 </tbody>
               </table>
             </div>
+            <div class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'unified'">
+              <template x-if="!diffResult.unified_lines || diffResult.unified_lines.length === 0">
+                <div class="h-full flex items-center justify-center">
+                  <p class="text-xs font-mono text-stone-500">// 无差异</p>
+                </div>
+              </template>
+              <template x-if="diffResult.unified_lines && diffResult.unified_lines.length > 0">
+                <table class="w-full border-collapse text-[12px]">
+                  <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
+                    <tr class="text-[11px] text-stone-500">
+                      <th class="w-14 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800">#</th>
+                      <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800">Unified Diff</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="(line, idx) in diffResult.unified_lines" :key="idx">
+                      <tr class="align-top border-b border-stone-100 dark:border-stone-900">
+                        <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="idx + 1"></td>
+                        <td class="py-1 pr-2">
+                          <pre class="font-mono whitespace-pre-wrap break-words" :class="unifiedLineClass(line)" x-text="line || ' '"></pre>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </template>
+            </div>
           </div>
         </template>
       </section>
 
-      <section x-show="activeTab === 'qc'" class="h-full flex items-center justify-center">
-        <p class="text-xs font-mono text-stone-500">// P4 阶段实现：QC 时间检查</p>
+      <section x-show="activeTab === 'qc'" class="h-full min-h-0 flex flex-col">
+        <div class="px-4 py-3 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="text-sm font-semibold text-stone-700 dark:text-stone-200">Main vs QC Log 时间检查</p>
+            <p class="text-[11px] font-mono text-stone-500">基于文件修改时间（mtime）判断 QC 是否落后于 Main</p>
+          </div>
+          <button type="button"
+                  @click="loadQcTiming()"
+                  :disabled="!selectedStudyId || qcLoading"
+                  class="h-8 px-3 rounded-md text-[11px] font-semibold bg-neon-500 text-white hover:bg-neon-600 disabled:opacity-50 disabled:cursor-not-allowed transition">
+            刷新检查
+          </button>
+        </div>
+
+        <template x-if="!selectedStudyId">
+          <div class="h-full flex items-center justify-center">
+            <p class="text-xs font-mono text-stone-500">// 先选个 study，然后再检查 QC 时间</p>
+          </div>
+        </template>
+
+        <template x-if="selectedStudyId && qcLoading">
+          <div class="h-full flex items-center justify-center">
+            <p class="text-xs font-mono text-warm-300 animate-pulse">▰▰▰ 正在检查 QC 时间…</p>
+          </div>
+        </template>
+
+        <template x-if="selectedStudyId && !qcLoading && qcRows.length === 0">
+          <div class="h-full flex items-center justify-center">
+            <p class="text-xs font-mono text-stone-500">// 全部 qc log 都晚于 main log。干净。</p>
+          </div>
+        </template>
+
+        <template x-if="selectedStudyId && !qcLoading && qcRows.length > 0">
+          <div class="flex-1 min-h-0 overflow-auto">
+            <table class="w-full border-collapse text-[12px]">
+              <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
+                <tr class="text-[11px] text-stone-500">
+                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Task</th>
+                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Program</th>
+                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Main Log</th>
+                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">QC Log</th>
+                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">状态</th>
+                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(row, idx) in qcRows" :key="row.task + '::' + row.program + '::' + idx">
+                  <tr class="border-b border-stone-100 dark:border-stone-900"
+                      :class="row.stale ? 'bg-fuchsia-50/60 dark:bg-fuchsia-900/15' : ''">
+                    <td class="px-2 py-2 font-mono text-[11px] text-stone-600 dark:text-stone-300" x-text="row.task"></td>
+                    <td class="px-2 py-2">
+                      <button type="button"
+                              @click="prefillCompareFromQc(row)"
+                              class="text-[11px] font-semibold text-neon-600 dark:text-neon-300 hover:underline"
+                              x-text="row.program"></button>
+                    </td>
+                    <td class="px-2 py-2 text-[11px] text-stone-600 dark:text-stone-300 font-mono" x-text="fmtIsoTime(row.main_log_mtime)"></td>
+                    <td class="px-2 py-2 text-[11px] text-stone-600 dark:text-stone-300 font-mono"
+                        :class="row.reason === 'qc-missing' ? 'text-amber-600 dark:text-amber-300' : ''"
+                        x-text="row.qc_log_mtime ? fmtIsoTime(row.qc_log_mtime) : '—'"></td>
+                    <td class="px-2 py-2">
+                      <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                            :class="qcReasonBadgeClass(row.reason)"
+                            x-text="qcReasonText(row.reason)"></span>
+                    </td>
+                    <td class="px-2 py-2">
+                      <button type="button"
+                              @click="prefillCompareFromQc(row)"
+                              :disabled="!canCompareQcRow(row)"
+                              class="px-2 py-1 rounded text-[11px] font-semibold bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300
+                                     hover:bg-stone-300 dark:hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                        对比程序
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
       </section>
     </main>
   </div>
@@ -408,11 +527,15 @@ function fileCompareApp() {
     loadingSnapshots: false,
     diffResult: null,
     diffLoading: false,
+    diffViewMode: 'side-by-side',
     diffIgnoreWhitespace: false,
     diffIgnoreCase: false,
     lastDiffParams: null,
     compareAPath: '',
     compareBPath: '',
+    qcRows: [],
+    qcLoading: false,
+    qcLoadedStudyId: '',
 
     async init() {
       this.loadRecent();
@@ -432,6 +555,15 @@ function fileCompareApp() {
       }
     },
 
+    async switchTab(tab) {
+      this.activeTab = tab;
+      if (tab === 'qc' && this.selectedStudyId) {
+        if (this.qcLoadedStudyId !== this.selectedStudyId || this.qcRows.length === 0) {
+          await this.loadQcTiming();
+        }
+      }
+    },
+
     async onStudyChange() {
       this.searchQuery = '';
       this.searchResults = [];
@@ -440,14 +572,21 @@ function fileCompareApp() {
       this.snapshots = [];
       this.diffResult = null;
       this.lastDiffParams = null;
+      this.diffViewMode = 'side-by-side';
       this.compareAPath = '';
       this.compareBPath = '';
+      this.qcRows = [];
+      this.qcLoading = false;
+      this.qcLoadedStudyId = '';
       this.fileTree = { tasks: [] };
       this.taskOpen = {};
       this.folderOpen = {};
       this.totalFiles = 0;
       if (!this.selectedStudyId) return;
       await this.loadTree();
+      if (this.activeTab === 'qc') {
+        await this.loadQcTiming();
+      }
     },
 
     async loadTree() {
@@ -628,6 +767,7 @@ function fileCompareApp() {
         }
         if (this.diffIgnoreWhitespace) params.set('ignore_whitespace', 'true');
         if (this.diffIgnoreCase) params.set('ignore_case', 'true');
+        params.set('mode', this.diffViewMode);
         this.diffResult = await this.api('/api/files/diff?' + params.toString());
       } catch (err) {
         this.toast((err && err.message) ? err.message : '读取 diff 失败', 'error');
@@ -636,9 +776,61 @@ function fileCompareApp() {
       }
     },
 
+    async setDiffViewMode(mode) {
+      const next = mode === 'unified' ? 'unified' : 'side-by-side';
+      if (this.diffViewMode === next) return;
+      this.diffViewMode = next;
+      if (!this.lastDiffParams) return;
+      await this.loadDiffWithParams(this.lastDiffParams);
+    },
+
     async rerunDiffWithOptions() {
       if (!this.lastDiffParams) return;
       await this.loadDiffWithParams(this.lastDiffParams);
+    },
+
+    unifiedLineClass(line) {
+      if (!line) return 'text-stone-700 dark:text-stone-300';
+      if (line.startsWith('@@')) return 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300';
+      if (line.startsWith('+')) return 'bg-emerald-50 dark:bg-emerald-900/20 text-stone-800 dark:text-stone-200';
+      if (line.startsWith('-')) return 'bg-rose-50 dark:bg-rose-900/20 text-stone-800 dark:text-stone-200';
+      return 'text-stone-700 dark:text-stone-300';
+    },
+
+    async loadQcTiming() {
+      if (!this.selectedStudyId) return;
+      this.qcLoading = true;
+      try {
+        const q = encodeURIComponent(this.selectedStudyId);
+        this.qcRows = await this.api('/api/files/qc-timing?study_id=' + q);
+        this.qcLoadedStudyId = this.selectedStudyId;
+      } catch (err) {
+        this.qcRows = [];
+        this.toast((err && err.message) ? err.message : 'QC 时间检查失败', 'error');
+      } finally {
+        this.qcLoading = false;
+      }
+    },
+
+    canCompareQcRow(row) {
+      if (!row) return false;
+      const left = row.main_sas_path || row.main_log_path;
+      const right = row.qc_sas_path || row.qc_log_path;
+      return !!(left && right);
+    },
+
+    async prefillCompareFromQc(row) {
+      if (!row) return;
+      const aPath = row.main_sas_path || row.main_log_path || '';
+      const bPath = row.qc_sas_path || row.qc_log_path || '';
+      if (!aPath || !bPath) {
+        this.toast('缺少可对比的 main/qc 文件路径', 'warning');
+        return;
+      }
+      this.compareAPath = aPath;
+      this.compareBPath = bPath;
+      this.activeTab = 'compare';
+      await this.compareFiles();
     },
 
     async copyAllText() {
@@ -752,6 +944,18 @@ function fileCompareApp() {
       if (op === 'delete' && side === 'a') return 'bg-rose-50 dark:bg-rose-900/20 text-stone-800 dark:text-stone-200';
       if (op === 'insert' && side === 'b') return 'bg-emerald-50 dark:bg-emerald-900/20 text-stone-800 dark:text-stone-200';
       return 'text-stone-700 dark:text-stone-300';
+    },
+
+    qcReasonText(reason) {
+      if (reason === 'qc-older') return 'QC 早于 Main';
+      if (reason === 'qc-missing') return '缺少 QC Log';
+      return 'OK';
+    },
+
+    qcReasonBadgeClass(reason) {
+      if (reason === 'qc-older') return 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300';
+      if (reason === 'qc-missing') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+      return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
     },
 
     kindBadgeClass(kind) {

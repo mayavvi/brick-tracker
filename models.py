@@ -228,3 +228,18 @@ class DiffLine(BaseModel):
     b_lineno: int | None
     a_text: str = ""
     b_text: str = ""
+
+
+class QcTimingRow(BaseModel):
+    """QC timing check row for one (task, program)."""
+
+    task: str
+    program: str
+    main_log_mtime: datetime | None = None
+    qc_log_mtime: datetime | None = None
+    stale: bool
+    reason: Literal["qc-older", "qc-missing", "ok"]
+    main_log_path: str | None = None
+    qc_log_path: str | None = None
+    main_sas_path: str | None = None
+    qc_sas_path: str | None = None

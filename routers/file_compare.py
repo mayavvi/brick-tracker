@@ -1,4 +1,4 @@
-"""API routes for file preview/search/tree (P1)."""
+"""API routes for file preview/search/diff/qc-timing."""
 
 from __future__ import annotations
 
@@ -9,10 +9,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from auth import User, get_current_user
-from models import FileEntry, FileSnapshot
-from services.file_diff import diff_texts, summarize
+from models import FileEntry, FileSnapshot, QcTimingRow
+from services.file_diff import diff_texts, summarize, unified_diff_texts
 from services.file_index import get_tree, search
 from services.file_reader import read_text, read_text_full, resolve_safe_path, to_rel_path
+from services.qc_timing import check_study
 from services.file_snapshots import create_snapshot, get_snapshot, list_snapshots
 
 logger = logging.getLogger(__name__)
@@ -144,6 +145,7 @@ async def file_diff(
     b_path: str | None = Query(None),
     ignore_whitespace: bool = Query(False),
     ignore_case: bool = Query(False),
+    mode: Literal["side-by-side", "unified"] = Query("side-by-side"),
     user: User = Depends(get_current_user),
 ) -> dict:
     """Diff endpoint: each side can be snapshot or current file."""
@@ -170,13 +172,21 @@ async def file_diff(
             ignore_whitespace=ignore_whitespace,
             ignore_case=ignore_case,
         )
+        unified_lines = unified_diff_texts(
+            a_text,
+            b_text,
+            ignore_whitespace=ignore_whitespace,
+            ignore_case=ignore_case,
+        ) if mode == "unified" else []
         return {
+            "mode": mode,
             "summary": summarize(lines),
             "a_label": a_label,
             "b_label": b_label,
             "a_path": a_abs_path,
             "b_path": b_abs_path,
             "lines": [line.model_dump() for line in lines],
+            "unified_lines": unified_lines,
         }
     except PermissionError:
         raise HTTPException(status_code=403, detail="路径不在允许范围内")
@@ -186,10 +196,26 @@ async def file_diff(
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception:
         logger.exception(
-            "Diff failed: a_snap_id=%r a_path=%r b_snap_id=%r b_path=%r",
-            a_snap_id, a_path, b_snap_id, b_path,
+            "Diff failed: a_snap_id=%r a_path=%r b_snap_id=%r b_path=%r mode=%s",
+            a_snap_id, a_path, b_snap_id, b_path, mode,
         )
         raise HTTPException(status_code=500, detail="文件比对失败")
+
+
+@router.get("/qc-timing", response_model=list[QcTimingRow])
+def qc_timing(
+    study_id: str = Query(..., min_length=1),
+    user: User = Depends(get_current_user),
+) -> list[QcTimingRow]:
+    """Main vs QC log recency check for one study."""
+    _ = user
+    try:
+        return check_study(study_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Study 不存在")
+    except Exception:
+        logger.exception("QC timing check failed: study=%s", study_id)
+        raise HTTPException(status_code=500, detail="QC 时间检查失败")
 
 
 async def _resolve_diff_side(
