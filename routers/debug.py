@@ -29,7 +29,7 @@ async def debug_env() -> dict:
         val = os.environ.get(k)
         env[k] = val if val is not None else "<NOT SET>"
     env["_total_env_var_count"] = len(os.environ)
-    return {"env": env, "parsed_allowed_users": sorted(get_allowed_users()) or "(empty)"}
+    return {"env": env, "parsed_allowed_users": sorted(get_allowed_users().keys()) or "(empty)"}
 
 
 @router.get("/auth")
@@ -46,6 +46,6 @@ async def debug_auth(request: Request) -> dict:
         "resolved_user": resolved_dict,
         "cookie_present": bool(request.cookies.get(COOKIE_NAME, "")),
         "cookie_value": request.cookies.get(COOKIE_NAME, "<missing>"),
-        "allowed_users": sorted(get_allowed_users()) or "(no restriction)",
+        "allowed_users": sorted(get_allowed_users().keys()) or "(no restriction)",
         "raw_env_ALLOWED_USERS": os.environ.get("ALLOWED_USERS", "<NOT SET>"),
     }
