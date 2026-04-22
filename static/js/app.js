@@ -283,6 +283,7 @@ function trackerApp() {
           Alpine.store('theme').dark = wantDark;
         }
         this.prefsLoaded = true;
+        await this._hydrateStudyCacheForSelection();
       } catch (e) {
         this.prefsLoaded = true;
       }
@@ -339,15 +340,24 @@ function trackerApp() {
     },
 
     // --- tracker file selection ---
-    onStudyToggle(study) {
+    onShelfSelect(study, ev) {
       const sid = study.study_id;
-      if (this.selectedStudies.includes(sid)) {
+      if (ev.target.checked) {
+        if (!this.selectedStudies.includes(sid)) this.selectedStudies.push(sid);
         this.selectedTrackerFiles[sid] = study.tracker_files.map((tf) => tf.file_path);
         this._studyCache[sid] = study;
+        this._scheduleSavePrefs();
       } else {
-        delete this.selectedTrackerFiles[sid];
-        delete this._studyCache[sid];
+        this.unlockStudy(sid);
       }
+    },
+
+    unlockStudy(studyId) {
+      const idx = this.selectedStudies.indexOf(studyId);
+      if (idx < 0) return;
+      this.selectedStudies.splice(idx, 1);
+      delete this.selectedTrackerFiles[studyId];
+      delete this._studyCache[studyId];
       this._scheduleSavePrefs();
     },
 
@@ -397,11 +407,26 @@ function trackerApp() {
     },
 
     // --- methods ---
+    async _hydrateStudyCacheForSelection() {
+      for (const sid of this.selectedStudies) {
+        if (this._studyCache[sid]) continue;
+        if (sid.length < 2) continue;
+        try {
+          const resp = await fetch(`/api/studies/search?q=${encodeURIComponent(sid)}`);
+          if (!resp.ok) continue;
+          const list = await resp.json();
+          const found = list.find((s) => s.study_id === sid);
+          if (found) this._studyCache[sid] = found;
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    },
+
     async searchStudies() {
       const q = this.searchQuery.trim();
       if (q.length < 2) {
         this.studyList = [];
-        this._mergeSelectedIntoList();
         return;
       }
       this.loadingStudies = true;
@@ -419,18 +444,6 @@ function trackerApp() {
         this.studyList = [];
       } finally {
         this.loadingStudies = false;
-      }
-      this._mergeSelectedIntoList();
-    },
-
-    _mergeSelectedIntoList() {
-      const inList = new Set(this.studyList.map((s) => s.study_id));
-      for (const sid of this.selectedStudies) {
-        if (!inList.has(sid)) {
-          this.studyList.push(
-            this._studyCache[sid] || { compound: "", study_id: sid, tracker_files: [] }
-          );
-        }
       }
     },
 
@@ -562,6 +575,19 @@ function trackerApp() {
       this._refreshSummaryWithCustomTasks();
     },
 
+    /** Mirrors services/filter.py _matches_person for custom tasks. */
+    _customTaskMatchesPersonFilter(ct) {
+      const pf = (this.personFilter || "").trim().toLowerCase();
+      if (!pf) return true;
+      const mainMatch =
+        ct.main_person && ct.main_person.trim().toLowerCase() === pf;
+      const qcMatch =
+        ct.qc_person && ct.qc_person.trim().toLowerCase() === pf;
+      if (this.roleFilter === "main") return mainMatch;
+      if (this.roleFilter === "qc") return qcMatch;
+      return mainMatch || qcMatch;
+    },
+
     _refreshSummaryWithCustomTasks() {
       if (!this._baseSummary) return;
       const STATUS_MAP = {
@@ -573,6 +599,7 @@ function trackerApp() {
       };
       const s = { ...this._baseSummary };
       for (const ct of this.customTasks) {
+        if (!this._customTaskMatchesPersonFilter(ct)) continue;
         s.total++;
         // waiting: main hasn't completed
         if (ct.main_status !== "已完成，可以QC") s.waiting = (s.waiting || 0) + 1;
@@ -599,12 +626,16 @@ function trackerApp() {
     },
 
     getCustomTasksForStudy(studyId) {
-      return this.customTasks.filter((ct) => ct.study_id === studyId);
+      return this.customTasks.filter(
+        (ct) =>
+          ct.study_id === studyId && this._customTaskMatchesPersonFilter(ct)
+      );
     },
 
     get customProjectGroups() {
       const map = new Map();
       for (const ct of this.customTasks) {
+        if (!this._customTaskMatchesPersonFilter(ct)) continue;
         if (!map.has(ct.study_id)) map.set(ct.study_id, []);
         map.get(ct.study_id).push(ct);
       }
