@@ -121,6 +121,18 @@ async def login_page(request: Request) -> HTMLResponse:
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request) -> HTMLResponse:
-    """Render the main dashboard page."""
-    return templates.TemplateResponse(request, "index.html")
+async def welcome_page(request: Request) -> HTMLResponse:
+    """Landing / welcome page."""
+    return templates.TemplateResponse(request, "welcome.html")
+
+
+@app.get("/tracker", response_class=HTMLResponse)
+async def tracker_page(request: Request) -> HTMLResponse:
+    """Tracker dashboard (brick log visualization)."""
+    return templates.TemplateResponse(request, "tracker.html")
+
+
+@app.get("/file-compare", response_class=HTMLResponse)
+async def file_compare_page(request: Request) -> HTMLResponse:
+    """File preview & compare module (placeholder)."""
+    return templates.TemplateResponse(request, "file_compare.html")

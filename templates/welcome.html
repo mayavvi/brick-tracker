@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}欢迎 — 打工人の进度小站{% endblock %}
+{% block app_scripts %}{% endblock %}
+{% block body %}
+<div class="flex flex-col h-full min-h-0">
+<script>
+function welcomePage() {
+  var jokes = [
+    "老板说「年轻人要多沉淀」——我看了看工资条，确实沉到底了。",
+    "需求文档写得像诗，代码跑得想死。",
+    "我不是拖延，我是在等一个「灵感」和「deadline」量子纠缠。",
+    "追踪日志：表面是表格，其实是大型连续剧分集梗概。",
+    "QC 说「再改一版」的时候，宇宙又膨胀了一像素。",
+    "我把 Excel 当 IDE 用，老板把 IDE 当 Excel 看。",
+    "周一到周五搬砖，周末把砖码整齐——这叫「技术债重组」。",
+    "这个网页的初衷？让搬砖搬得有点仪式感，顺便知道自己还没 solo 完全部坑。",
+  ];
+  return {
+    jokes: jokes,
+    joke: "",
+    imgSeed: 1,
+    nav(path) {
+      var b = typeof window.API_BASE !== "undefined" && window.API_BASE ? window.API_BASE : "";
+      if (path === "/") return b ? b + "/" : "/";
+      return b + path;
+    },
+    pickJoke() {
+      this.joke = this.jokes[Math.floor(Math.random() * this.jokes.length)];
+      this.imgSeed = Math.floor(Math.random() * 900) + 1;
+    },
+    init() {
+      this.pickJoke();
+    },
+  };
+}
+</script>
+
+<main class="flex-1 overflow-y-auto min-h-0">
+  <div class="max-w-3xl mx-auto px-6 py-10 md:py-14" x-data="welcomePage()" x-init="init()">
+
+    <div class="text-center mb-10">
+      <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-warm-400 mb-3">BRICK · 欢迎着陆</p>
+      <h2 class="text-2xl md:text-3xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mb-3">
+        打工人の进度小站
+      </h2>
+      <p class="text-sm text-stone-600 dark:text-stone-400 leading-relaxed max-w-xl mx-auto">
+        这里想把「散落在各 study 文件夹里的追踪表」拽到一块屏上：少点翻找，多点掌控感。
+        后面还会塞更多模块——当前版本主打<strong class="text-warm-600 dark:text-warm-300">搬砖日志追踪</strong>，其余功能在菜单里慢慢长出来。
+      </p>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2 mb-10">
+      <div class="cfx-corners rounded-2xl overflow-hidden ring-1 ring-stone-200 dark:ring-stone-800 bg-white/80 dark:bg-stone-900/80 backdrop-blur shadow-card">
+        <img :src="'https://picsum.photos/seed/brick-' + imgSeed + '/480/280'"
+             alt="随机氛围图（占位）"
+             class="w-full h-40 object-cover opacity-90"
+             width="480" height="280" loading="lazy" />
+        <div class="p-4 flex items-center justify-between gap-2">
+          <span class="text-xs text-stone-500 dark:text-stone-400 font-mono">FIG.01 · 精神状态</span>
+          <span class="text-lg" aria-hidden="true">🧱</span>
+        </div>
+      </div>
+      <div class="cfx-corners rounded-2xl overflow-hidden ring-1 ring-stone-200 dark:ring-stone-800 bg-white/80 dark:bg-stone-900/80 backdrop-blur shadow-card flex flex-col">
+        <div class="p-4 border-b border-stone-200/80 dark:border-stone-800 flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-neon-400">今日段子</span>
+          <button type="button" @click="pickJoke()"
+                  class="text-[11px] px-2.5 py-1 rounded-lg bg-warm-500/10 text-warm-600 dark:text-warm-300 hover:bg-warm-500/20 transition font-mono">
+            ⟲ 换一条
+          </button>
+        </div>
+        <p class="p-4 text-sm text-stone-700 dark:text-stone-300 leading-relaxed flex-1" x-text="joke"></p>
+        <div class="px-4 pb-4 text-right text-2xl select-none" aria-hidden="true">（￣▽￣）</div>
+      </div>
+    </div>
+
+    <p class="text-sm text-stone-600 dark:text-stone-400 mb-8 text-center">
+      <a :href="nav('/tracker')" class="text-warm-600 dark:text-warm-400 underline underline-offset-2 hover:text-warm-500">日志追踪</a>
+      <span class="mx-2 text-stone-400">·</span>
+      <a :href="nav('/file-compare')" class="text-warm-600 dark:text-warm-400 underline underline-offset-2 hover:text-warm-500">文件预览与比对</a>
+      <span class="mx-2 text-stone-400">·</span>
+      <a :href="nav('/me')" class="text-warm-600 dark:text-warm-400 underline underline-offset-2 hover:text-warm-500">个人工作台</a>
+    </p>
+
+    <p class="text-center text-[11px] text-stone-500 dark:text-stone-600 font-mono">
+      // 提示：左上角菜单可随时切换模块
+    </p>
+  </div>
+</main>
+</div>
+{% endblock %}
