@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 
 from auth import User, get_current_user
 from database import get_preferences, save_preferences, upsert_user
-from models import UserInfo, UserPreferences
+from models import UserInfo, UserPreferences, WorkstationPrefs
 
 router = APIRouter(prefix="/api/user", tags=["user"])
 
@@ -35,3 +35,28 @@ async def write_preferences(
     """Create or update the current user's preferences."""
     await save_preferences(user.username, prefs.model_dump(mode="json"))
     return prefs
+
+
+@router.get("/workstation", response_model=WorkstationPrefs)
+async def read_workstation_prefs(
+    user: User = Depends(get_current_user),
+) -> WorkstationPrefs:
+    """Return the workstation-specific prefs (aliases + watched studies)."""
+    raw = await get_preferences(user.username)
+    return WorkstationPrefs(
+        tracker_aliases=raw.get("tracker_aliases", []),
+        watched_studies=raw.get("watched_studies", []),
+    )
+
+
+@router.put("/workstation", response_model=WorkstationPrefs)
+async def write_workstation_prefs(
+    wp: WorkstationPrefs,
+    user: User = Depends(get_current_user),
+) -> WorkstationPrefs:
+    """Merge workstation prefs into the user's preferences blob."""
+    raw = await get_preferences(user.username)
+    raw["tracker_aliases"] = wp.tracker_aliases
+    raw["watched_studies"] = wp.watched_studies
+    await save_preferences(user.username, raw)
+    return wp

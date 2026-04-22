@@ -18,15 +18,25 @@ function welcomePage() {
   return {
     jokes: jokes,
     joke: "",
+    figSeed: 1,
     nav(path) {
       var b = typeof window.API_BASE !== "undefined" && window.API_BASE ? window.API_BASE : "";
       if (path === "/") return b ? b + "/" : "/";
       return b + path;
     },
+    figUrl() {
+      return "https://picsum.photos/seed/" + this.figSeed + "/640/320";
+    },
     pickJoke() {
       this.joke = this.jokes[Math.floor(Math.random() * this.jokes.length)];
     },
+    pickFig() {
+      var next;
+      do { next = Math.floor(Math.random() * 1000) + 1; } while (next === this.figSeed);
+      this.figSeed = next;
+    },
     init() {
+      this.figSeed = Math.floor(Math.random() * 1000) + 1;
       this.pickJoke();
     },
   };
@@ -37,41 +47,47 @@ function welcomePage() {
   <div class="max-w-3xl mx-auto px-6 py-10 md:py-14" x-data="welcomePage()" x-init="init()">
 
     <div class="text-center mb-10">
-      <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-warm-400 mb-3">PEAK · Welcome</p>
-      <h2 class="text-2xl md:text-3xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mb-3">
+      <p class="text-xs font-bold uppercase tracking-[0.2em] text-warm-400 mb-3">WELCOME</p>
+      <h2 class="text-3xl md:text-4xl font-bold text-stone-900 dark:text-stone-100 tracking-tight mb-3">
         PEAK
       </h2>
-      <p class="text-xs text-stone-500 dark:text-stone-500 font-mono mb-3">Project Efficiency &amp; Automation Kernel · Climb Higher. Work Smarter.</p>
-      <p class="text-sm text-stone-600 dark:text-stone-400 leading-relaxed max-w-xl mx-auto">
+      <p class="text-sm text-stone-500 dark:text-stone-500 font-mono mb-3">Project Efficiency &amp; Automation Kernel</p>
+      <p class="text-base text-stone-600 dark:text-stone-400 leading-relaxed max-w-xl mx-auto">
         这里想把「散落在各 study 文件夹里的追踪表」拽到一块屏上：少点翻找，多点掌控感。
         后面还会塞更多模块——当前版本主打<strong class="text-warm-600 dark:text-warm-300">追踪日志可视化</strong>，其余功能在菜单里慢慢长出来。
       </p>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2 mb-10">
+    <div class="mb-6">
       <div class="cfx-corners rounded-2xl overflow-hidden ring-1 ring-stone-200 dark:ring-stone-800 bg-white/80 dark:bg-stone-900/80 backdrop-blur shadow-card">
-        <div class="w-full h-40 flex items-center justify-center bg-stone-950/90 dark:bg-black/60">
-          <img src="{{ url_for('static', path='img/PEAK logo.png') }}" alt="PEAK" width="280" height="90" class="max-h-24 w-auto max-w-[85%] object-contain" loading="lazy" />
+        <div class="w-full h-56 overflow-hidden bg-stone-100 dark:bg-stone-800">
+          <img :src="figUrl()" alt="FIG" class="w-full h-full object-cover" loading="lazy" />
         </div>
         <div class="p-4 flex items-center justify-between gap-2">
-          <span class="text-xs text-stone-500 dark:text-stone-400 font-mono">FIG.01 · Brand</span>
-          <span class="text-xs font-bold text-warm-500 dark:text-warm-400 tracking-wider">PEAK</span>
-        </div>
-      </div>
-      <div class="cfx-corners rounded-2xl overflow-hidden ring-1 ring-stone-200 dark:ring-stone-800 bg-white/80 dark:bg-stone-900/80 backdrop-blur shadow-card flex flex-col">
-        <div class="p-4 border-b border-stone-200/80 dark:border-stone-800 flex items-center justify-between">
-          <span class="text-xs font-bold uppercase tracking-wider text-neon-400">今日段子</span>
-          <button type="button" @click="pickJoke()"
+          <span class="text-xs text-stone-500 dark:text-stone-400 font-mono">FIG.01 · 今日图景</span>
+          <button type="button" @click="pickFig()"
                   class="text-[11px] px-2.5 py-1 rounded-lg bg-warm-500/10 text-warm-600 dark:text-warm-300 hover:bg-warm-500/20 transition font-mono">
-            ⟲ 换一条
+            ⟲ 换一张
           </button>
         </div>
-        <p class="p-4 text-sm text-stone-700 dark:text-stone-300 leading-relaxed flex-1" x-text="joke"></p>
-        <div class="px-4 pb-4 text-right text-2xl select-none" aria-hidden="true">（￣▽￣）</div>
       </div>
     </div>
 
-    <p class="text-sm text-stone-600 dark:text-stone-400 mb-8 text-center">
+    <div class="cfx-corners rounded-2xl overflow-hidden ring-1 ring-stone-200 dark:ring-stone-800 bg-white/80 dark:bg-stone-900/80 backdrop-blur shadow-card flex flex-col mb-10">
+      <div class="p-4 border-b border-stone-200/80 dark:border-stone-800 flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-neon-400">今日段子</span>
+        <button type="button" @click="pickJoke()"
+                class="text-[11px] px-2.5 py-1 rounded-lg bg-warm-500/10 text-warm-600 dark:text-warm-300 hover:bg-warm-500/20 transition font-mono">
+          ⟲ 换一条
+        </button>
+      </div>
+      <div class="p-4 flex items-center justify-between gap-4">
+        <p class="text-sm text-stone-700 dark:text-stone-300 leading-relaxed flex-1" x-text="joke"></p>
+        <div class="text-2xl select-none flex-shrink-0" aria-hidden="true">（￣▽￣）</div>
+      </div>
+    </div>
+
+    <p class="text-base text-stone-600 dark:text-stone-400 mb-8 text-center">
       <a :href="nav('/tracker')" class="text-warm-600 dark:text-warm-400 underline underline-offset-2 hover:text-warm-500">日志追踪</a>
       <span class="mx-2 text-stone-400">·</span>
       <a :href="nav('/file-compare')" class="text-warm-600 dark:text-warm-400 underline underline-offset-2 hover:text-warm-500">文件预览与比对</a>
@@ -79,7 +95,7 @@ function welcomePage() {
       <a :href="nav('/me')" class="text-warm-600 dark:text-warm-400 underline underline-offset-2 hover:text-warm-500">个人工作台</a>
     </p>
 
-    <p class="text-center text-[11px] text-stone-500 dark:text-stone-600 font-mono">
+    <p class="text-center text-xs text-stone-500 dark:text-stone-600 font-mono">
       // 提示：左上角菜单可随时切换模块
     </p>
   </div>

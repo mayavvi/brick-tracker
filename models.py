@@ -168,3 +168,41 @@ class UserInfo(BaseModel):
 
     username: str
     display_name: str = ""
+
+
+class WorkstationPrefs(BaseModel):
+    """Workstation-specific preferences (aliases + watched studies)."""
+
+    tracker_aliases: list[str] = Field(default_factory=list)
+    watched_studies: list[str] = Field(default_factory=list)
+
+
+class TodoItem(BaseModel):
+    """Normalised todo entry — either from tracker (read-only) or custom (editable)."""
+
+    key: str                          # "custom:<id>" | "tracker:<study>:<hash>"
+    source: Literal["custom", "tracker"]
+    title: str
+    study_id: str
+    role: Literal["main", "qc"] = "main"
+    status: str = ""
+    person: str | None = None
+    ddl: date | None = None
+    editable: bool = True
+
+
+# ---------------------------------------------------------------------------
+# File compare (P1)
+# ---------------------------------------------------------------------------
+
+class FileEntry(BaseModel):
+    """Indexed program/log file metadata for file-compare module."""
+
+    abs_path: str
+    rel_path: str
+    study_id: str
+    task: str
+    role: Literal["main", "qc", "unknown"]
+    kind: Literal["sas", "log", "lst", "other"]
+    size: int
+    mtime: float

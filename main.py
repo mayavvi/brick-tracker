@@ -17,7 +17,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from auth import COOKIE_NAME
 from config import ENABLE_AUTH_DEBUG, IS_POSIT_CONNECT, get_allowed_users
 from database import close_db, init_db, migrate_legacy_tasks
-from routers import auth, custom_tasks, dashboard, me, studies, tracker, user
+from routers import auth, custom_tasks, dashboard, file_compare, me, studies, todos, tracker, user
 
 logging.basicConfig(
     level=logging.INFO,
@@ -107,7 +107,9 @@ app.include_router(studies.router)
 app.include_router(tracker.router)
 app.include_router(dashboard.router)
 app.include_router(custom_tasks.router)
+app.include_router(todos.router)
 app.include_router(me.router)
+app.include_router(file_compare.router)
 
 from routers import debug as debug_router
 app.include_router(debug_router.router)

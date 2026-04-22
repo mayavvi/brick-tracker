@@ -1,281 +1,736 @@
 {% extends "base.html" %}
-{% block title %}我的工作台 — PEAK{% endblock %}
+{% block title %}工作台 — PEAK{% endblock %}
 {% block app_scripts %}{% endblock %}
 {% block body %}
 <div x-data="meApp()" x-init="init()" class="min-h-full flex flex-col">
 
-  <!-- Header -->
   <header class="header-warm px-6 py-4 shadow-sm flex-shrink-0 relative">
-    <div class="max-w-4xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <a :href="homeUrl()" class="text-warm-300 hover:text-warm-200 transition p-1.5 rounded-lg hover:bg-warm-500/10 hover:shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3 min-w-0">
+        <a :href="homeUrl()" class="text-warm-300 hover:text-warm-200 transition p-1.5 rounded-lg hover:bg-warm-500/10">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
           </svg>
         </a>
-        <h1 class="text-xl font-bold tracking-tight flex items-center gap-2">
-          <span data-cfx-glitch class="bg-gradient-to-r from-warm-300 to-neon-300 bg-clip-text text-transparent">◈ OPERATOR</span>
-          <span class="text-stone-500 font-mono text-xs">//</span>
-          <span class="text-stone-100">个人工作台</span>
-        </h1>
+        <div class="min-w-0">
+          <h1 class="text-xl font-bold tracking-tight flex items-center gap-2 min-w-0">
+            <span data-cfx-glitch class="bg-gradient-to-r from-warm-300 via-white to-neon-300 bg-clip-text text-transparent truncate">◈ COMMAND DECK</span>
+            <span class="text-stone-500 font-mono text-xs hidden sm:inline">//</span>
+            <span class="text-stone-100 hidden sm:inline">个人工作台</span>
+          </h1>
+          <p class="text-[11px] text-stone-400 font-mono mt-1">Action first. Noise later.</p>
+        </div>
       </div>
-      <!-- Dark mode toggle -->
-      <button @click="$store.theme.toggle()" aria-label="切换明暗模式"
-              class="p-2 rounded-lg hover:bg-white/60 dark:hover:bg-stone-800/60 text-warm-600 dark:text-warm-400 transition">
-        <svg x-show="!$store.theme.dark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-        </svg>
-        <svg x-show="$store.theme.dark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-        </svg>
-      </button>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button @click="showSettings = true"
+                class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-mono text-stone-200 hover:border-warm-400/50 hover:bg-warm-400/10 transition">
+          <span>⟐</span>
+          <span class="hidden sm:inline">别名 / Study</span>
+          <span class="sm:hidden">设置</span>
+        </button>
+        <button @click="$store.theme.toggle()" aria-label="切换明暗模式"
+                class="p-2 rounded-lg hover:bg-white/10 text-warm-300 transition">
+          <svg x-show="!$store.theme.dark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+          </svg>
+          <svg x-show="$store.theme.dark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+        </button>
+      </div>
     </div>
     <div class="neon-rail absolute bottom-0 left-0 right-0"></div>
   </header>
 
-  <main class="flex-1 py-8 px-6">
-    <div class="max-w-4xl mx-auto space-y-6">
+  <main class="flex-1 overflow-y-auto px-6 py-8">
+    <div class="max-w-6xl mx-auto space-y-8">
 
-      <!-- User card -->
-      <div class="cfx-corners bg-white dark:bg-stone-900 rounded-2xl border border-warm-200 dark:border-stone-700 p-6 flex items-center gap-6 shadow-sm">
-        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-warm-400 to-warm-600 text-white flex items-center justify-center text-2xl font-bold shadow-md flex-shrink-0">
-          {{ (user.display_name or user.username or '?')[0] | upper }}
-        </div>
-        <div class="flex-1 min-w-0">
-          <h2 class="text-xl font-bold text-gray-800 dark:text-stone-100 truncate">{{ user.display_name or user.username }}</h2>
-          <p class="text-sm text-warm-500 dark:text-warm-600 font-mono">{{ user.username }}</p>
-          <div class="flex flex-wrap gap-4 mt-2 text-xs text-gray-500 dark:text-stone-400">
-            <span>🗓️ 首次使用: {{ first_seen[:10] if first_seen != '-' else '-' }}</span>
-            <span>⏰ 最近活跃: {{ last_active[:10] if last_active != '-' else '-' }}</span>
-            <span>📋 自定义任务: <strong x-text="customTasks.length">{{ task_count }}</strong> 个</span>
-          </div>
-        </div>
-        <div class="flex flex-col gap-2 flex-shrink-0">
-          <button @click="exportCsv()"
-                  class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-warm-700 dark:text-warm-400 bg-warm-100 dark:bg-stone-800 border border-warm-200 dark:border-stone-600 rounded-lg hover:bg-warm-200 dark:hover:bg-stone-700 transition">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            导出 CSV
-          </button>
-          <button @click="confirmResetPrefs()"
-                  class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-500 dark:text-stone-400 bg-gray-100 dark:bg-stone-800 border border-gray-200 dark:border-stone-600 rounded-lg hover:bg-gray-200 dark:hover:bg-stone-700 transition">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-            </svg>
-            重置偏好
-          </button>
-        </div>
-      </div>
-
-      <!-- Custom tasks -->
-      <div class="bg-white dark:bg-stone-900 rounded-2xl border border-warm-200 dark:border-stone-700 overflow-hidden shadow-sm">
-        <div class="px-6 py-4 border-b border-warm-100 dark:border-stone-700 flex items-center justify-between">
-          <h3 class="font-bold text-warm-300 tracking-wide flex items-center gap-2">
-            <span class="inline-block w-1.5 h-1.5 rounded-full bg-warm-400 shadow-[0_0_8px_#06B6D4]"></span>
-            ▸ 我的任务清单
-          </h3>
-          <span class="text-xs text-warm-300 font-mono" x-text="'[ ' + customTasks.length + ' ]'"></span>
-        </div>
-
-        <!-- Loading state -->
-        <template x-if="loading">
-          <div class="p-8 text-center text-warm-400">
-            <div class="skeleton h-4 w-48 mx-auto rounded mb-3"></div>
-            <div class="skeleton h-4 w-32 mx-auto rounded"></div>
-          </div>
-        </template>
-
-        <!-- Empty state -->
-        <template x-if="!loading && customTasks.length === 0">
-          <div class="p-10 text-center">
-            <div class="relative w-14 h-14 mx-auto mb-3">
-              <div class="absolute inset-0 rounded-full bg-gradient-to-br from-warm-500/30 to-neon-500/30 blur-xl"></div>
-              <div class="relative w-14 h-14 rounded-full border border-warm-400/30 bg-ink-900/60 flex items-center justify-center text-2xl">◌</div>
+      <section class="relative overflow-hidden rounded-[28px] border border-stone-200 bg-white shadow-card dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(6,182,212,0.18),transparent_34%),radial-gradient(circle_at_80%_20%,rgba(208,31,246,0.14),transparent_24%),linear-gradient(135deg,rgba(10,14,26,0.96),rgba(15,21,36,0.92))] dark:shadow-pop">
+        <div class="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent_0px,transparent_5px,rgba(8,145,178,0.04)_5px,rgba(8,145,178,0.04)_6px)] pointer-events-none opacity-60 dark:opacity-70"></div>
+        <div class="relative grid gap-6 px-6 py-6 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)] md:px-8 md:py-8">
+          <div class="space-y-6">
+            <div class="flex items-start gap-4">
+              <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-warm-400 via-warm-500 to-neon-500 text-lg font-bold text-white shadow-glow-lg">
+                {{ (user.display_name or user.username or '?')[0] | upper }}
+              </div>
+              <div class="min-w-0">
+                <p class="text-[11px] font-mono uppercase tracking-[0.24em] text-warm-600 dark:text-warm-300/90">Operator Feed</p>
+                <h2 class="mt-2 text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100 md:text-3xl">{{ user.display_name or user.username }}</h2>
+                <p class="mt-2 max-w-xl text-sm leading-6 text-stone-600 dark:text-stone-300">
+                  当前主屏只追踪最值得你先动手的事：过期未完成、今天要做，以及下一批待进入视线的任务。
+                </p>
+              </div>
             </div>
-            <p class="text-sm font-bold">
-              <span class="bg-gradient-to-r from-warm-300 to-neon-300 bg-clip-text text-transparent">// 清单为空</span>
-            </p>
-            <p class="text-xs text-stone-500 font-mono mt-1">[ EMPTY · 去主页注入任务 ]</p>
-            <a href="/" class="mt-4 inline-flex items-center gap-1 text-xs text-warm-300 hover:text-warm-200 font-semibold font-mono">→ 返回主页</a>
-          </div>
-        </template>
 
-        <!-- Tasks list grouped by study -->
-        <template x-if="!loading && customTasks.length > 0">
-          <div>
-            <template x-for="group in taskGroups" :key="group.studyId">
-              <div class="border-b border-warm-100 dark:border-stone-700 last:border-0">
-                <!-- Group header -->
-                <div class="px-6 py-2.5 bg-warm-50 dark:bg-stone-800 flex items-center gap-2">
-                  <span class="text-xs font-semibold text-warm-600 dark:text-warm-500" x-text="group.studyId"></span>
-                  <span class="text-xs bg-warm-200 dark:bg-stone-700 text-warm-700 dark:text-warm-400 rounded-full px-2 py-0.5"
-                        x-text="group.tasks.length + ' 个'"></span>
+            <div class="grid gap-3 sm:grid-cols-3">
+              <div class="rounded-2xl border border-stone-200 bg-white/75 px-4 py-4 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400">Open Queue</p>
+                <p class="mt-3 text-3xl font-bold text-stone-900 dark:text-stone-100" x-text="stats.total"></p>
+                <p class="mt-1 text-xs text-stone-500 dark:text-stone-400">当前仍在主视图的待办</p>
+              </div>
+              <div class="rounded-2xl border border-rose-200 bg-rose-50/85 px-4 py-4 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-rose-500 dark:text-neon-400">Critical</p>
+                <p class="mt-3 text-3xl font-bold text-rose-700 dark:text-neon-300" x-text="stats.overdue"></p>
+                <p class="mt-1 text-xs text-rose-500 dark:text-stone-400">过期且未完成，需要先灭火</p>
+              </div>
+              <div class="rounded-2xl border border-warm-200 bg-warm-50/80 px-4 py-4 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600 dark:text-warm-400">Today</p>
+                <p class="mt-3 text-3xl font-bold text-warm-700 dark:text-warm-300" x-text="stats.today"></p>
+                <p class="mt-1 text-xs text-warm-600 dark:text-stone-400">今天应推进的事项</p>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-stone-200 bg-white/80 px-4 py-4 shadow-sm dark:border-white/10 dark:bg-black/20 dark:shadow-none">
+              <div class="flex items-center gap-3">
+                <span class="text-sm font-mono text-warm-600 dark:text-warm-300">&gt;</span>
+                <input x-model="quickInput"
+                       @keydown.enter.prevent="addQuick()"
+                       placeholder="快速新增：任务内容 #STUDY @周五"
+                       class="w-full bg-transparent text-sm text-stone-800 placeholder:text-stone-400 outline-none dark:text-stone-100 dark:placeholder:text-stone-500" />
+                <button @click="addQuick()"
+                        class="shrink-0 rounded-lg border border-warm-300 bg-warm-50 px-3 py-1.5 text-xs font-mono text-warm-700 transition hover:bg-warm-100 dark:border-warm-400/30 dark:bg-warm-400/10 dark:text-warm-200 dark:hover:bg-warm-400/20">
+                  录入
+                </button>
+              </div>
+              <p class="mt-3 text-[11px] font-mono text-stone-500 dark:text-stone-500">支持 `#STUDY` 和 `@今天/@明天/@周五/@4-30`，作为你的低干扰命令行入口。</p>
+            </div>
+          </div>
+
+          <div class="grid gap-4 self-stretch sm:grid-cols-2 md:grid-cols-1">
+            <div class="rounded-2xl border border-stone-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400">Today Load</p>
+                  <p class="mt-2 text-lg font-semibold text-stone-900 dark:text-stone-100" x-text="pressureLabel"></p>
                 </div>
-                <!-- Task rows -->
-                <div class="divide-y divide-warm-50 dark:divide-stone-800">
-                  <template x-for="ct in group.tasks" :key="ct.id">
-                    <div class="px-6 py-3 flex items-start gap-4 group hover:bg-warm-50/50 dark:hover:bg-stone-800/50 transition">
-                      <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap">
-                          <span class="font-medium text-gray-800 dark:text-stone-100 text-sm" x-text="ct.task_name"></span>
-                          <span x-show="ct.main_status"
-                                class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
-                                :class="statusBadge(ct.main_status)"
-                                x-text="ct.main_status"></span>
-                        </div>
-                        <div class="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-stone-400">
-                          <span x-show="ct.main_person" x-text="'👤 ' + ct.main_person"></span>
-                          <span x-show="ct.ddl" x-text="'💀 ' + ct.ddl" :class="isDdlUrgent(ct.ddl) ? 'text-red-500 font-semibold' : ''"></span>
-                          <span x-show="ct.description" class="truncate max-w-xs" x-text="ct.description"></span>
-                        </div>
-                      </div>
-                      <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                        <button @click="deleteTask(ct.id)"
-                                class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
-                                title="删除">
-                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </template>
+                <span class="inline-flex h-3 w-3 rounded-full shadow-[0_0_14px_currentColor]"
+                      :class="pressureDotClass"></span>
+              </div>
+              <div class="mt-4 h-2 overflow-hidden rounded-full bg-stone-200 dark:bg-white/10">
+                <div class="h-full rounded-full bg-gradient-to-r from-warm-400 via-neon-400 to-neon-300 transition-all duration-300"
+                     :style="'width:' + pressurePercent + '%'"></div>
+              </div>
+              <p class="mt-3 text-xs leading-5 text-stone-500 dark:text-stone-400">
+                用过期和今日任务数量估算当前负载，帮助你快速判断今天是清火还是平推。
+              </p>
+            </div>
+
+            <div class="rounded-2xl border border-stone-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+              <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400">Secondary Queue</p>
+              <div class="mt-4 space-y-3">
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-stone-600 dark:text-stone-300">本周稍后</span>
+                  <span class="font-mono text-stone-900 dark:text-stone-100" x-text="secondary.thisweek.length"></span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-stone-600 dark:text-stone-300">更晚安排</span>
+                  <span class="font-mono text-stone-900 dark:text-stone-100" x-text="secondary.later.length"></span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-stone-600 dark:text-stone-300">未排期</span>
+                  <span class="font-mono text-stone-900 dark:text-stone-100" x-text="secondary.unscheduled.length"></span>
                 </div>
               </div>
+              <div class="mt-5 flex items-center gap-2 text-[11px] font-mono text-stone-500 dark:text-stone-500">
+                <span class="inline-block h-1.5 w-1.5 rounded-full bg-warm-400"></span>
+                <span x-text="trackerReady ? 'Tracker 映射已接入' : '尚未配置 Tracker 映射'"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <template x-if="!loading && !trackerReady">
+        <section class="rounded-2xl border border-dashed border-stone-300 bg-white/80 px-5 py-4 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+          <p class="text-sm text-stone-600 dark:text-stone-300">
+            还没有把 Tracker 任务接进来。打开右上角设置，补充别名和关注的 Study 后，这里会自动汇总你的只读任务。
+          </p>
+        </section>
+      </template>
+
+      <template x-if="loading">
+        <section class="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+          <div class="space-y-4 rounded-3xl border border-stone-800 bg-stone-950/70 p-6">
+            <template x-for="n in [1,2,3,4]" :key="n">
+              <div class="skeleton h-5 rounded" :style="'width:' + (56 + n * 8) + '%'"></div>
             </template>
           </div>
-        </template>
-      </div>
+          <div class="space-y-4 rounded-3xl border border-stone-800 bg-stone-950/70 p-6">
+            <template x-for="n in [1,2,3]" :key="n">
+              <div class="skeleton h-4 rounded" :style="'width:' + (62 + n * 7) + '%'"></div>
+            </template>
+          </div>
+        </section>
+      </template>
 
+      <template x-if="!loading">
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+          <div class="space-y-6">
+            <section x-show="overdueTodos.length > 0"
+                     class="overflow-hidden rounded-[26px] border border-rose-200 bg-[linear-gradient(180deg,rgba(255,245,247,0.98),rgba(255,250,251,0.98))] shadow-sm dark:border-neon-500/25 dark:bg-[linear-gradient(180deg,rgba(208,31,246,0.10),rgba(15,21,36,0.9))] dark:shadow-[0_12px_40px_-20px_rgba(208,31,246,0.45)]">
+              <div class="flex items-center justify-between gap-4 border-b border-rose-200 px-5 py-3 dark:border-neon-500/15">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-rose-500 dark:text-neon-300">Critical Queue</p>
+                  <h3 class="mt-1 text-lg font-semibold text-stone-900 dark:text-stone-100">过期未完成</h3>
+                </div>
+                <span class="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-mono text-rose-600 dark:border-neon-400/20 dark:bg-neon-400/10 dark:text-neon-200"
+                      x-text="overdueTodos.length + ' 条'"></span>
+              </div>
+              <div class="divide-y divide-rose-100 dark:divide-white/5">
+                <template x-for="todo in overdueTodos" :key="todo.key">
+                  <div class="group flex items-center gap-2 border-l-2 border-rose-400 bg-rose-50/60 px-4 py-2 dark:border-neon-400/70 dark:bg-neon-500/5">
+                    <span class="shrink-0 text-[10px] font-mono text-rose-400 dark:text-neon-400/70 w-12 truncate" x-text="todo.role === 'qc' ? 'QC' : 'MAIN'"></span>
+                    <p class="flex-1 min-w-0 truncate text-sm font-semibold text-stone-900 dark:text-stone-100" x-text="todo.title"></p>
+                    <span class="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2 py-0.5 text-[11px] font-mono text-stone-500 dark:border-white/10 dark:bg-white/5 dark:text-stone-400">
+                      <span class="inline-block h-1.5 w-1.5 rounded-full" :class="studyDot(todo.study_id)"></span>
+                      <span x-text="todo.study_id || 'MISC'"></span>
+                    </span>
+                    <span class="shrink-0 w-12 text-right text-[11px] font-mono text-rose-600 dark:text-neon-300" x-text="ddlLabel(todo.ddl)"></span>
+                    <button x-show="todo.editable" @click="completeTodo(todo)"
+                            class="shrink-0 rounded border border-warm-300 px-2 py-0.5 text-[11px] font-mono text-warm-700 hover:bg-warm-50 transition dark:border-warm-400/30 dark:text-warm-300 dark:hover:bg-warm-400/10">完成</button>
+                    <button x-show="todo.editable" @click.stop="deleteTodo(todo)"
+                            class="shrink-0 opacity-0 group-hover:opacity-100 rounded border border-rose-200 px-2 py-0.5 text-[11px] font-mono text-rose-500 hover:bg-rose-50 transition dark:border-neon-400/20 dark:text-neon-300/70 dark:hover:bg-neon-400/10">×</button>
+                    <span x-show="!todo.editable" class="shrink-0 text-[10px] font-mono text-stone-400 dark:text-stone-500">只读</span>
+                  </div>
+                </template>
+              </div>
+            </section>
+
+            <section class="overflow-hidden rounded-[26px] border border-stone-200 bg-white shadow-sm dark:bg-stone-900 dark:shadow-none">
+              <div class="flex items-center justify-between gap-4 border-b border-stone-200 px-5 py-3 dark:border-white/10">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-warm-600 dark:text-warm-300">Action Queue</p>
+                  <h3 class="mt-1 text-lg font-semibold text-stone-900 dark:text-stone-100">今天要做</h3>
+                </div>
+                <span class="rounded-full border border-warm-200 bg-warm-50 px-3 py-1 text-xs font-mono text-warm-700 dark:border-warm-400/20 dark:bg-warm-400/10 dark:text-warm-100"
+                      x-text="todayTodos.length + ' 条'"></span>
+              </div>
+
+              <template x-if="todayTodos.length === 0">
+                <div class="px-5 py-10 text-center">
+                  <p class="text-sm text-stone-600 dark:text-stone-300">今天没有明确压在当天的任务。</p>
+                  <p class="mt-2 text-xs font-mono text-stone-500">可以往下看次级队列，或者直接在上方快速录入新事项。</p>
+                </div>
+              </template>
+
+              <div x-show="todayTodos.length > 0" class="divide-y divide-stone-100 dark:divide-white/5">
+                <template x-for="todo in todayTodos" :key="todo.key">
+                  <div class="group flex items-center gap-2 px-4 py-2">
+                    <span class="shrink-0 text-[10px] font-mono text-stone-400 dark:text-stone-500 w-12 truncate" x-text="todo.role === 'qc' ? 'QC' : 'MAIN'"></span>
+                    <p class="flex-1 min-w-0 truncate text-sm font-medium text-stone-900 dark:text-stone-100" x-text="todo.title"></p>
+                    <span class="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-mono text-stone-500 dark:border-white/10 dark:bg-white/5 dark:text-stone-400">
+                      <span class="inline-block h-1.5 w-1.5 rounded-full" :class="studyDot(todo.study_id)"></span>
+                      <span x-text="todo.study_id || 'MISC'"></span>
+                    </span>
+                    <span class="shrink-0 w-10 text-right text-[11px] font-mono text-warm-600 dark:text-warm-300" x-text="ddlLabel(todo.ddl)"></span>
+                    <button x-show="todo.editable" @click="completeTodo(todo)"
+                            class="shrink-0 rounded border border-warm-300 px-2 py-0.5 text-[11px] font-mono text-warm-700 hover:bg-warm-50 transition dark:border-warm-400/30 dark:text-warm-300 dark:hover:bg-warm-400/10">完成</button>
+                    <button x-show="todo.editable" @click.stop="deleteTodo(todo)"
+                            class="shrink-0 opacity-0 group-hover:opacity-100 rounded border border-stone-200 px-2 py-0.5 text-[11px] font-mono text-stone-400 hover:text-rose-500 hover:border-rose-200 transition dark:border-white/10 dark:text-stone-500 dark:hover:text-neon-300 dark:hover:border-neon-400/20">×</button>
+                    <span x-show="!todo.editable" class="shrink-0 text-[10px] font-mono text-stone-400 dark:text-stone-500">只读</span>
+                  </div>
+                </template>
+              </div>
+            </section>
+
+            <template x-if="stats.total === 0">
+              <section class="rounded-[26px] border border-dashed border-stone-300 bg-white/80 px-6 py-14 text-center shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+                <p class="text-base text-stone-700 dark:text-stone-200">主视图已经清空。</p>
+                <p class="mt-2 text-xs font-mono text-stone-500">要么今天真的顺了，要么下一条任务还没进系统。</p>
+              </section>
+            </template>
+          </div>
+
+          <aside class="space-y-6">
+            <section class="overflow-hidden rounded-[24px] border border-stone-200 bg-white shadow-sm dark:bg-stone-900 dark:shadow-none">
+              <button @click="secondaryOpen = !secondaryOpen"
+                      class="flex w-full items-center justify-between gap-3 px-5 py-4 text-left">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-stone-500">Secondary Queue</p>
+                  <h3 class="mt-1 text-base font-semibold text-stone-900 dark:text-stone-100">本周稍后 / 更晚 / 未安排</h3>
+                </div>
+                <svg class="h-4 w-4 text-stone-500 transition-transform" :class="secondaryOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+              <div x-show="secondaryOpen" x-collapse class="space-y-4 border-t border-stone-200 px-5 py-4 dark:border-white/10">
+                <template x-for="section in secondarySections" :key="section.key">
+                  <div>
+                    <div class="mb-2 flex items-center justify-between">
+                      <p class="text-xs font-mono uppercase tracking-[0.16em] text-stone-400" x-text="section.label"></p>
+                      <span class="text-[11px] font-mono text-stone-500" x-text="section.items.length + ' 条'"></span>
+                    </div>
+                    <div class="divide-y divide-stone-100 dark:divide-white/5">
+                      <template x-if="section.items.length === 0">
+                        <p class="py-2 text-[11px] font-mono text-stone-400 dark:text-stone-500">// 空</p>
+                      </template>
+                      <template x-for="todo in section.items" :key="todo.key">
+                        <div class="flex items-center gap-2 py-1.5">
+                          <span class="shrink-0 inline-block h-1.5 w-1.5 rounded-full" :class="studyDot(todo.study_id)"></span>
+                          <p class="flex-1 min-w-0 truncate text-[13px] text-stone-700 dark:text-stone-300" x-text="todo.title"></p>
+                          <span class="shrink-0 text-[11px] font-mono text-stone-400 dark:text-stone-500" x-text="todo.study_id || 'MISC'"></span>
+                          <span class="shrink-0 w-10 text-right text-[11px] font-mono text-stone-400 dark:text-stone-500" x-text="ddlLabel(todo.ddl)"></span>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </section>
+
+            <section class="rounded-[24px] border border-stone-200 bg-white px-5 py-5 shadow-sm dark:bg-stone-900 dark:shadow-none">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-stone-500">Workspace</p>
+                  <p class="mt-2 text-sm text-stone-700 dark:text-stone-300">
+                    已关注 <span class="font-mono text-stone-900 dark:text-stone-100" x-text="prefs.watched_studies.length"></span> 个 Study，
+                    最近活跃 {{ last_active[:10] if last_active != '-' else '-' }}。
+                  </p>
+                </div>
+              </div>
+              <div class="mt-4 flex gap-2">
+                <button @click="exportCsv()"
+                        class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-mono text-stone-600 hover:bg-stone-100 transition dark:border-white/10 dark:bg-white/5 dark:text-stone-300 dark:hover:text-stone-100 dark:hover:bg-white/10">
+                  导出 CSV
+                </button>
+                <button @click="showSettings = true"
+                        class="flex-1 rounded-xl border border-warm-300 bg-warm-50 px-3 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition dark:border-warm-400/20 dark:bg-warm-400/10 dark:text-warm-200 dark:hover:bg-warm-400/20">
+                  打开设置
+                </button>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </template>
     </div>
   </main>
+
+  <template x-teleport="body">
+    <div x-show="showSettings" class="fixed inset-0 z-[198]">
+      <div x-show="showSettings"
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0"
+           x-transition:enter-end="opacity-100"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="opacity-100"
+           x-transition:leave-end="opacity-0"
+           @click="showSettings = false"
+           class="absolute inset-0 bg-ink-950/70 backdrop-blur-sm"></div>
+
+      <aside x-show="showSettings"
+             x-transition:enter="transition ease-out duration-250"
+             x-transition:enter-start="translate-x-full opacity-0"
+             x-transition:enter-end="translate-x-0 opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="translate-x-0 opacity-100"
+             x-transition:leave-end="translate-x-full opacity-0"
+             class="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto border-l border-stone-200 bg-white shadow-2xl dark:bg-stone-900 dark:shadow-pop">
+        <div class="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-5 py-4 backdrop-blur dark:bg-ink-950/90">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600 dark:text-warm-300">Configuration</p>
+              <h3 class="mt-1 text-lg font-semibold text-stone-900 dark:text-stone-100">别名与 Study 设置</h3>
+            </div>
+            <button @click="showSettings = false"
+                    class="rounded-lg border border-stone-200 bg-stone-50 p-2 text-stone-500 hover:text-stone-900 transition dark:border-white/10 dark:bg-white/5 dark:text-stone-400 dark:hover:text-stone-100">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-6 px-5 py-5">
+          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm dark:bg-stone-900 dark:shadow-none">
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400">Tracker aliases</p>
+            <p class="mt-2 text-sm text-stone-600 dark:text-stone-300">这些名字会用于匹配 Tracker 表里属于你的任务。</p>
+            <div class="mt-4 flex min-h-[2rem] flex-wrap gap-2">
+              <template x-for="(a, i) in prefs.tracker_aliases" :key="i">
+                <span class="inline-flex items-center gap-1 rounded-full border border-warm-300 bg-warm-50 px-3 py-1 text-xs font-mono text-warm-700 dark:border-warm-400/20 dark:bg-warm-400/10 dark:text-warm-200">
+                  <span x-text="a"></span>
+                  <button @click="prefs.tracker_aliases.splice(i,1)" class="opacity-70 hover:opacity-100">✕</button>
+                </span>
+              </template>
+              <span x-show="prefs.tracker_aliases.length === 0" class="text-xs font-mono italic text-stone-500">尚未配置别名</span>
+            </div>
+            <div class="mt-4 flex gap-2">
+              <input x-model="aliasInput"
+                     @keydown.enter.prevent="addAlias()"
+                     @keydown.comma.prevent="addAlias()"
+                     placeholder="输入别名，回车确认"
+                     class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 outline-none placeholder:text-stone-400 focus:border-warm-400/40 dark:border-white/10 dark:bg-black/20 dark:text-stone-200 dark:placeholder:text-stone-500" />
+              <button @click="addAlias()"
+                      class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition dark:border-warm-400/20 dark:bg-warm-400/10 dark:text-warm-200 dark:hover:bg-warm-400/20">
+                添加
+              </button>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm dark:bg-stone-900 dark:shadow-none">
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400">Watched studies</p>
+            <p class="mt-2 text-sm text-stone-600 dark:text-stone-300">只汇总这些 Study 中匹配到你别名的待办。</p>
+            <div class="mt-4 flex min-h-[2rem] flex-wrap gap-2">
+              <template x-for="(s, i) in prefs.watched_studies" :key="i">
+                <span class="inline-flex items-center gap-1 rounded-full border border-neon-300/50 bg-neon-50 px-3 py-1 text-xs font-mono text-neon-700 dark:border-neon-400/20 dark:bg-neon-400/10 dark:text-neon-200">
+                  <span x-text="s"></span>
+                  <button @click="prefs.watched_studies.splice(i,1)" class="opacity-70 hover:opacity-100">✕</button>
+                </span>
+              </template>
+              <span x-show="prefs.watched_studies.length === 0" class="text-xs font-mono italic text-stone-500">尚未关注任何 Study</span>
+            </div>
+            <div class="mt-4 flex gap-2">
+              <input x-model="studyInput"
+                     @keydown.enter.prevent="addStudy()"
+                     @keydown.comma.prevent="addStudy()"
+                     placeholder="输入 Study ID，回车确认"
+                     class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 outline-none placeholder:text-stone-400 focus:border-neon-400/40 dark:border-white/10 dark:bg-black/20 dark:text-stone-200 dark:placeholder:text-stone-500" />
+              <button @click="addStudy()"
+                      class="rounded-xl border border-neon-300/50 bg-neon-50 px-4 py-2 text-xs font-mono text-neon-700 hover:bg-neon-100/50 transition dark:border-neon-400/20 dark:bg-neon-400/10 dark:text-neon-200 dark:hover:bg-neon-400/20">
+                添加
+              </button>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm dark:bg-stone-900 dark:shadow-none">
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400">Actions</p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button @click="savePrefs()"
+                      class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition dark:border-warm-400/20 dark:bg-warm-400/10 dark:text-warm-200 dark:hover:bg-warm-400/20">
+                保存设置
+              </button>
+              <button @click="exportCsv()"
+                      class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-2 text-xs font-mono text-stone-600 hover:bg-stone-100 transition dark:border-white/10 dark:bg-white/5 dark:text-stone-300 dark:hover:text-stone-100 dark:hover:bg-white/10">
+                导出 CSV
+              </button>
+              <button @click="confirmResetPrefs()"
+                      class="ml-auto rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-mono text-rose-700 hover:bg-rose-100 transition dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-200 dark:hover:bg-red-500/20">
+                重置偏好
+              </button>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
+  </template>
 </div>
 
 <script>
 function meApp() {
-  return {
-    customTasks: [],
-    loading: true,
+  const DOT_COLORS = ['bg-cyan-500','bg-violet-500','bg-rose-500','bg-amber-500','bg-emerald-500','bg-blue-500'];
+  function studyHash(id) {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  }
+  const DAY_ZH = ['周日','周一','周二','周三','周四','周五','周六'];
 
-    homeUrl() {
-      var b = typeof window.API_BASE !== "undefined" && window.API_BASE ? window.API_BASE : "";
-      return b ? b + "/" : "/";
+  function todayMidnight() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+  function parseDate(s) {
+    if (!s) return null;
+    const d = new Date(s + 'T00:00:00');
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function parseDateToken(token) {
+    const t = token.toLowerCase();
+    const today = todayMidnight();
+    if (t === '今天' || t === 'today') return today.toISOString().slice(0,10);
+    if (t === '明天' || t === 'tomorrow') {
+      const d = new Date(today); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10);
+    }
+    const wm = {'周一':1,'周二':2,'周三':3,'周四':4,'周五':5,'周六':6,'周日':0,'周天':0};
+    if (wm[t] !== undefined) {
+      const d = new Date(today);
+      const diff = ((wm[t] - d.getDay()) + 7) % 7 || 7;
+      d.setDate(d.getDate() + diff); return d.toISOString().slice(0,10);
+    }
+    if (/^\d{1,2}-\d{1,2}$/.test(t)) {
+      const [m, day] = t.split('-').map(Number);
+      return new Date(today.getFullYear(), m-1, day).toISOString().slice(0,10);
+    }
+    return null;
+  }
+  const ab = () => (typeof window.API_BASE !== 'undefined' && window.API_BASE) ? window.API_BASE : '';
+
+  return {
+    todos: [],
+    customTasksMap: {},
+    loading: true,
+    prefs: { tracker_aliases: [], watched_studies: [] },
+    showSettings: false,
+    secondaryOpen: true,
+    aliasInput: '',
+    studyInput: '',
+    quickInput: '',
+    completing: new Set(),
+
+    homeUrl() { const b = ab(); return b ? b + '/' : '/'; },
+    sourceLabel(todo) { return todo.source === 'tracker' ? 'tracker' : 'custom'; },
+    get trackerReady() { return this.prefs.watched_studies.length > 0; },
+
+    bucketOf(ddl) {
+      if (!ddl) return 'unscheduled';
+      const d = parseDate(ddl); if (!d) return 'unscheduled';
+      const today = todayMidnight();
+      const endWeek = new Date(today); endWeek.setDate(today.getDate() + (6 - today.getDay()));
+      if (d < today) return 'overdue';
+      if (d.getTime() === today.getTime()) return 'today';
+      if (d <= endWeek) return 'thisweek';
+      return 'later';
+    },
+
+    ddlLabel(ddl) {
+      if (!ddl) return '—';
+      const d = parseDate(ddl); if (!d) return String(ddl);
+      const today = todayMidnight();
+      const diff = Math.round((d - today) / 86400000);
+      if (diff < 0) return '-' + Math.abs(diff) + '天';
+      if (diff === 0) return '今天';
+      if (diff === 1) return '明天';
+      if (diff <= 6) return DAY_ZH[d.getDay()];
+      return (d.getMonth()+1) + '/' + d.getDate();
+    },
+
+    studyDot(id) { return DOT_COLORS[studyHash(id || '') % DOT_COLORS.length]; },
+
+    get sections() {
+      const buckets = { overdue:[], today:[], thisweek:[], later:[], unscheduled:[] };
+      for (const t of this.todos) {
+        const b = this.bucketOf(t.ddl);
+        buckets[b].push(t);
+      }
+      return [
+        { key:'overdue', label:'过期', items: buckets.overdue },
+        { key:'today', label:'今天', items: buckets.today },
+        { key:'thisweek', label:'本周', items: buckets.thisweek },
+        { key:'later', label:'稍后', items: buckets.later },
+        { key:'unscheduled', label:'未安排', items: buckets.unscheduled },
+      ];
+    },
+    get overdueTodos() { return this.sections.find(s => s.key === 'overdue')?.items || []; },
+    get todayTodos() { return this.sections.find(s => s.key === 'today')?.items || []; },
+    get secondary() {
+      return {
+        thisweek: this.sections.find(s => s.key === 'thisweek')?.items || [],
+        later: this.sections.find(s => s.key === 'later')?.items || [],
+        unscheduled: this.sections.find(s => s.key === 'unscheduled')?.items || [],
+      };
+    },
+    get secondarySections() {
+      return [
+        { key: 'thisweek', label: '本周稍后', items: this.secondary.thisweek },
+        { key: 'later', label: '更晚安排', items: this.secondary.later },
+        { key: 'unscheduled', label: '未安排', items: this.secondary.unscheduled },
+      ];
+    },
+    get stats() {
+      return {
+        total: this.todos.length,
+        overdue: this.overdueTodos.length,
+        today: this.todayTodos.length,
+      };
+    },
+    get pressurePercent() {
+      if (this.stats.total === 0) return 6;
+      const score = this.stats.overdue * 30 + this.stats.today * 14 + this.secondary.thisweek.length * 6 + this.secondary.later.length * 3;
+      return Math.max(8, Math.min(100, score));
+    },
+    get pressureLabel() {
+      if (this.stats.overdue >= 3) return '先清过期';
+      if (this.stats.overdue > 0 || this.stats.today >= 4) return '今天偏满';
+      if (this.stats.today > 0 || this.secondary.thisweek.length > 0) return '节奏正常';
+      return '比较轻松';
+    },
+    get pressureDotClass() {
+      if (this.stats.overdue >= 3) return 'bg-neon-400 text-neon-400';
+      if (this.stats.overdue > 0 || this.stats.today >= 4) return 'bg-amber-400 text-amber-400';
+      if (this.stats.today > 0 || this.secondary.thisweek.length > 0) return 'bg-warm-400 text-warm-400';
+      return 'bg-emerald-400 text-emerald-400';
     },
 
     async init() {
-      // Apply saved theme
       try {
-        const resp = await fetch('/api/user/preferences');
-        const prefs = await resp.json();
-        if (prefs.theme === 'dark') {
+        const r = await fetch(ab() + '/api/user/preferences');
+        const raw = await r.json();
+        if (raw.theme === 'dark') {
           document.documentElement.classList.add('dark');
-          localStorage.setItem('brick-theme', 'dark');
+          localStorage.setItem('brick-theme','dark');
           Alpine.store('theme').dark = true;
         }
-      } catch (_) {}
-
-      await this.loadTasks();
+      } catch(_) {}
+      await Promise.all([this.loadPrefs(), this.loadTodos(), this.loadCustomTasks()]);
     },
 
-    async loadTasks() {
+    async loadPrefs() {
+      try {
+        const r = await fetch(ab() + '/api/user/workstation');
+        if (r.ok) this.prefs = await r.json();
+      } catch(_) {}
+    },
+
+    async loadTodos() {
       this.loading = true;
       try {
-        const resp = await fetch('/api/custom-tasks');
-        this.customTasks = await resp.json();
-      } catch (e) {
-        Alpine.store('toast').push('加载任务失败：' + e, 'error');
+        const r = await fetch(ab() + '/api/tasks/my-todos');
+        if (r.ok) this.todos = await r.json();
+      } catch(e) {
+        Alpine.store('toast').push('加载失败：' + e, 'error');
       } finally {
         this.loading = false;
       }
     },
 
-    get taskGroups() {
-      const map = new Map();
-      for (const ct of this.customTasks) {
-        if (!map.has(ct.study_id)) map.set(ct.study_id, []);
-        map.get(ct.study_id).push(ct);
-      }
-      return Array.from(map.entries()).map(([sid, tasks]) => ({ studyId: sid, tasks }));
+    async loadCustomTasks() {
+      try {
+        const r = await fetch(ab() + '/api/custom-tasks');
+        if (r.ok) {
+          const tasks = await r.json();
+          this.customTasksMap = Object.fromEntries(tasks.map(t => [t.id, t]));
+        }
+      } catch(_) {}
     },
 
-    async deleteTask(id) {
-      const ok = await Alpine.store('confirm').ask('真的要删除这个任务吗？删了就没了哦~');
+    async savePrefs() {
+      try {
+        await fetch(ab() + '/api/user/workstation', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.prefs),
+        });
+        Alpine.store('toast').push('设置已保存', 'success');
+        await Promise.all([this.loadTodos(), this.loadCustomTasks()]);
+        this.showSettings = false;
+      } catch(e) {
+        Alpine.store('toast').push('保存失败：' + e, 'error');
+      }
+    },
+
+    addAlias() {
+      const v = this.aliasInput.replace(/,/g,'').trim();
+      if (v && !this.prefs.tracker_aliases.includes(v)) this.prefs.tracker_aliases.push(v);
+      this.aliasInput = '';
+    },
+    addStudy() {
+      const v = this.studyInput.replace(/,/g,'').trim().toUpperCase();
+      if (v && !this.prefs.watched_studies.includes(v)) this.prefs.watched_studies.push(v);
+      this.studyInput = '';
+    },
+
+    async completeTodo(todo) {
+      if (this.completing.has(todo.key)) return;
+      this.completing.add(todo.key);
+      const id = todo.key.replace('custom:','');
+      const ct = this.customTasksMap[id];
+      if (!ct) { this.completing.delete(todo.key); return; }
+      try {
+        const r = await fetch(ab() + '/api/custom-tasks/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...ct, main_status: '已完成，可以QC' }),
+        });
+        if (!r.ok) throw new Error(r.status);
+        this.todos = this.todos.filter(t => t.key !== todo.key);
+        delete this.customTasksMap[id];
+      } catch(e) {
+        Alpine.store('toast').push('更新失败：' + e, 'error');
+      } finally {
+        this.completing.delete(todo.key);
+      }
+    },
+
+    async deleteTodo(todo) {
+      const id = todo.key.replace('custom:','');
+      const ok = await Alpine.store('confirm').ask('删除这个任务？');
       if (!ok) return;
       try {
-        const resp = await fetch('/api/custom-tasks/' + id, { method: 'DELETE' });
-        if (!resp.ok) throw new Error(resp.status);
-        Alpine.store('toast').push('删除成功！', 'success');
-        await this.loadTasks();
-      } catch (e) {
+        const r = await fetch(ab() + '/api/custom-tasks/' + id, { method: 'DELETE' });
+        if (!r.ok) throw new Error(r.status);
+        this.todos = this.todos.filter(t => t.key !== todo.key);
+        delete this.customTasksMap[id];
+        Alpine.store('toast').push('已删除', 'success');
+      } catch(e) {
         Alpine.store('toast').push('删除失败：' + e, 'error');
       }
     },
 
+    async addQuick() {
+      const raw = this.quickInput.trim();
+      if (!raw) return;
+      let study = '', ddl = null;
+      const titleParts = [];
+      for (const word of raw.split(/\s+/)) {
+        if (word.startsWith('#')) study = word.slice(1).toUpperCase();
+        else if (word.startsWith('@')) ddl = parseDateToken(word.slice(1));
+        else titleParts.push(word);
+      }
+      const title = titleParts.join(' ').trim() || raw;
+      this.quickInput = '';
+      try {
+        const r = await fetch(ab() + '/api/custom-tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            study_id: study || 'misc',
+            task_name: title,
+            description: '',
+            main_person: '',
+            main_status: '',
+            qc_person: '',
+            qc_status: '',
+            ddl: ddl,
+            tags: [],
+          }),
+        });
+        if (!r.ok) throw new Error(r.status);
+        const created = await r.json();
+        this.customTasksMap[created.id] = created;
+        await this.loadTodos();
+      } catch(e) {
+        Alpine.store('toast').push('新增失败：' + e, 'error');
+      }
+    },
+
     async confirmResetPrefs() {
-      const ok = await Alpine.store('confirm').ask('重置偏好会清空你保存的筛选条件和主题设置，确定吗？');
+      const ok = await Alpine.store('confirm').ask('重置偏好会清空筛选条件和主题设置，确定吗？');
       if (!ok) return;
       try {
-        await fetch('/api/user/preferences', {
+        await fetch(ab() + '/api/user/preferences', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            selected_studies: [],
-            selected_tracker_files: {},
-            person_filter: '',
-            role_filter: 'all',
-            time_range: '',
-            search_query: '',
-            theme: 'light',
-            show_charts: true,
+            selected_studies: [], selected_tracker_files: {}, person_filter: '',
+            role_filter: 'all', time_range: '', search_query: '', theme: 'light', show_charts: true,
           }),
         });
+        await fetch(ab() + '/api/user/workstation', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tracker_aliases: [], watched_studies: [] }),
+        });
+        this.prefs = { tracker_aliases: [], watched_studies: [] };
         document.documentElement.classList.remove('dark');
-        localStorage.setItem('brick-theme', 'light');
+        localStorage.setItem('brick-theme','light');
         Alpine.store('theme').dark = false;
-        Alpine.store('toast').push('偏好已重置~', 'success');
-      } catch (e) {
+        Alpine.store('toast').push('偏好已重置', 'success');
+        await Promise.all([this.loadTodos(), this.loadCustomTasks()]);
+        this.showSettings = false;
+      } catch(e) {
         Alpine.store('toast').push('重置失败：' + e, 'error');
       }
     },
 
     exportCsv() {
-      if (this.customTasks.length === 0) {
-        Alpine.store('toast').push('没有任务可以导出哦~', 'info');
-        return;
-      }
-      const headers = ['项目','任务名','备注','搬砖侠','搬砖进度','找茬王','找茬结果','死线','标签'];
-      const rows = this.customTasks.map(ct => [
-        ct.study_id, ct.task_name, ct.description || '',
-        ct.main_person || '', ct.main_status || '',
-        ct.qc_person || '', ct.qc_status || '',
-        ct.ddl || '', (ct.tags || []).join('|'),
-      ]);
-      const BOM = '\uFEFF';
-      const csv = BOM + [headers, ...rows].map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = '我的自定义任务.csv'; a.click();
+      const custom = this.todos.filter(t => t.source === 'custom');
+      if (!custom.length) { Alpine.store('toast').push('没有自定义任务可导出', 'info'); return; }
+      const headers = ['项目','任务名','角色','状态','截止日'];
+      const rows = custom.map(t => [t.study_id, t.title, t.role, t.status, t.ddl || '']);
+      const BOM = '﻿';
+      const csv = BOM + [headers, ...rows].map(r =>
+        r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')
+      ).join('\n');
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      const a = document.createElement('a'); a.href = url; a.download = '我的任务.csv'; a.click();
       URL.revokeObjectURL(url);
-      Alpine.store('toast').push('CSV 已下载！', 'success');
-    },
-
-    isDdlUrgent(ddl) {
-      if (!ddl) return false;
-      const d = new Date(ddl); const now = new Date(); now.setHours(0,0,0,0);
-      return Math.ceil((d - now) / 86400000) <= 3;
-    },
-
-    statusBadge(status) {
-      const m = {
-        '关闭问题': 'bg-emerald-100 text-emerald-700',
-        '已完成，可以QC': 'bg-sky-100 text-sky-700',
-        '进行中': 'bg-amber-100 text-amber-700',
-        '有问题，请修改': 'bg-rose-100 text-rose-700',
-        '待定，请留意': 'bg-stone-100 text-stone-500',
-      };
-      return m[status] || 'bg-stone-50 text-stone-400';
+      Alpine.store('toast').push('CSV 已下载', 'success');
     },
   };
 }
