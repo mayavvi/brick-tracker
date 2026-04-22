@@ -84,19 +84,22 @@ def build_summary(
 ) -> StatusSummary:
     """Compute aggregated status counts with role-aware logic.
 
-    - **进行中**: the relevant side has no status filled (null/empty)
+    - **进行中**: the relevant side has no status filled (null/empty) OR explicitly set to "进行中"
     - **已完成, 可QC**: main_status == "已完成，可以QC"
     - **有问题 / 待定 / 已关闭**: derived from qc_status
     """
+    def _side_in_progress(status: str | None) -> bool:
+        return not status or status == "进行中"
+
     summary = StatusSummary(total=len(tasks))
     for t in tasks:
-        # --- in_progress: the relevant side has no status ---
+        # --- in_progress: empty status OR explicitly "进行中" ---
         if role == "main":
-            is_in_progress = not t.main_status
+            is_in_progress = _side_in_progress(t.main_status)
         elif role == "qc":
-            is_in_progress = not t.qc_status
+            is_in_progress = _side_in_progress(t.qc_status)
         else:
-            is_in_progress = not t.main_status or not t.qc_status
+            is_in_progress = _side_in_progress(t.main_status) or _side_in_progress(t.qc_status)
 
         if is_in_progress:
             summary.in_progress += 1

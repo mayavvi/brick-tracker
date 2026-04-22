@@ -7,9 +7,10 @@ function trackerApp() {
   const STATUS_FILTERS = {
     total: () => true,
     in_progress: (t, role) => {
-      if (role === "main") return !t.main_status;
-      if (role === "qc") return !t.qc_status;
-      return !t.main_status || !t.qc_status;
+      const ip = (s) => !s || s === "进行中";
+      if (role === "main") return ip(t.main_status);
+      if (role === "qc") return ip(t.qc_status);
+      return ip(t.main_status) || ip(t.qc_status);
     },
     waiting: (t) => t.main_status !== "已完成，可以QC",
     completed_ready_qc: (t) => t.main_status === "已完成，可以QC",
