@@ -48,6 +48,22 @@ CREATE TABLE IF NOT EXISTS custom_tasks (
 );
 
 CREATE INDEX IF NOT EXISTS idx_custom_tasks_owner ON custom_tasks(owner);
+
+CREATE TABLE IF NOT EXISTS file_snapshots (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    username     TEXT NOT NULL,
+    abs_path     TEXT NOT NULL,
+    study_id     TEXT NOT NULL DEFAULT '',
+    content_hash TEXT NOT NULL,
+    content      TEXT NOT NULL,
+    encoding     TEXT NOT NULL,
+    size_bytes   INTEGER NOT NULL,
+    note         TEXT NOT NULL DEFAULT '',
+    snapshot_ts  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_snap_path ON file_snapshots(abs_path, snapshot_ts DESC);
+CREATE INDEX IF NOT EXISTS idx_snap_user ON file_snapshots(username, snapshot_ts DESC);
 """
 
 

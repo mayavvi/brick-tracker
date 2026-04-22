@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Literal
 
@@ -206,3 +206,25 @@ class FileEntry(BaseModel):
     kind: Literal["sas", "log", "lst", "other"]
     size: int
     mtime: float
+
+
+class FileSnapshot(BaseModel):
+    """Snapshot metadata for one version of a file."""
+
+    id: int
+    username: str
+    abs_path: str
+    content_hash: str
+    size_bytes: int
+    note: str = ""
+    snapshot_ts: datetime
+
+
+class DiffLine(BaseModel):
+    """One row in a structured diff view."""
+
+    op: Literal["equal", "insert", "delete", "replace"]
+    a_lineno: int | None
+    b_lineno: int | None
+    a_text: str = ""
+    b_text: str = ""
