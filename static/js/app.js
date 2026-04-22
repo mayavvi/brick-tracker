@@ -406,7 +406,7 @@ function trackerApp() {
       if (justLoggedIn) sessionStorage.removeItem('brick-just-logged-in');
       if (justLoggedIn && window.CyberFX) {
         CyberFX.bootSequence([
-          '初始化控制台 · INIT_CONSOLE',
+          '初始化控制台 · INIT_PEAK',
           '连接数据节点 · CONNECT_NODE_' + this.selectedStudies.length + '_TARGETS',
           '解析任务日志 · PARSE_TRACKER_LOGS',
           '同步成员负载 · SYNC_OPERATORS',

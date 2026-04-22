@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="Tracker 追踪日志可视化平台",
+    title="PEAK — Project Efficiency & Automation Kernel",
     version="0.2.0",
     lifespan=lifespan,
 )

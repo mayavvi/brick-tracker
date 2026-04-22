@@ -115,7 +115,7 @@
           <span class="cfx-boot-dot"></span>
           <span class="cfx-boot-dot" style="animation-delay:.15s"></span>
           <span class="cfx-boot-dot" style="animation-delay:.3s"></span>
-          <span class="cfx-boot-head">BRICK // BOOT</span>
+          <span class="cfx-boot-head">PEAK // BOOT</span>
         </div>
         <div class="cfx-boot-body"></div>
       </div>`;

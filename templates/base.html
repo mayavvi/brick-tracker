@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}打工人の进度小站{% endblock %}</title>
+  <title>{% block title %}PEAK{% endblock %}</title>
 
   <!-- Theme flash prevention — dark-first -->
   <script>
@@ -251,18 +251,12 @@
         </div>
 
         <a :href="navUrl('/')" class="flex items-center gap-3 min-w-0 group">
-          <span class="relative inline-flex items-center justify-center w-3 h-3 flex-shrink-0">
-            <span class="absolute inset-0 rounded-full bg-gradient-to-br from-warm-400 to-neon-500 animate-pulse-glow"></span>
-            <span class="relative w-1.5 h-1.5 rounded-full bg-white"></span>
-            <span class="cfx-logo-orbit" aria-hidden="true"></span>
-            <span class="cfx-logo-orbit cfx-logo-orbit-2" aria-hidden="true"></span>
-          </span>
+          <img src="{{ url_for('static', path='img/PEAK logo.png') }}" alt="PEAK" width="120" height="32" class="h-8 w-auto flex-shrink-0 object-contain" />
           <div class="leading-tight min-w-0">
             <h1 class="text-[15px] font-bold tracking-tight flex items-center gap-2 flex-wrap">
-              <span data-cfx-glitch class="bg-gradient-to-r from-warm-300 via-neon-300 to-warm-300 bg-clip-text text-transparent">BRICK</span>
-              <span class="text-stone-500 dark:text-stone-500 font-mono text-[11px]">//</span>
-              <span class="text-stone-100 dark:text-stone-100">打工人控制台</span>
+              <span data-cfx-glitch class="bg-gradient-to-r from-warm-300 via-neon-300 to-warm-300 bg-clip-text text-transparent">PEAK</span>
             </h1>
+            <p class="text-[11px] text-stone-500 dark:text-stone-400 truncate max-w-[30rem] font-mono">Climb Higher. Work Smarter.</p>
             <p id="cfx-greeting" class="cfx-typing text-[11px] text-stone-500 dark:text-stone-400 truncate max-w-[30rem] font-mono"></p>
           </div>
         </a>

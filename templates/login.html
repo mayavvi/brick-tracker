@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>登录 — 打工人の进度小站</title>
+  <title>登录 — PEAK</title>
 
   <!-- Theme flash prevention — matches base.html logic -->
   <script>
@@ -78,16 +78,15 @@
 
     <!-- Logo & title -->
     <div class="text-center mb-8">
-      <div class="relative w-16 h-16 mx-auto mb-4">
-        <div class="absolute inset-0 rounded-2xl bg-gradient-to-br from-warm-500 to-neon-500 blur-xl opacity-60"></div>
-        <div class="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-warm-500 to-neon-500 flex items-center justify-center text-3xl shadow-2xl">🧱</div>
+      <div class="relative mx-auto mb-4 flex justify-center">
+        <div class="absolute inset-0 rounded-2xl bg-gradient-to-br from-warm-500 to-neon-500 blur-xl opacity-40 max-w-[200px] mx-auto h-20"></div>
+        <img src="{{ url_for('static', path='img/PEAK logo.png') }}" alt="PEAK" width="200" height="64" class="relative h-16 w-auto max-w-[200px] object-contain drop-shadow-2xl" />
       </div>
       <h1 class="text-2xl font-bold tracking-tight">
-        <span class="bg-gradient-to-r from-warm-300 via-neon-400 to-warm-300 bg-clip-text text-transparent">BRICK</span>
-        <span class="dark:text-stone-500 text-stone-400 font-mono text-sm"> // </span>
-        <span class="dark:text-stone-100 text-stone-800">控制台</span>
+        <span class="bg-gradient-to-r from-warm-300 via-neon-400 to-warm-300 bg-clip-text text-transparent">PEAK</span>
       </h1>
-      <p class="text-xs font-mono text-warm-500 dark:text-warm-300 mt-2 tracking-wider">[ AUTH REQUIRED · 身份验证 ]</p>
+      <p class="text-[11px] text-stone-600 dark:text-stone-400 mt-2 px-2 leading-snug">Project Efficiency &amp; Automation Kernel</p>
+      <p class="text-xs font-mono text-warm-500 dark:text-warm-300 mt-3 tracking-wider">[ AUTH REQUIRED · 身份验证 ]</p>
     </div>
 
     <!-- Card -->
