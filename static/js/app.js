@@ -21,8 +21,6 @@ function trackerApp() {
   let _prefsSaveTimer = null;
 
   return {
-    // --- user ---
-    currentUser: null,
     prefsLoaded: false,
 
     // --- theme & charts ---
@@ -60,11 +58,6 @@ function trackerApp() {
     sidebarOpen: true,
     sidebarCollapsing: false,
     animationKey: 0,
-    todayStr: new Date().toLocaleDateString("zh-CN"),
-    greeting: (window.BrickGreetings ? window.BrickGreetings.pickFor(new Date().getHours()) : ""),
-    _greetingHour: new Date().getHours(),
-    _greetingTimer: null,
-
     // --- custom tasks ---
     customTasks: [],
     showCustomTaskModal: false,
@@ -78,7 +71,6 @@ function trackerApp() {
 
     // --- lifecycle ---
     async init() {
-      await this._loadUser();
       await this._restorePreferences();
       this._setupKeyboard();
 
@@ -97,8 +89,6 @@ function trackerApp() {
       this.$watch("statusFilter", () => {
         if (this.dashboardLoaded) this._applyStatusFilter();
       });
-      this.$watch("greeting", (v) => this._typeGreeting(v));
-      this.$nextTick(() => this._typeGreeting(this.greeting));
 
       await this._loadCustomTasks();
 
@@ -106,30 +96,6 @@ function trackerApp() {
         await this.searchStudies();
         await this.loadDashboard();
       }
-
-      this._startGreetingTimer();
-    },
-
-    _typeGreeting(text) {
-      const el = document.getElementById('cfx-greeting');
-      if (!el) return;
-      const full = '> ' + (text || '');
-      if (window.CyberFX && CyberFX.typewriter) {
-        CyberFX.typewriter(el, full, 28);
-      } else {
-        el.textContent = full;
-      }
-    },
-
-    _startGreetingTimer() {
-      if (this._greetingTimer) clearInterval(this._greetingTimer);
-      this._greetingTimer = setInterval(() => {
-        const h = new Date().getHours();
-        if (h !== this._greetingHour && window.BrickGreetings) {
-          this._greetingHour = h;
-          this.greeting = window.BrickGreetings.pickFor(h);
-        }
-      }, 60000);
     },
 
     _setupKeyboard() {
@@ -168,7 +134,8 @@ function trackerApp() {
           clearTimeout(gTimer);
           gTimer = setTimeout(function() { gPressed = false; }, 800);
         } else if (e.key === 'm' && gPressed) {
-          window.location.href = '/me';
+          var b = window.API_BASE || '';
+          window.location.href = (b || '') + '/me';
         }
       });
       document.addEventListener('keyup', function(e) {
@@ -241,22 +208,6 @@ function trackerApp() {
       if (diff < 0) return 'border-rose-500/50 bg-rose-500/10';
       if (diff <= 3) return 'border-amber-500/50 bg-amber-500/10';
       return 'border-stone-700/50 bg-ink-900/60';
-    },
-
-    // --- user identity ---
-    async _loadUser() {
-      try {
-        const resp = await fetch("/api/user/me");
-        if (resp.status === 401 || resp.status === 403) {
-          window.location.reload();
-          return;
-        }
-        if (!resp.ok) throw new Error(resp.status);
-        this.currentUser = await resp.json();
-      } catch (e) {
-        Alpine.store('toast').push("加载用户信息失败 " + e, "error");
-        this.currentUser = { username: "unknown", display_name: "" };
-      }
     },
 
     // --- preferences ---
@@ -723,69 +674,6 @@ function trackerApp() {
       } catch (e) {
         Alpine.store('toast').push("删除失败：" + e, "error");
       }
-    },
-
-    // --- calendar ---
-    showCalendar: false,
-    calYear: new Date().getFullYear(),
-    calMonth: new Date().getMonth(),
-
-    get calTitle() {
-      return `${this.calYear}年${this.calMonth + 1}月`;
-    },
-
-    get calDays() {
-      const year = this.calYear;
-      const month = this.calMonth;
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      let startDow = firstDay.getDay();
-      if (startDow === 0) startDow = 7;
-
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
-      const days = [];
-
-      const prevMonth = new Date(year, month, 0);
-      for (let i = startDow - 1; i >= 1; i--) {
-        days.push({ day: prevMonth.getDate() - i + 1, other: true, today: false });
-      }
-
-      for (let d = 1; d <= lastDay.getDate(); d++) {
-        const isToday = `${year}-${month}-${d}` === todayStr;
-        days.push({ day: d, other: false, today: isToday });
-      }
-
-      const remaining = 42 - days.length;
-      for (let d = 1; d <= remaining; d++) {
-        days.push({ day: d, other: true, today: false });
-      }
-
-      return days;
-    },
-
-    calPrev() {
-      if (this.calMonth === 0) {
-        this.calMonth = 11;
-        this.calYear--;
-      } else {
-        this.calMonth--;
-      }
-    },
-
-    calNext() {
-      if (this.calMonth === 11) {
-        this.calMonth = 0;
-        this.calYear++;
-      } else {
-        this.calMonth++;
-      }
-    },
-
-    calToday() {
-      const now = new Date();
-      this.calYear = now.getFullYear();
-      this.calMonth = now.getMonth();
     },
 
     // --- UI helpers ---
