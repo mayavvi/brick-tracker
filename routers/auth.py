@@ -41,7 +41,7 @@ def login(body: LoginRequest, response: Response) -> LoginResponse:
         value=username,
         httponly=True,
         samesite="lax",
-        max_age=60 * 60 * 24 * 90,  # 90 days
+        max_age=60 * 60 * 24 * 5,  # 5 days
         path="/",
     )
     return LoginResponse(ok=True, username=username)

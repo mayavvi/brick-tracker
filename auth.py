@@ -11,7 +11,7 @@ from config import DEV_USERNAME, get_allowed_users
 
 logger = logging.getLogger(__name__)
 
-COOKIE_NAME = "brick_user"
+COOKIE_NAME = "brick_user_v2"
 
 
 class User(BaseModel):
