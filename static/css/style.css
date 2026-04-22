@@ -29,13 +29,15 @@ html {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "cv11", "ss01";
-  /* Slightly larger base for 1080p readability — rem-based layout scales proportionally */
-  font-size: 17px;
+  /* font-size: set inline by base.html (brick-fontsize) before paint */
 }
 
 body {
+  font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.005em;
 }
 
 /* ================================================================

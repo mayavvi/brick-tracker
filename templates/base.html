@@ -12,6 +12,12 @@
         var t = localStorage.getItem('brick-theme');
         if (t !== 'light') document.documentElement.classList.add('dark');
       } catch (e) { document.documentElement.classList.add('dark'); }
+      try {
+        var fs = localStorage.getItem('brick-fontsize');
+        var n = parseInt(fs, 10);
+        if (isNaN(n) || n < 14 || n > 20) n = 16;
+        document.documentElement.style.fontSize = n + 'px';
+      } catch (e) { document.documentElement.style.fontSize = '16px'; }
     })();
   </script>
 
@@ -60,7 +66,7 @@
             },
           },
           fontFamily: {
-            sans: ['Inter', 'ui-sans-serif', 'system-ui', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
+            sans: ['"Segoe UI"', '"Microsoft YaHei"', '"PingFang SC"', '"Helvetica Neue"', 'Arial', 'sans-serif'],
             mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
           },
           boxShadow: {
@@ -130,6 +136,25 @@
         yes() { this.open = false; this._resolve && this._resolve(true); },
         no()  { this.open = false; this._resolve && this._resolve(false); }
       });
+
+      (function brickFontSizeInit() {
+        var n = 16;
+        try {
+          var s = localStorage.getItem('brick-fontsize');
+          var parsed = parseInt(s, 10);
+          if (!isNaN(parsed) && parsed >= 14 && parsed <= 20) n = parsed;
+        } catch (e) {}
+        Alpine.store('fontSize', {
+          current: n,
+          set(v) {
+            v = Math.max(14, Math.min(20, +v));
+            this.current = v;
+            document.documentElement.style.fontSize = v + 'px';
+            try { localStorage.setItem('brick-fontsize', String(v)); } catch (e) {}
+          },
+        });
+        document.documentElement.style.fontSize = n + 'px';
+      })();
     });
   </script>
 
@@ -344,7 +369,7 @@
                  x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
                  x-transition:enter-end="opacity-100 scale-100 translate-y-0"
                  @click.stop
-                 class="fixed top-14 right-4 w-40 bg-white dark:bg-stone-900 rounded-xl shadow-pop ring-1 ring-stone-200 dark:ring-stone-800 py-1 z-[195]">
+                 class="fixed top-14 right-4 w-52 bg-white dark:bg-stone-900 rounded-xl shadow-pop ring-1 ring-stone-200 dark:ring-stone-800 py-1 z-[195]">
               <a :href="navUrl('/me')" @click="userMenuOpen=false"
                  class="flex items-center gap-2 px-3 py-2 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition">
                 <svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -352,6 +377,16 @@
                 </svg>
                 个人工作台
               </a>
+              <div class="px-3 py-2 border-t border-stone-100 dark:border-stone-800">
+                <label class="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 mb-1">
+                  <span>字号</span>
+                  <span class="font-mono tabular-nums" x-text="$store.fontSize.current + 'px'"></span>
+                </label>
+                <input type="range" min="14" max="20" step="1"
+                       :value="$store.fontSize.current"
+                       @input="$store.fontSize.set(+$event.target.value)"
+                       class="w-full h-1 accent-warm-500 cursor-pointer" />
+              </div>
               <button type="button" @click="$store.theme.toggle(); _scheduleSaveTheme(); userMenuOpen=false"
                       class="w-full flex items-center gap-2 px-3 py-2 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition text-left">
                 <svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
