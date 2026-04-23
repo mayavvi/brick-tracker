@@ -210,6 +210,21 @@ class CodeIndexServiceTests(unittest.IsolatedAsyncioTestCase):
         status = await code_index.get_status()
         self.assertEqual(status.indexed_files, 1)
 
+    async def test_get_filter_options_scopes_projects_and_tasks(self) -> None:
+        self._write("CMPD1/PROJ1/CSR/analysis/A1.sas", "a\n")
+        self._write("CMPD1/PROJ2/CSR/analysis/A1.sas", "b\n")
+        self._write("CMPD1/PROJ1/MDR/analysis/A1.sas", "c\n")
+
+        await code_index.rebuild_index()
+
+        opt1 = await code_index.get_filter_options(compound="CMPD1")
+        self.assertEqual(set(opt1.projects), {"PROJ1", "PROJ2"})
+        self.assertEqual(set(opt1.tasks), {"CSR", "MDR"})
+
+        opt2 = await code_index.get_filter_options(compound="CMPD1", project="PROJ1")
+        self.assertEqual(set(opt2.projects), {"PROJ1", "PROJ2"})
+        self.assertEqual(set(opt2.tasks), {"CSR", "MDR"})
+
     async def test_get_qc_timing_rows_pairs_main_and_qc_logs(self) -> None:
         self._write(
             "CMPD1/PROJ1/CSR/prog/sdtm/ae.sas",

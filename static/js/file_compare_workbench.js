@@ -34,6 +34,121 @@ function codeIndexWorkbench() {
     diffUnifiedVisibleEnd: 0,
     qcRows: [],
     qcLoading: false,
+    filteredProjects: [],
+    filteredTasks: [],
+    compoundSearch: '',
+    compoundOpen: false,
+    projectSearch: '',
+    projectOpen: false,
+    taskSearch: '',
+    taskOpen: false,
+    globalQcOpen: false,
+    globalQcRows: [],
+    globalQcLoading: false,
+
+    standaloneCompareMode() {
+      return !this.selectedProgram && this.resultMode === 'compare' && !!(this.compareP && this.compareQ);
+    },
+
+    matchesOptFilter(item, q) {
+      const s = (q || '').trim().toLowerCase();
+      if (!s) return true;
+      return String(item).toLowerCase().includes(s);
+    },
+
+    compoundOptionItems() {
+      const list = this.contexts.compounds || [];
+      return list.filter((item) => this.matchesOptFilter(item, this.compoundSearch));
+    },
+
+    projectOptionItems() {
+      const list = this.filteredProjects || [];
+      return list.filter((item) => this.matchesOptFilter(item, this.projectSearch));
+    },
+
+    taskOptionItems() {
+      const list = this.filteredTasks || [];
+      return list.filter((item) => this.matchesOptFilter(item, this.taskSearch));
+    },
+
+    syncFilterSearchInputs() {
+      this.compoundSearch = this.filters.compound || '';
+      this.projectSearch = this.filters.project || '';
+      this.taskSearch = this.filters.task || '';
+    },
+
+    async fetchFilterOptions(compound, project) {
+      const p = new URLSearchParams();
+      if (compound) p.set('compound', compound);
+      if (project) p.set('project', project);
+      return this.api('/api/files/filter-options?' + p.toString());
+    },
+
+    async refreshCascadeLists() {
+      if (this.filters.compound) {
+        const data = await this.fetchFilterOptions(
+          this.filters.compound,
+          this.filters.project || null,
+        );
+        this.filteredProjects = data.projects || [];
+        this.filteredTasks = data.tasks || [];
+        return;
+      }
+      this.filteredProjects = [...(this.contexts.projects || [])];
+      this.filteredTasks = [...(this.contexts.tasks || [])];
+    },
+
+    async pickCompound(val) {
+      this.filters.compound = val || '';
+      this.compoundOpen = false;
+      this.compoundSearch = val || '';
+      this.filters.project = '';
+      this.filters.task = '';
+      this.projectSearch = '';
+      this.taskSearch = '';
+      await this.refreshCascadeLists();
+      await this.loadPrograms();
+    },
+
+    async pickProject(val) {
+      this.filters.project = val || '';
+      this.projectOpen = false;
+      this.projectSearch = val || '';
+      this.filters.task = '';
+      this.taskSearch = '';
+      await this.refreshCascadeLists();
+      await this.loadPrograms();
+    },
+
+    async pickTask(val) {
+      this.filters.task = val || '';
+      this.taskOpen = false;
+      this.taskSearch = val || '';
+      await this.loadPrograms();
+    },
+
+    async toggleGlobalQc() {
+      this.globalQcOpen = !this.globalQcOpen;
+      if (this.globalQcOpen) {
+        await this.loadGlobalQcRows();
+      }
+    },
+
+    async loadGlobalQcRows() {
+      this.globalQcLoading = true;
+      try {
+        const params = new URLSearchParams();
+        if (this.filters.compound) params.set('compound', this.filters.compound);
+        if (this.filters.project) params.set('project', this.filters.project);
+        if (this.filters.task) params.set('task', this.filters.task);
+        this.globalQcRows = await this.api('/api/files/indexed-qc-timing?' + params.toString());
+      } catch (err) {
+        this.globalQcRows = [];
+        this.toast(err.message || '加载 QC 检查失败', 'error');
+      } finally {
+        this.globalQcLoading = false;
+      }
+    },
 
     async init() {
       await this.loadStatus();
@@ -70,6 +185,8 @@ function codeIndexWorkbench() {
 
     async loadContexts() {
       this.contexts = await this.api('/api/files/contexts');
+      await this.refreshCascadeLists();
+      this.syncFilterSearchInputs();
     },
 
     buildProgramQuery() {
@@ -574,6 +691,684 @@ function codeIndexWorkbench() {
       if (reason === 'qc-older') return 'bg-amber-500/15 text-amber-700 dark:text-amber-300';
       if (reason === 'qc-missing') return 'bg-rose-500/15 text-rose-700 dark:text-rose-300';
       return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300';
+    },
+
+    // ── Web CLI ─────────────────────────────────────────────────
+    cli: { open: false, cwd: [], history: [], historyIdx: -1, output: [], input: '' },
+
+    toggleCli() {
+      this.cli.open = !this.cli.open;
+      if (this.cli.open) {
+        queueMicrotask(() => {
+          const inp = this.$refs.cliInput;
+          if (inp) inp.focus();
+        });
+      }
+    },
+
+    cliPrompt() {
+      const parts = this.cli.cwd;
+      if (!parts || parts.length === 0) return 'peak:/$ ';
+      return 'peak:/' + parts.join('/') + '$ ';
+    },
+
+    cliLineClass(type) {
+      if (type === 'cmd')      return 'font-semibold' + ' ' + 'cli-color-prompt';
+      if (type === 'error')    return 'cli-color-error';
+      if (type === 'success')  return 'cli-color-success';
+      if (type === 'header')   return 'font-semibold cli-color-header';
+      if (type === 'diff-add') return 'cli-color-add';
+      if (type === 'diff-del') return 'cli-color-del';
+      if (type === 'diff-hunk') return 'font-semibold cli-color-hunk';
+      return 'cli-color-muted';
+    },
+
+    cliPrint(text, type) {
+      this.cli.output.push({ text: String(text), type: type || 'info' });
+      queueMicrotask(() => {
+        const el = this.$refs.cliOutput;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+    },
+
+    cliPrintLines(lines, type) {
+      for (const line of lines) {
+        if (typeof line === 'string') this.cliPrint(line, type || 'info');
+        else this.cliPrint(line.text, line.type || type || 'info');
+      }
+    },
+
+    cliHistoryUp() {
+      if (this.cli.history.length === 0) return;
+      if (this.cli.historyIdx < 0) this.cli.historyIdx = this.cli.history.length;
+      if (this.cli.historyIdx > 0) {
+        this.cli.historyIdx--;
+        this.cli.input = this.cli.history[this.cli.historyIdx];
+      }
+    },
+
+    cliHistoryDown() {
+      if (this.cli.historyIdx < 0) return;
+      this.cli.historyIdx++;
+      if (this.cli.historyIdx >= this.cli.history.length) {
+        this.cli.historyIdx = -1;
+        this.cli.input = '';
+      } else {
+        this.cli.input = this.cli.history[this.cli.historyIdx];
+      }
+    },
+
+    _cliParseArgs(tokens) {
+      const flags = {};
+      const positional = [];
+      let i = 0;
+      while (i < tokens.length) {
+        const t = tokens[i];
+        if (t.startsWith('--')) {
+          const key = t.slice(2);
+          if (i + 1 < tokens.length && !tokens[i + 1].startsWith('-')) {
+            flags[key] = tokens[i + 1];
+            i += 2;
+          } else {
+            flags[key] = true;
+            i++;
+          }
+        } else if (t.startsWith('-') && t.length === 2) {
+          const key = t.slice(1);
+          if (i + 1 < tokens.length && !tokens[i + 1].startsWith('-')) {
+            flags[key] = tokens[i + 1];
+            i += 2;
+          } else {
+            flags[key] = true;
+            i++;
+          }
+        } else {
+          positional.push(t);
+          i++;
+        }
+      }
+      return { flags, positional };
+    },
+
+    _cliCwdContext() {
+      const cwd = this.cli.cwd || [];
+      return {
+        compound: cwd[0] || null,
+        project: cwd[1] || null,
+        task: cwd.slice(2).join('/') || null,
+      };
+    },
+
+    _cliPad(str, len) {
+      const s = String(str || '');
+      return s.length >= len ? s : s + ' '.repeat(len - s.length);
+    },
+
+    async cliResolveProgram(name) {
+      const ctx = this._cliCwdContext();
+      if (!ctx.compound) {
+        this.cliPrint('请先 cd 到某个 compound 下再操作程序', 'error');
+        return null;
+      }
+      const params = new URLSearchParams();
+      params.set('compound', ctx.compound);
+      if (ctx.project) params.set('project', ctx.project);
+      if (ctx.task) params.set('task', ctx.task);
+      params.set('search', name);
+      params.set('limit', '10');
+      const rows = await this.api('/api/files/programs?' + params.toString());
+      if (!rows || rows.length === 0) {
+        this.cliPrint('未找到匹配程序: ' + name, 'error');
+        return null;
+      }
+      const exact = rows.find(r => r.program_key.toUpperCase() === name.toUpperCase()
+                                 || r.display_name.toUpperCase() === name.toUpperCase());
+      if (exact) return exact;
+      if (rows.length === 1) return rows[0];
+      this.cliPrint('多个匹配, 请指定更精确的名称:', 'error');
+      for (let i = 0; i < rows.length; i++) {
+        this.cliPrint('  ' + (i + 1) + '. ' + rows[i].display_name + ' (' + rows[i].extension + ', ' + rows[i].version_count + ' versions)', 'info');
+      }
+      return null;
+    },
+
+    async cliResolveVersion(program, atN) {
+      const ctx = this._cliCwdContext();
+      const params = new URLSearchParams();
+      params.set('program_key', program.program_key);
+      if (program.extension) params.set('extension', program.extension);
+      if (ctx.compound) params.set('compound', ctx.compound);
+      if (ctx.project) params.set('project', ctx.project);
+      if (ctx.task) params.set('task', ctx.task);
+      const tl = await this.api('/api/files/timeline?' + params.toString());
+      if (!tl || tl.length === 0) {
+        this.cliPrint('该程序没有索引版本', 'error');
+        return null;
+      }
+      const idx = (atN || 1) - 1;
+      if (idx < 0 || idx >= tl.length) {
+        this.cliPrint('@' + (idx + 1) + ' 超出范围 (共 ' + tl.length + ' 个版本)', 'error');
+        return null;
+      }
+      return tl[idx];
+    },
+
+    _cliParseProgramToken(token) {
+      const m = token.match(/^(.+?)@(\d+)$/);
+      if (m) return { name: m[1], at: parseInt(m[2], 10) };
+      return { name: token, at: 1 };
+    },
+
+    async cliRunLine(raw) {
+      const line = (raw || '').trim();
+      if (!line) return;
+      this.cliPrint(this.cliPrompt() + line, 'cmd');
+      this.cli.history.push(line);
+      this.cli.historyIdx = -1;
+
+      const parts = line.match(/"([^"]*)"|\S+/g) || [];
+      const tokens = parts.map(t => t.replace(/^"|"$/g, ''));
+      const cmd = (tokens[0] || '').toLowerCase();
+      const rest = tokens.slice(1);
+
+      const handlers = {
+        help: () => this.cli_help(rest),
+        cd: () => this.cli_cd(rest),
+        pwd: () => this.cli_pwd(),
+        ls: () => this.cli_ls(rest),
+        cat: () => this.cli_cat(rest),
+        timeline: () => this.cli_timeline(rest),
+        diff: () => this.cli_diff(rest),
+        qc: () => this.cli_qc(rest),
+        snap: () => this.cli_snap(rest),
+        status: () => this.cli_status(),
+        reindex: () => this.cli_reindex(),
+        clear: () => this.cli_clear(),
+      };
+
+      if (!handlers[cmd]) {
+        this.cliPrint('未知命令: ' + cmd + ' (输入 help 查看帮助)', 'error');
+        return;
+      }
+      try {
+        await handlers[cmd]();
+      } catch (err) {
+        this.cliPrint('错误: ' + (err.message || String(err)), 'error');
+      }
+    },
+
+    cli_help(args) {
+      const cmds = {
+        help:     'help [cmd]                  显示帮助',
+        cd:       'cd <path>                   切换上下文 (cd QL1706, cd .., cd /)',
+        pwd:      'pwd                         显示当前上下文路径',
+        ls:       'ls [--ext .sas] [--role main|qc] [--search AE]  列出当前层级内容',
+        cat:      'cat <program>[@n]           预览程序 (n=第几新版本, 默认1=最新)',
+        timeline: 'timeline <program>          列出程序所有索引版本',
+        diff:     'diff <P> <Q> [-w] [-i]      比较两个目标 (program[@n] 或 #file_id)',
+        qc:       'qc                          当前上下文的 QC 检查表',
+        snap:     'snap <program>[@n] [-n "note"]  为版本创建快照',
+        status:   'status                      索引状态',
+        reindex:  'reindex                     重建索引',
+        clear:    'clear                       清屏',
+      };
+      if (args && args.length > 0) {
+        const key = args[0].toLowerCase();
+        if (cmds[key]) {
+          this.cliPrint(cmds[key], 'info');
+          if (key === 'cd') {
+            this.cliPrintLines([
+              '路径层级: / → compounds → projects → tasks',
+              '示例:',
+              '  cd QL1706                    进入 compound',
+              '  cd QL1706/QL1706-307         进入 project',
+              '  cd QL1706/QL1706-307/SP/dryrun  进入 task',
+              '  cd ..                        上一级',
+              '  cd /                         回到根目录',
+            ]);
+          }
+          if (key === 'diff') {
+            this.cliPrintLines([
+              '每个目标可以是:',
+              '  AE            程序名 (最新版本)',
+              '  AE@2          程序名第2新版本',
+              '  #123          索引文件 id',
+              '标志:',
+              '  -w            忽略空白',
+              '  -i            忽略大小写',
+            ]);
+          }
+        } else {
+          this.cliPrint('未知命令: ' + key, 'error');
+        }
+        return;
+      }
+      this.cliPrint('可用命令:', 'header');
+      for (const v of Object.values(cmds)) {
+        this.cliPrint('  ' + v, 'info');
+      }
+      this.cliPrint('', 'info');
+      this.cliPrint('路径层级: / → compound → project → task → programs', 'info');
+      this.cliPrint('快捷键: Ctrl+` 打开/关闭, Esc 关闭, ↑↓ 历史', 'info');
+    },
+
+    async cli_cd(args) {
+      if (!args || args.length === 0) {
+        this.cli.cwd = [];
+        this.cliPrint('/', 'info');
+        return;
+      }
+      const target = args.join(' ');
+      if (target === '/') {
+        this.cli.cwd = [];
+        this.cliPrint('/', 'info');
+        return;
+      }
+      if (target === '..') {
+        if (this.cli.cwd.length > 0) {
+          const last = this.cli.cwd[this.cli.cwd.length - 1];
+          if (last.includes('/')) {
+            const parts = last.split('/');
+            parts.pop();
+            if (parts.length > 0) {
+              this.cli.cwd = [...this.cli.cwd.slice(0, -1), parts.join('/')];
+            } else {
+              this.cli.cwd = this.cli.cwd.slice(0, -1);
+            }
+          } else {
+            this.cli.cwd = this.cli.cwd.slice(0, -1);
+          }
+        }
+        this.cliPrint(this.cli.cwd.length > 0 ? '/' + this.cli.cwd.join('/') : '/', 'info');
+        return;
+      }
+
+      let segments;
+      if (target.startsWith('/')) {
+        segments = target.slice(1).split('/').filter(Boolean);
+      } else {
+        segments = [...this.cli.cwd];
+        const tail = this.cli.cwd.length >= 3 ? this.cli.cwd[2] : null;
+        const newParts = target.split('/').filter(Boolean);
+        if (segments.length < 2) {
+          segments = segments.concat(newParts);
+        } else if (segments.length === 2) {
+          segments = [segments[0], segments[1], newParts.join('/')];
+        } else {
+          segments = [segments[0], segments[1], (tail ? tail + '/' : '') + newParts.join('/')];
+        }
+      }
+
+      if (segments.length === 0) {
+        this.cli.cwd = [];
+        this.cliPrint('/', 'info');
+        return;
+      }
+
+      const compound = segments[0];
+      if (!(this.contexts.compounds || []).includes(compound)) {
+        const lc = compound.toLowerCase();
+        const found = (this.contexts.compounds || []).find(c => c.toLowerCase() === lc);
+        if (found) segments[0] = found;
+        else {
+          this.cliPrint('compound 不存在: ' + compound, 'error');
+          return;
+        }
+      }
+
+      if (segments.length >= 2) {
+        const opts = await this.fetchFilterOptions(segments[0], null);
+        const projects = opts.projects || [];
+        if (!projects.includes(segments[1])) {
+          const lc = segments[1].toLowerCase();
+          const found = projects.find(p => p.toLowerCase() === lc);
+          if (found) segments[1] = found;
+          else {
+            this.cliPrint('project 不存在: ' + segments[1] + ' (在 ' + segments[0] + ' 下)', 'error');
+            return;
+          }
+        }
+      }
+
+      if (segments.length >= 3) {
+        const opts = await this.fetchFilterOptions(segments[0], segments[1]);
+        const tasks = opts.tasks || [];
+        const taskPath = segments.slice(2).join('/');
+        if (!tasks.includes(taskPath)) {
+          const lc = taskPath.toLowerCase();
+          const found = tasks.find(t => t.toLowerCase() === lc);
+          if (found) {
+            segments = [segments[0], segments[1], found];
+          } else {
+            const partial = tasks.filter(t => t.toLowerCase().startsWith(lc));
+            if (partial.length === 1) {
+              segments = [segments[0], segments[1], partial[0]];
+            } else {
+              this.cliPrint('task 不存在: ' + taskPath + ' (在 ' + segments[0] + '/' + segments[1] + ' 下)', 'error');
+              if (partial.length > 1) {
+                this.cliPrint('部分匹配:', 'info');
+                for (const t of partial) this.cliPrint('  ' + t, 'info');
+              }
+              return;
+            }
+          }
+        } else {
+          segments = [segments[0], segments[1], taskPath];
+        }
+      }
+
+      this.cli.cwd = segments.length > 3 ? [segments[0], segments[1], segments.slice(2).join('/')] : segments;
+      this.cliPrint('/' + this.cli.cwd.join('/'), 'success');
+    },
+
+    cli_pwd() {
+      this.cliPrint(this.cli.cwd.length > 0 ? '/' + this.cli.cwd.join('/') : '/', 'info');
+    },
+
+    async cli_ls(args) {
+      const { flags } = this._cliParseArgs(args || []);
+      const ctx = this._cliCwdContext();
+      const depth = this.cli.cwd.length;
+
+      if (depth === 0) {
+        const compounds = this.contexts.compounds || [];
+        if (compounds.length === 0) {
+          this.cliPrint('(空 — 索引中没有 compounds)', 'info');
+          return;
+        }
+        this.cliPrint(this._cliPad('COMPOUND', 24) + 'projects', 'header');
+        this.cliPrint('-'.repeat(44), 'info');
+        for (const c of compounds) {
+          try {
+            const opts = await this.fetchFilterOptions(c, null);
+            this.cliPrint(this._cliPad(c, 24) + (opts.projects || []).length, 'info');
+          } catch (_) {
+            this.cliPrint(this._cliPad(c, 24) + '?', 'info');
+          }
+        }
+        return;
+      }
+
+      if (depth === 1) {
+        const opts = await this.fetchFilterOptions(ctx.compound, null);
+        const projects = opts.projects || [];
+        if (projects.length === 0) {
+          this.cliPrint('(没有 projects)', 'info');
+          return;
+        }
+        this.cliPrint(this._cliPad('PROJECT', 28) + 'tasks', 'header');
+        this.cliPrint('-'.repeat(44), 'info');
+        for (const p of projects) {
+          try {
+            const o2 = await this.fetchFilterOptions(ctx.compound, p);
+            this.cliPrint(this._cliPad(p, 28) + (o2.tasks || []).length, 'info');
+          } catch (_) {
+            this.cliPrint(this._cliPad(p, 28) + '?', 'info');
+          }
+        }
+        return;
+      }
+
+      if (depth === 2) {
+        const opts = await this.fetchFilterOptions(ctx.compound, ctx.project);
+        const tasks = opts.tasks || [];
+        if (tasks.length === 0) {
+          this.cliPrint('(没有 tasks)', 'info');
+          return;
+        }
+        this.cliPrint('TASK', 'header');
+        this.cliPrint('-'.repeat(36), 'info');
+        for (const t of tasks) this.cliPrint('  ' + t, 'info');
+        return;
+      }
+
+      const params = new URLSearchParams();
+      params.set('compound', ctx.compound);
+      if (ctx.project) params.set('project', ctx.project);
+      if (ctx.task) params.set('task', ctx.task);
+      if (flags.ext) params.set('extension', flags.ext);
+      if (flags.role) params.set('role', flags.role);
+      if (flags.search) params.set('search', flags.search);
+      params.set('limit', '300');
+      const rows = await this.api('/api/files/programs?' + params.toString());
+      if (!rows || rows.length === 0) {
+        this.cliPrint('(没有匹配的程序)', 'info');
+        return;
+      }
+      this.cliPrint(
+        this._cliPad('PROGRAM', 30) +
+        this._cliPad('EXT', 8) +
+        this._cliPad('VER', 6) +
+        'LATEST',
+        'header'
+      );
+      this.cliPrint('-'.repeat(70), 'info');
+      for (const r of rows) {
+        this.cliPrint(
+          this._cliPad(r.display_name, 30) +
+          this._cliPad(r.extension, 8) +
+          this._cliPad(r.version_count, 6) +
+          this.formatDateTime(r.latest_modified_time),
+          'info'
+        );
+      }
+    },
+
+    async cli_cat(args) {
+      if (!args || args.length === 0) {
+        this.cliPrint('用法: cat <program>[@n]', 'error');
+        return;
+      }
+      const parsed = this._cliParseProgramToken(args[0]);
+      const program = await this.cliResolveProgram(parsed.name);
+      if (!program) return;
+      const version = await this.cliResolveVersion(program, parsed.at);
+      if (!version) return;
+
+      const prev = await this.api('/api/files/indexed-preview/' + version.id);
+      this.cliPrint('--- ' + version.file_name + ' (id=' + version.id + ', ' + this.formatDateTime(version.modified_time) + ') ---', 'header');
+      const lines = (prev.text || '').split('\n');
+      const pad = String(lines.length).length;
+      for (let i = 0; i < lines.length; i++) {
+        this.cliPrint(String(i + 1).padStart(pad) + ' | ' + lines[i], 'info');
+      }
+      this.cliPrint('--- ' + prev.line_count + ' lines, ' + this.formatSize(prev.size_bytes) + ', ' + prev.encoding + ' ---', 'header');
+    },
+
+    async cli_timeline(args) {
+      if (!args || args.length === 0) {
+        this.cliPrint('用法: timeline <program>', 'error');
+        return;
+      }
+      const program = await this.cliResolveProgram(args[0]);
+      if (!program) return;
+
+      const ctx = this._cliCwdContext();
+      const params = new URLSearchParams();
+      params.set('program_key', program.program_key);
+      if (program.extension) params.set('extension', program.extension);
+      if (ctx.compound) params.set('compound', ctx.compound);
+      if (ctx.project) params.set('project', ctx.project);
+      if (ctx.task) params.set('task', ctx.task);
+      const tl = await this.api('/api/files/timeline?' + params.toString());
+
+      if (!tl || tl.length === 0) {
+        this.cliPrint('没有索引版本', 'info');
+        return;
+      }
+      this.cliPrint(
+        this._cliPad('@', 4) +
+        this._cliPad('ID', 8) +
+        this._cliPad('FILE', 28) +
+        this._cliPad('PROJECT/TASK', 28) +
+        'MTIME',
+        'header'
+      );
+      this.cliPrint('-'.repeat(88), 'info');
+      for (let i = 0; i < tl.length; i++) {
+        const v = tl[i];
+        this.cliPrint(
+          this._cliPad('@' + (i + 1), 4) +
+          this._cliPad(v.id, 8) +
+          this._cliPad(v.file_name, 28) +
+          this._cliPad(v.project + '/' + v.task, 28) +
+          this.formatDateTime(v.modified_time),
+          'info'
+        );
+      }
+    },
+
+    async cli_diff(args) {
+      if (!args || args.length < 2) {
+        this.cliPrint('用法: diff <P> <Q> [-w] [-i]', 'error');
+        this.cliPrint('  P/Q: program[@n] 或 #file_id', 'info');
+        return;
+      }
+      const { flags, positional } = this._cliParseArgs(args);
+      if (positional.length < 2) {
+        this.cliPrint('需要两个比较目标', 'error');
+        return;
+      }
+
+      const resolveTarget = async (token) => {
+        if (token.startsWith('#')) {
+          const fid = parseInt(token.slice(1), 10);
+          if (isNaN(fid)) { this.cliPrint('无效 file_id: ' + token, 'error'); return null; }
+          return { file_id: fid };
+        }
+        const parsed = this._cliParseProgramToken(token);
+        const program = await this.cliResolveProgram(parsed.name);
+        if (!program) return null;
+        const version = await this.cliResolveVersion(program, parsed.at);
+        if (!version) return null;
+        return { file_id: version.id };
+      };
+
+      const pTarget = await resolveTarget(positional[0]);
+      if (!pTarget) return;
+      const qTarget = await resolveTarget(positional[1]);
+      if (!qTarget) return;
+
+      const ignoreWs = flags.w === true || flags.w === 'true';
+      const ignoreCi = flags.i === true || flags.i === 'true';
+
+      const params = new URLSearchParams();
+      params.set('a_file_id', String(pTarget.file_id));
+      params.set('b_file_id', String(qTarget.file_id));
+      if (ignoreWs) params.set('ignore_whitespace', 'true');
+      if (ignoreCi) params.set('ignore_case', 'true');
+      params.set('mode', 'unified');
+
+      this.cliPrint('正在比较...', 'info');
+      const data = await this.api('/api/files/indexed-diff?' + params.toString());
+      const summ = data.summary || {};
+      this.cliPrint(data.a_label + '  vs  ' + data.b_label, 'header');
+      this.cliPrint('+' + (summ.inserted || 0) + ' / -' + (summ.deleted || 0) + ' / ~' + (summ.replaced || 0) + ' (' + (summ.total || 0) + ' lines)', 'info');
+
+      for (const ul of (data.unified_lines || [])) {
+        const k = ul.kind;
+        if (k === 'hunk') {
+          this.cliPrint(ul.text, 'diff-hunk');
+        } else if (k === 'insert') {
+          this.cliPrint('+' + (ul.text || ''), 'diff-add');
+        } else if (k === 'delete') {
+          this.cliPrint('-' + (ul.text || ''), 'diff-del');
+        } else {
+          this.cliPrint(' ' + (ul.text || ''), 'info');
+        }
+      }
+    },
+
+    async cli_qc(args) {
+      const ctx = this._cliCwdContext();
+      if (!ctx.compound) {
+        this.cliPrint('请先 cd 到某个 compound 下再执行 qc', 'error');
+        return;
+      }
+      const params = new URLSearchParams();
+      params.set('compound', ctx.compound);
+      if (ctx.project) params.set('project', ctx.project);
+      if (ctx.task) params.set('task', ctx.task);
+
+      const rows = await this.api('/api/files/indexed-qc-timing?' + params.toString());
+      if (!rows || rows.length === 0) {
+        this.cliPrint('(没有 QC 数据)', 'info');
+        return;
+      }
+      this.cliPrint(
+        this._cliPad('TASK', 22) +
+        this._cliPad('PROGRAM', 20) +
+        this._cliPad('MAIN LOG', 22) +
+        this._cliPad('QC LOG', 22) +
+        this._cliPad('STATUS', 14) +
+        'STALE',
+        'header'
+      );
+      this.cliPrint('-'.repeat(106), 'info');
+      for (const r of rows) {
+        const reason = r.reason || 'ok';
+        const type = reason === 'qc-missing' ? 'error' : reason === 'qc-older' ? 'diff-del' : 'success';
+        this.cliPrint(
+          this._cliPad(r.task, 22) +
+          this._cliPad(r.program, 20) +
+          this._cliPad(this.formatDateTime(r.main_log_mtime), 22) +
+          this._cliPad(this.formatDateTime(r.qc_log_mtime), 22) +
+          this._cliPad(reason, 14) +
+          String(r.stale),
+          type
+        );
+      }
+    },
+
+    async cli_snap(args) {
+      if (!args || args.length === 0) {
+        this.cliPrint('用法: snap <program>[@n] [-n "note"]', 'error');
+        return;
+      }
+      const { flags, positional } = this._cliParseArgs(args);
+      if (positional.length === 0) {
+        this.cliPrint('需要指定程序名', 'error');
+        return;
+      }
+      const parsed = this._cliParseProgramToken(positional[0]);
+      const program = await this.cliResolveProgram(parsed.name);
+      if (!program) return;
+      const version = await this.cliResolveVersion(program, parsed.at);
+      if (!version) return;
+
+      const prev = await this.api('/api/files/indexed-preview/' + version.id);
+      const fullPath = prev.file && prev.file.full_path;
+      if (!fullPath) {
+        this.cliPrint('无法获取文件路径', 'error');
+        return;
+      }
+      const note = flags.n || flags.note || '';
+      const result = await this.api('/api/files/snapshot', {
+        method: 'POST',
+        body: JSON.stringify({ path: fullPath, note: note }),
+      });
+      const dedup = result.deduplicated ? ' (已去重, 内容未变)' : '';
+      this.cliPrint('快照已创建: id=' + result.id + dedup, 'success');
+    },
+
+    async cli_status() {
+      const s = await this.api('/api/files/status');
+      this.cliPrint('索引文件数:   ' + s.indexed_files, 'info');
+      this.cliPrint('程序组数:     ' + s.program_groups, 'info');
+      this.cliPrint('最后索引时间: ' + this.formatDateTime(s.last_indexed_at), 'info');
+    },
+
+    async cli_reindex() {
+      this.cliPrint('正在重建索引...', 'info');
+      await this.api('/api/files/reindex', { method: 'POST' });
+      await this.loadStatus();
+      await this.loadContexts();
+      this.cliPrint('索引重建完成', 'success');
+      await this.cli_status();
+    },
+
+    cli_clear() {
+      this.cli.output = [];
     },
   };
 }

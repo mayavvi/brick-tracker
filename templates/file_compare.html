@@ -2,7 +2,9 @@
 {% block title %}Program Replay | PEAK{% endblock %}
 
 {% block body %}
-<div x-data="codeIndexWorkbench()" x-init="init()" class="h-[calc(100vh-5rem)] px-6 py-5 max-w-[1920px] mx-auto flex flex-col gap-4">
+<div x-data="codeIndexWorkbench()" x-init="init()"
+     @keydown.window="$event.ctrlKey && $event.key === '`' && ($event.preventDefault() || toggleCli())"
+     class="h-[calc(100vh-5rem)] px-6 py-5 max-w-[1920px] mx-auto flex flex-col gap-4">
   <section class="shrink-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white/85 dark:bg-stone-900/75 backdrop-blur shadow-pop overflow-hidden">
     <div class="px-5 py-4 bg-gradient-to-r from-warm-500/10 via-neon-500/10 to-transparent">
       <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
@@ -26,8 +28,58 @@
             <span class="font-semibold">Q</span>
             <span class="truncate max-w-[20rem]" x-text="compareLabel(compareQ)"></span>
           </span>
+          <button type="button" @click="toggleCli()"
+                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-stone-300 dark:border-stone-700 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-100 hover:border-stone-500 transition font-mono text-[11px]">
+            <span>>_</span><span>CLI</span><span class="text-[9px] text-stone-400">Ctrl+`</span>
+          </button>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section x-show="globalQcOpen" x-cloak class="shrink-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white/80 dark:bg-stone-900/70 backdrop-blur shadow-pop overflow-hidden flex flex-col max-h-[min(55vh,28rem)]">
+    <div class="px-4 py-3 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/40 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <p class="text-[11px] uppercase tracking-[0.16em] text-stone-400">QC 全局检查</p>
+        <p class="mt-0.5 text-xs text-stone-500 dark:text-stone-400">按左侧 Compound / Project / Task 筛选，检查该范围内 Main vs QC 日志时间。</p>
+      </div>
+      <button type="button" @click="loadGlobalQcRows()" class="h-8 px-3 rounded-lg bg-neon-500 text-white text-xs font-semibold shrink-0">刷新</button>
+    </div>
+    <template x-if="globalQcLoading">
+      <div class="px-4 py-8 text-center text-xs font-mono text-warm-400 animate-pulse">正在加载…</div>
+    </template>
+    <template x-if="!globalQcLoading && globalQcRows.length === 0">
+      <div class="px-4 py-6 text-center text-xs text-stone-500">无数据。请确认已选 Compound（或 Project/Task），然后点刷新。</div>
+    </template>
+    <div class="overflow-auto flex-1 min-h-0" x-show="!globalQcLoading && globalQcRows.length > 0">
+      <table class="w-full border-collapse text-[12px]">
+        <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
+          <tr class="text-[11px] text-stone-500">
+            <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Task</th>
+            <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Program</th>
+            <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Main Log</th>
+            <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">QC Log</th>
+            <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Status</th>
+            <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="(row, idx) in globalQcRows" :key="'gqc-' + row.task + '::' + row.program + '::' + idx">
+            <tr class="border-b border-stone-100 dark:border-stone-900" :class="row.stale ? 'bg-violet-50/60 dark:bg-violet-900/15' : ''">
+              <td class="px-2 py-2 font-mono text-[11px]" x-text="row.task"></td>
+              <td class="px-2 py-2 font-semibold" x-text="row.program"></td>
+              <td class="px-2 py-2 text-[11px] font-mono" x-text="formatDateTime(row.main_log_mtime)"></td>
+              <td class="px-2 py-2 text-[11px] font-mono" x-text="formatDateTime(row.qc_log_mtime)"></td>
+              <td class="px-2 py-2"><span class="px-2 py-0.5 rounded-full text-[10px] font-semibold" :class="qcBadgeClass(row.reason)" x-text="qcText(row.reason)"></span></td>
+              <td class="px-2 py-2">
+                <button type="button" @click="compareQcRow(row)" :disabled="!row.main_sas_path || !row.qc_sas_path" class="h-8 px-3 rounded-lg border border-stone-300 dark:border-stone-700 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
+                  作为 P/Q 比较
+                </button>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
     </div>
   </section>
 
@@ -78,30 +130,72 @@
           <div class="grid grid-cols-1 gap-3">
             <div>
               <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Compound</label>
-              <select x-model="filters.compound" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
-                <option value="">All compounds</option>
-                <template x-for="item in contexts.compounds" :key="item">
-                  <option :value="item" x-text="item"></option>
-                </template>
-              </select>
+              <div class="relative" @click.outside="compoundOpen = false">
+                <input type="text"
+                       x-model="compoundSearch"
+                       @focus="compoundOpen = true"
+                       placeholder="全部 / 输入筛选…"
+                       class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none" />
+                <div x-show="compoundOpen"
+                     x-transition
+                     class="absolute z-[60] mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 shadow-lg py-1">
+                  <button type="button"
+                          class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300"
+                          @click="pickCompound('')">全部 Compound</button>
+                  <template x-for="item in compoundOptionItems()" :key="'cmp-' + item">
+                    <button type="button"
+                            class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-stone-800 truncate"
+                            @click="pickCompound(item)"
+                            x-text="item"></button>
+                  </template>
+                </div>
+              </div>
             </div>
             <div>
               <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Project</label>
-              <select x-model="filters.project" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
-                <option value="">All projects</option>
-                <template x-for="item in contexts.projects" :key="item">
-                  <option :value="item" x-text="item"></option>
-                </template>
-              </select>
+              <div class="relative" @click.outside="projectOpen = false">
+                <input type="text"
+                       x-model="projectSearch"
+                       @focus="projectOpen = true"
+                       placeholder="全部 / 输入筛选…"
+                       class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none" />
+                <div x-show="projectOpen"
+                     x-transition
+                     class="absolute z-[60] mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 shadow-lg py-1">
+                  <button type="button"
+                          class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300"
+                          @click="pickProject('')">全部 Project</button>
+                  <template x-for="item in projectOptionItems()" :key="'prj-' + item">
+                    <button type="button"
+                            class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-stone-800 truncate"
+                            @click="pickProject(item)"
+                            x-text="item"></button>
+                  </template>
+                </div>
+              </div>
             </div>
             <div>
               <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Task</label>
-              <select x-model="filters.task" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
-                <option value="">All tasks</option>
-                <template x-for="item in contexts.tasks" :key="item">
-                  <option :value="item" x-text="item"></option>
-                </template>
-              </select>
+              <div class="relative" @click.outside="taskOpen = false">
+                <input type="text"
+                       x-model="taskSearch"
+                       @focus="taskOpen = true"
+                       placeholder="全部 / 输入筛选…"
+                       class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none" />
+                <div x-show="taskOpen"
+                     x-transition
+                     class="absolute z-[60] mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 shadow-lg py-1">
+                  <button type="button"
+                          class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300"
+                          @click="pickTask('')">全部 Task</button>
+                  <template x-for="item in taskOptionItems()" :key="'tsk-' + item">
+                    <button type="button"
+                            class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 dark:hover:bg-stone-800 truncate"
+                            @click="pickTask(item)"
+                            x-text="item"></button>
+                  </template>
+                </div>
+              </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
@@ -123,6 +217,11 @@
                 </select>
               </div>
             </div>
+            <button type="button"
+                    @click="toggleGlobalQc()"
+                    class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 text-sm font-semibold text-stone-800 dark:text-stone-100 hover:bg-warm-500/10 transition">
+              <span x-text="globalQcOpen ? '收起 QC 全局检查' : 'QC 全局检查'"></span>
+            </button>
           </div>
         </section>
 
@@ -220,11 +319,11 @@
     </aside>
 
     <section class="min-h-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white/80 dark:bg-stone-900/70 backdrop-blur shadow-pop flex flex-col overflow-hidden">
-      <template x-if="!selectedProgram">
+      <template x-if="!selectedProgram && !standaloneCompareMode()">
         <div class="h-full flex items-center justify-center px-10 text-center">
           <div>
             <p class="text-base font-semibold text-stone-700 dark:text-stone-200">等待选择程序</p>
-            <p class="mt-3 text-xs font-mono text-stone-500 dark:text-stone-400">左侧点击程序可展开版本历史；再次点击当前程序可取消选择。</p>
+            <p class="mt-3 text-xs font-mono text-stone-500 dark:text-stone-400">左侧点击程序可展开版本历史；再次点击当前程序可取消选择。也可从「QC 全局检查」或路径比较进入比较视图。</p>
           </div>
         </div>
       </template>
@@ -524,7 +623,189 @@
           </div>
         </div>
       </template>
+
+      <template x-if="standaloneCompareMode()">
+        <div class="h-full min-h-0 flex flex-col">
+          <div class="px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/40 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <h3 class="text-base font-semibold text-stone-800 dark:text-stone-100">程序比较（独立视图）</h3>
+            <button type="button" @click="clearSelection()" class="h-8 px-3 rounded-lg border border-stone-300 dark:border-stone-700 text-xs font-semibold shrink-0">关闭比较</button>
+          </div>
+          <div class="h-full min-h-0 flex flex-col flex-1">
+            <div class="px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/40 space-y-3">
+              <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 items-center">
+                <div class="rounded-xl border-l-4 border-sky-500 bg-white dark:bg-stone-950 px-3 py-3 min-w-0">
+                  <p class="text-[10px] uppercase tracking-[0.16em] text-sky-500">P</p>
+                  <p class="mt-1 text-sm font-semibold text-stone-800 dark:text-stone-100 truncate" x-text="compareLabel(compareP)"></p>
+                </div>
+                <button type="button" @click="swapCompareSides()" :disabled="!compareP || !compareQ" class="h-9 px-3 rounded-lg border border-stone-300 dark:border-stone-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">交换 P/Q</button>
+                <div class="rounded-xl border-l-4 border-emerald-500 bg-white dark:bg-stone-950 px-3 py-3 min-w-0">
+                  <p class="text-[10px] uppercase tracking-[0.16em] text-emerald-500">Q</p>
+                  <p class="mt-1 text-sm font-semibold text-stone-800 dark:text-stone-100 truncate" x-text="compareLabel(compareQ)"></p>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-3">
+                <div class="inline-flex rounded-lg border border-stone-300 dark:border-stone-700 overflow-hidden">
+                  <button type="button" @click="setDiffViewMode('side-by-side')" class="px-3 h-8 text-xs font-semibold transition" :class="diffViewMode === 'side-by-side' ? 'bg-neon-500 text-white' : 'bg-white dark:bg-stone-950'">side-by-side</button>
+                  <button type="button" @click="setDiffViewMode('unified')" class="px-3 h-8 text-xs font-semibold transition border-l border-stone-300 dark:border-stone-700" :class="diffViewMode === 'unified' ? 'bg-neon-500 text-white' : 'bg-white dark:bg-stone-950'">unified</button>
+                </div>
+                <label class="text-[11px] flex items-center gap-1.5 text-stone-500">
+                  <input type="checkbox" x-model="diffIgnoreWhitespace" @change="rerunDiff()" />
+                  忽略空白
+                </label>
+                <label class="text-[11px] flex items-center gap-1.5 text-stone-500">
+                  <input type="checkbox" x-model="diffIgnoreCase" @change="rerunDiff()" />
+                  忽略大小写
+                </label>
+                <button type="button"
+                        @click="runDiff()"
+                        :disabled="!compareP || !compareQ || diffLoading"
+                        class="h-8 px-3 rounded-lg bg-neon-500 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                  <span x-text="diffLoading ? '比较中…' : '刷新比较'"></span>
+                </button>
+                <span class="ml-auto text-[11px] font-mono text-stone-500" x-show="diffResult" x-text="diffSummary()"></span>
+              </div>
+            </div>
+            <template x-if="compareP && compareQ && diffLoading">
+              <div class="flex-1 flex items-center justify-center min-h-[12rem]">
+                <p class="text-xs font-mono text-warm-400 animate-pulse">正在计算结构化比较结果…</p>
+              </div>
+            </template>
+            <template x-if="compareP && compareQ && diffResult && !diffLoading">
+              <div class="flex-1 min-h-0 flex flex-col">
+                <div class="px-4 py-2 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/40 flex flex-wrap items-center gap-2">
+                  <span class="text-[11px] font-semibold text-sky-500" x-text="diffResult.a_label"></span>
+                  <span class="text-stone-400">→</span>
+                  <span class="text-[11px] font-semibold text-emerald-500" x-text="diffResult.b_label"></span>
+                </div>
+                <div x-ref="diffSideScrollContainer" @scroll="onDiffSideScroll($event)" class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'side-by-side'">
+                  <table class="w-full border-collapse text-[12px]">
+                    <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
+                      <tr class="text-[11px]">
+                        <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-sky-500">P#</th>
+                        <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800 text-sky-500">P</th>
+                        <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-emerald-500">Q#</th>
+                        <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800 text-emerald-500">Q</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr x-show="diffTopSpacer() > 0" :style="'height:' + diffTopSpacer() + 'px'">
+                        <td colspan="4" class="p-0 border-0"></td>
+                      </tr>
+                      <template x-for="wrap in visibleDiffLines()" :key="'sds-' + wrap.idx">
+                        <tr class="align-top border-b border-stone-100 dark:border-stone-900">
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.a_lineno || ''"></td>
+                          <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(wrap.line.op, 'p')" x-text="wrap.line.a_text || ' '"></pre></td>
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.b_lineno || ''"></td>
+                          <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(wrap.line.op, 'q')" x-text="wrap.line.b_text || ' '"></pre></td>
+                        </tr>
+                      </template>
+                      <tr x-show="diffBottomSpacer() > 0" :style="'height:' + diffBottomSpacer() + 'px'">
+                        <td colspan="4" class="p-0 border-0"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div x-ref="diffUnifiedScrollContainer" @scroll="onDiffUnifiedScroll($event)" class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'unified'">
+                  <table class="w-full border-collapse text-[12px]">
+                    <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
+                      <tr class="text-[11px]">
+                        <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-sky-500">P#</th>
+                        <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-emerald-500">Q#</th>
+                        <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800">Unified Diff</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr x-show="diffUnifiedTopSpacer() > 0" :style="'height:' + diffUnifiedTopSpacer() + 'px'">
+                        <td colspan="3" class="p-0 border-0"></td>
+                      </tr>
+                      <template x-for="wrap in visibleUnifiedLines()" :key="'sdu-' + wrap.idx">
+                        <tr class="align-top border-b border-stone-100 dark:border-stone-900">
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.kind === 'hunk' ? '' : (wrap.line.a_lineno || '')"></td>
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.kind === 'hunk' ? '' : (wrap.line.b_lineno || '')"></td>
+                          <td class="py-1 pr-2">
+                            <pre class="font-mono whitespace-pre-wrap break-words" :class="unifiedLineClass(wrap.line)" x-text="wrap.line.text || ' '"></pre>
+                          </td>
+                        </tr>
+                      </template>
+                      <tr x-show="diffUnifiedBottomSpacer() > 0" :style="'height:' + diffUnifiedBottomSpacer() + 'px'">
+                        <td colspan="3" class="p-0 border-0"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
     </section>
+  </div>
+
+  <!-- Web CLI overlay — iTerm2-style centered floating terminal -->
+  <div x-show="cli.open" x-cloak
+       @keydown.escape.window="cli.open = false"
+       @click.self="cli.open = false"
+       x-transition:enter="transition ease-out duration-150"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-100"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+
+    <!-- Terminal window -->
+    <div x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-100"
+         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+         x-transition:leave-end="opacity-0 scale-95 translate-y-2"
+         @click.stop
+         class="w-[min(860px,92vw)] h-[min(560px,80vh)] flex flex-col rounded-xl overflow-hidden shadow-2xl border border-stone-700/60"
+         style="background: #1a1b26;">
+
+      <!-- Title bar (iTerm2 style) -->
+      <div class="flex items-center gap-2 px-4 py-3 shrink-0 select-none" style="background: #16171f; border-bottom: 1px solid rgba(255,255,255,0.07);">
+        <!-- Traffic lights -->
+        <button type="button" @click="cli.open = false"
+                class="w-3 h-3 rounded-full bg-rose-500 hover:bg-rose-400 transition shrink-0 flex items-center justify-center group">
+          <span class="hidden group-hover:block text-rose-900 leading-none" style="font-size:8px;">✕</span>
+        </button>
+        <span class="w-3 h-3 rounded-full bg-amber-400/60 shrink-0"></span>
+        <span class="w-3 h-3 rounded-full bg-emerald-500/60 shrink-0"></span>
+        <!-- Title -->
+        <span class="flex-1 text-center text-[11px] text-stone-500 font-mono tracking-wider">PEAK CLI — <span x-text="cli.cwd.length ? '/' + cli.cwd.join('/') : '/'"></span></span>
+        <!-- Shortcut hint -->
+        <span class="text-[10px] text-stone-600 font-mono shrink-0">Ctrl+`</span>
+      </div>
+
+      <!-- Output area -->
+      <div x-ref="cliOutput"
+           class="flex-1 overflow-auto px-4 py-3 font-mono text-[13px] leading-6"
+           style="color: #c0caf5;">
+        <template x-for="(line, i) in cli.output" :key="i">
+          <pre class="whitespace-pre-wrap break-words m-0 leading-6" :class="cliLineClass(line.type)" x-text="line.text"></pre>
+        </template>
+        <!-- cursor blink when empty -->
+        <template x-if="cli.output.length === 0">
+          <p class="text-stone-600 text-xs font-mono">PEAK 程序回放台 · 输入 <span class="text-warm-400">help</span> 查看命令列表</p>
+        </template>
+      </div>
+
+      <!-- Prompt line -->
+      <div class="flex items-center gap-0 px-4 py-3 shrink-0 font-mono text-[13px]"
+           style="border-top: 1px solid rgba(255,255,255,0.07); background: #16171f;">
+        <span class="text-warm-400 shrink-0 select-none" x-text="cliPrompt()"></span>
+        <input type="text" x-model="cli.input"
+               x-ref="cliInput"
+               @keydown.enter.prevent="cliRunLine(cli.input); cli.input = ''"
+               @keydown.up.prevent="cliHistoryUp()"
+               @keydown.down.prevent="cliHistoryDown()"
+               autocomplete="off" spellcheck="false"
+               class="flex-1 bg-transparent outline-none caret-warm-400 font-mono text-[13px]"
+               style="color: #c0caf5;" />
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

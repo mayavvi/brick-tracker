@@ -11,7 +11,15 @@ from pathlib import Path
 
 from config import DATABASE_PATH, PROJECTS_BASE_PATH
 from database import get_db, init_db
-from models import CodeIndexContext, CodeIndexStatus, IndexedFile, ProgramGroup, ProgramVersion, QcTimingRow
+from models import (
+    CodeIndexContext,
+    CodeIndexFilterOptions,
+    CodeIndexStatus,
+    IndexedFile,
+    ProgramGroup,
+    ProgramVersion,
+    QcTimingRow,
+)
 from services.file_reader import read_text, read_text_full
 
 logger = logging.getLogger(__name__)
@@ -283,6 +291,49 @@ async def get_contexts() -> CodeIndexContext:
         tasks=await _distinct_values(db, "task"),
         extensions=await _distinct_values(db, "extension"),
     )
+
+
+async def get_filter_options(
+    compound: str | None = None,
+    project: str | None = None,
+) -> CodeIndexFilterOptions:
+    """Return distinct projects (and tasks) scoped by compound / project."""
+    await ensure_index()
+    if not compound:
+        return CodeIndexFilterOptions()
+    db = await _get_index_db()
+    rows_p = await db.execute_fetchall(
+        """
+        SELECT DISTINCT project AS value
+        FROM indexed_files
+        WHERE compound = ? AND project <> ''
+        ORDER BY project ASC
+        """,
+        (compound,),
+    )
+    projects = [r["value"] for r in rows_p if r["value"]]
+    if project:
+        rows_t = await db.execute_fetchall(
+            """
+            SELECT DISTINCT task AS value
+            FROM indexed_files
+            WHERE compound = ? AND project = ? AND task <> ''
+            ORDER BY task ASC
+            """,
+            (compound, project),
+        )
+    else:
+        rows_t = await db.execute_fetchall(
+            """
+            SELECT DISTINCT task AS value
+            FROM indexed_files
+            WHERE compound = ? AND task <> ''
+            ORDER BY task ASC
+            """,
+            (compound,),
+        )
+    tasks = [r["value"] for r in rows_t if r["value"]]
+    return CodeIndexFilterOptions(projects=projects, tasks=tasks)
 
 
 async def query_program_groups(

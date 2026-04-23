@@ -264,6 +264,13 @@ class CodeIndexContext(BaseModel):
     extensions: list[str] = Field(default_factory=list)
 
 
+class CodeIndexFilterOptions(BaseModel):
+    """Cascading filter options for compound / project / task pickers."""
+
+    projects: list[str] = Field(default_factory=list)
+    tasks: list[str] = Field(default_factory=list)
+
+
 class CodeIndexStatus(BaseModel):
     """Top-level status summary for the code index."""
 
