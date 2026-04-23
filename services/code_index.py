@@ -132,14 +132,15 @@ def _extract_task_context(
     return {"task": "/".join(task_parts)}
 
 
-def _collect_index_rows(base: Path) -> list[tuple]:
-    """Scan *base* on disk and return rows ready for ``indexed_files`` insert."""
+def _collect_index_rows(scan_root: Path, base_path: Path | None = None) -> list[tuple]:
+    """Scan *scan_root* on disk and return rows ready for ``indexed_files`` insert."""
+    actual_base = (base_path or scan_root).resolve()
     rows: list[tuple] = []
-    for path in base.rglob("*"):
+    for path in scan_root.rglob("*"):
         if not path.is_file():
             continue
         try:
-            entry = parse_index_entry(path, base_path=base)
+            entry = parse_index_entry(path, base_path=actual_base)
         except (FileNotFoundError, PermissionError, OSError):
             logger.warning("Skipping unreadable file during indexing: %s", path)
             continue
@@ -164,27 +165,35 @@ def _collect_index_rows(base: Path) -> list[tuple]:
     return rows
 
 
+def _scan_available_scopes_sync() -> list[dict]:
+    """Scan top 2 directory levels under PROJECTS_BASE_PATH (fast, no file I/O)."""
+    base = PROJECTS_BASE_PATH.resolve()
+    if not base.is_dir():
+        return []
+    scopes = []
+    try:
+        for compound_dir in sorted(base.iterdir()):
+            if not compound_dir.is_dir():
+                continue
+            try:
+                projects = sorted(p.name for p in compound_dir.iterdir() if p.is_dir())
+            except PermissionError:
+                projects = []
+            scopes.append({"compound": compound_dir.name, "projects": projects})
+    except PermissionError:
+        pass
+    return scopes
+
+
 async def ensure_index() -> CodeIndexStatus:
-    """Ensure the global index exists before serving queries."""
+    """Mark index as bootstrapped (lazy mode: no auto full-rebuild on startup)."""
     global _INDEX_BOOTSTRAPPED
     if _INDEX_BOOTSTRAPPED:
         return await get_status()
-
     async with _REBUILD_LOCK:
         if _INDEX_BOOTSTRAPPED:
             return await get_status()
-        db = await _get_index_db()
-        row = await _fetchone(
-            db,
-            """
-            SELECT COUNT(*) AS indexed_files
-            FROM indexed_files
-            """,
-        )
-        if row and row["indexed_files"] > 0:
-            _INDEX_BOOTSTRAPPED = True
-            return await get_status()
-        await _rebuild_index_locked()
+        _INDEX_BOOTSTRAPPED = True
         return await get_status()
 
 
@@ -202,7 +211,7 @@ async def _rebuild_index_locked() -> dict[str, int | str]:
     if not base.is_dir():
         raise FileNotFoundError(f"Projects base path does not exist: {base}")
 
-    rows = await asyncio.to_thread(_collect_index_rows, base)
+    rows = await asyncio.to_thread(_collect_index_rows, base, base)
     db = await _get_index_db()
 
     insert_sql = """
@@ -279,6 +288,107 @@ async def get_status() -> CodeIndexStatus:
         program_groups=(group_row["program_groups"] if group_row else 0),
         last_indexed_at=last_indexed_at,
     )
+
+
+async def scan_available_scopes() -> list[dict]:
+    """Return compound/project directories that exist on disk (fast scan, no file indexing)."""
+    return await asyncio.to_thread(_scan_available_scopes_sync)
+
+
+async def get_indexed_scopes() -> list[dict]:
+    """Return compound/project pairs that have entries in the index."""
+    await ensure_index()
+    db = await _get_index_db()
+    rows = await db.execute_fetchall(
+        """
+        SELECT compound, project, COUNT(*) AS file_count
+        FROM indexed_files
+        WHERE compound <> '' AND project <> ''
+        GROUP BY compound, project
+        ORDER BY compound ASC, project ASC
+        """
+    )
+    return [
+        {"compound": r["compound"], "project": r["project"], "file_count": r["file_count"]}
+        for r in rows
+    ]
+
+
+async def index_scope(compound: str, project: str | None = None) -> dict:
+    """Index only the files under a specific compound (and optionally project)."""
+    global _INDEX_BOOTSTRAPPED
+    base = PROJECTS_BASE_PATH.resolve()
+    scan_root = base / compound
+    if project:
+        scan_root = scan_root / project
+    if not scan_root.is_dir():
+        raise FileNotFoundError(f"Scope path does not exist: {scan_root}")
+
+    rows = await asyncio.to_thread(_collect_index_rows, scan_root, base)
+    db = await _get_index_db()
+
+    insert_sql = """
+        INSERT INTO indexed_files (
+            full_path, rel_path, compound, project, task,
+            file_name, program_key, extension, role,
+            modified_time, size, content_hash
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+
+    await db.execute("BEGIN IMMEDIATE")
+    try:
+        if project:
+            await db.execute(
+                "DELETE FROM indexed_files WHERE compound = ? AND project = ?",
+                (compound, project),
+            )
+        else:
+            await db.execute(
+                "DELETE FROM indexed_files WHERE compound = ?",
+                (compound,),
+            )
+        for start in range(0, len(rows), _INSERT_BATCH_SIZE):
+            chunk = rows[start : start + _INSERT_BATCH_SIZE]
+            await db.executemany(insert_sql, chunk)
+        now = datetime.now().isoformat(timespec="seconds")
+        total_row = await _fetchone(db, "SELECT COUNT(*) AS n FROM indexed_files")
+        total = total_row["n"] if total_row else len(rows)
+        await db.execute(
+            """
+            INSERT INTO code_index_runs (id, last_indexed_at, indexed_files)
+            VALUES (1, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                last_indexed_at = excluded.last_indexed_at,
+                indexed_files = excluded.indexed_files
+            """,
+            (now, total),
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    _INDEX_BOOTSTRAPPED = True
+    logger.info("Indexed scope %s/%s: %d files", compound, project or "*", len(rows))
+    return {"compound": compound, "project": project, "indexed_files": len(rows), "last_indexed_at": now}
+
+
+async def remove_scope(compound: str, project: str | None = None) -> dict:
+    """Remove all indexed entries for a compound (and optionally a specific project)."""
+    db = await _get_index_db()
+    if project:
+        await db.execute(
+            "DELETE FROM indexed_files WHERE compound = ? AND project = ?",
+            (compound, project),
+        )
+    else:
+        await db.execute(
+            "DELETE FROM indexed_files WHERE compound = ?",
+            (compound,),
+        )
+    await db.commit()
+    return {"removed": True, "compound": compound, "project": project}
 
 
 async def get_contexts() -> CodeIndexContext:

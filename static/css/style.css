@@ -21,6 +21,15 @@
 [x-cloak] { display: none !important; }
 [x-collapse] { overflow: hidden; }
 
+/* ── SAS syntax highlight (TokyoNight color tokens) ── */
+.sas-comment  { color: #6a9955; }
+.sas-keyword  { color: #4ec9b0; }
+.sas-proc     { color: #569cd6; }
+.sas-macro    { color: #c586c0; }
+.sas-macrovar { color: #dcdcaa; }
+.sas-string   { color: #ce9178; }
+.sas-number   { color: #b5cea8; }
+
 /* ── PEAK CLI terminal colors (TokyoNight-inspired) ── */
 .cli-color-prompt  { color: #7dcfff; }
 .cli-color-error   { color: #f7768e; }

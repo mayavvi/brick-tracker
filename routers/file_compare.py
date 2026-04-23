@@ -41,6 +41,11 @@ class CodeIndexRebuildResponse(BaseModel):
     last_indexed_at: str
 
 
+class ScopePayload(BaseModel):
+    compound: str = Field(..., min_length=1)
+    project: str | None = None
+
+
 @router.get("/tree")
 def file_tree(
     study_id: str = Query(..., min_length=1),
@@ -229,6 +234,55 @@ def qc_timing(
     except Exception:
         logger.exception("QC timing check failed: study=%s", study_id)
         raise HTTPException(status_code=500, detail="QC timing check failed")
+
+
+@router.get("/available-scopes")
+async def available_scopes(_: User = Depends(get_current_user)) -> list[dict]:
+    """Return compound/project directories available on disk (no indexing performed)."""
+    try:
+        return await code_index.scan_available_scopes()
+    except Exception:
+        logger.exception("Failed to scan available scopes")
+        raise HTTPException(status_code=500, detail="Failed to scan available scopes")
+
+
+@router.get("/indexed-scopes")
+async def indexed_scopes(_: User = Depends(get_current_user)) -> list[dict]:
+    """Return compound/project pairs that have been indexed."""
+    try:
+        return await code_index.get_indexed_scopes()
+    except Exception:
+        logger.exception("Failed to get indexed scopes")
+        raise HTTPException(status_code=500, detail="Failed to get indexed scopes")
+
+
+@router.post("/index-scope")
+async def index_scope_endpoint(
+    payload: ScopePayload,
+    _: User = Depends(get_current_user),
+) -> dict:
+    """Index files for one compound (and optionally one project)."""
+    try:
+        return await code_index.index_scope(payload.compound, payload.project)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception:
+        logger.exception("Failed to index scope %s/%s", payload.compound, payload.project)
+        raise HTTPException(status_code=500, detail="Failed to index scope")
+
+
+@router.delete("/remove-scope")
+async def remove_scope_endpoint(
+    compound: str = Query(..., min_length=1),
+    project: str | None = Query(None),
+    _: User = Depends(get_current_user),
+) -> dict:
+    """Remove indexed entries for a compound (or a specific project within it)."""
+    try:
+        return await code_index.remove_scope(compound, project)
+    except Exception:
+        logger.exception("Failed to remove scope %s/%s", compound, project)
+        raise HTTPException(status_code=500, detail="Failed to remove scope")
 
 
 @router.get("/status", response_model=CodeIndexStatus)

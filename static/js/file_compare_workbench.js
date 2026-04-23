@@ -14,6 +14,7 @@ function codeIndexWorkbench() {
     selectedVersion: null,
     preview: null,
     _previewLineCache: null,
+    _previewHighlightCache: null,
     previewRowHeight: 18,
     previewVisibleStart: 0,
     previewVisibleEnd: 0,
@@ -45,6 +46,11 @@ function codeIndexWorkbench() {
     globalQcOpen: false,
     globalQcRows: [],
     globalQcLoading: false,
+    indexedScopes: [],
+    availableScopes: [],
+    shelfSearch: '',
+    shelfOpen: false,
+    scopeIndexing: null,
 
     standaloneCompareMode() {
       return !this.selectedProgram && this.resultMode === 'compare' && !!(this.compareP && this.compareQ);
@@ -152,8 +158,11 @@ function codeIndexWorkbench() {
 
     async init() {
       await this.loadStatus();
+      await this.loadIndexedScopes();
       await this.loadContexts();
-      await this.loadPrograms();
+      if (this.indexedScopes.length > 0) {
+        await this.loadPrograms();
+      }
     },
 
     async api(url, options) {
@@ -187,6 +196,76 @@ function codeIndexWorkbench() {
       this.contexts = await this.api('/api/files/contexts');
       await this.refreshCascadeLists();
       this.syncFilterSearchInputs();
+    },
+
+    async loadIndexedScopes() {
+      try {
+        this.indexedScopes = await this.api('/api/files/indexed-scopes');
+      } catch (_) {
+        this.indexedScopes = [];
+      }
+    },
+
+    async loadAvailableScopes() {
+      try {
+        this.availableScopes = await this.api('/api/files/available-scopes');
+      } catch (err) {
+        this.toast(err.message || '无法获取目录列表', 'error');
+        this.availableScopes = [];
+      }
+    },
+
+    filteredAvailableScopes() {
+      const q = (this.shelfSearch || '').trim().toLowerCase();
+      if (!q) return this.availableScopes;
+      return this.availableScopes.map(scope => {
+        const compoundMatch = scope.compound.toLowerCase().includes(q);
+        const projects = scope.projects.filter(p => p.toLowerCase().includes(q));
+        if (!compoundMatch && projects.length === 0) return null;
+        return { compound: scope.compound, projects: compoundMatch ? scope.projects : projects };
+      }).filter(Boolean);
+    },
+
+    isScopeIndexed(compound, project) {
+      return this.indexedScopes.some(s => s.compound === compound && s.project === project);
+    },
+
+    isScopeIndexing(compound, project) {
+      return this.scopeIndexing && this.scopeIndexing.compound === compound && this.scopeIndexing.project === project;
+    },
+
+    async addScope(compound, project) {
+      this.scopeIndexing = { compound, project };
+      try {
+        await this.api('/api/files/index-scope', {
+          method: 'POST',
+          body: JSON.stringify({ compound, project }),
+        });
+        await this.loadIndexedScopes();
+        await this.loadStatus();
+        await this.loadContexts();
+        await this.loadPrograms();
+        this.toast(`已索引: ${compound}/${project}`, 'success');
+      } catch (err) {
+        this.toast(err.message || '索引失败', 'error');
+      } finally {
+        this.scopeIndexing = null;
+      }
+    },
+
+    async removeScope(compound, project) {
+      try {
+        const params = new URLSearchParams({ compound });
+        if (project) params.set('project', project);
+        await this.api('/api/files/remove-scope?' + params.toString(), { method: 'DELETE' });
+        await this.loadIndexedScopes();
+        await this.loadStatus();
+        await this.loadContexts();
+        await this.loadPrograms();
+        this.toast(`已移除: ${compound}/${project || '*'}`, 'success');
+      } catch (err) {
+        this.toast(err.message || '移除失败', 'error');
+      }
     },
 
     buildProgramQuery() {
@@ -248,6 +327,7 @@ function codeIndexWorkbench() {
       this.selectedVersion = null;
       this.preview = null;
       this._previewLineCache = null;
+      this._previewHighlightCache = null;
       this.previewVisibleStart = 0;
       this.previewVisibleEnd = 0;
       this.snapshots = [];
@@ -278,6 +358,7 @@ function codeIndexWorkbench() {
       this.selectedVersion = null;
       this.preview = null;
       this._previewLineCache = null;
+      this._previewHighlightCache = null;
       this.snapshots = [];
       this.resultMode = 'preview';
       this.compareP = null;
@@ -316,6 +397,12 @@ function codeIndexWorkbench() {
       try {
         this.preview = await this.api('/api/files/indexed-preview/' + fileId);
         this._previewLineCache = this.preview.text ? this.preview.text.split('\n') : [];
+        const ext = (this.preview.file && this.preview.file.extension) || '';
+        if (ext === '.sas' && this.preview.size_bytes < 500_000) {
+          this._previewHighlightCache = this._sasSyntaxHighlight(this.preview.text || '');
+        } else {
+          this._previewHighlightCache = null;
+        }
         this.previewVisibleStart = 0;
         this.previewVisibleEnd = 0;
         await this.loadSnapshots(this.preview.file.full_path);
@@ -346,11 +433,21 @@ function codeIndexWorkbench() {
     visiblePreviewRows() {
       if (!this._previewLineCache || this._previewLineCache.length === 0) return [];
       const end = this.previewVisibleEnd || this._previewLineCache.length;
+      const hl = this._previewHighlightCache;
       const out = [];
       for (let i = this.previewVisibleStart; i < end; i++) {
-        out.push({ n: i + 1, text: this._previewLineCache[i] });
+        const raw = this._previewLineCache[i];
+        out.push({
+          n: i + 1,
+          html: hl ? (hl[i] !== undefined ? hl[i] : '') : this._escHtml(raw !== undefined ? raw : ''),
+          isSas: !!hl,
+        });
       }
       return out;
+    },
+
+    _escHtml(s) {
+      return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     },
 
     previewTopSpacer() {
@@ -691,6 +788,261 @@ function codeIndexWorkbench() {
       if (reason === 'qc-older') return 'bg-amber-500/15 text-amber-700 dark:text-amber-300';
       if (reason === 'qc-missing') return 'bg-rose-500/15 text-rose-700 dark:text-rose-300';
       return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300';
+    },
+
+    // ── SAS syntax highlight ───────────────────────────────────
+    _sasSyntaxHighlight(text) {
+      const DATA_KW = new Set([
+        'data','set','merge','by','where','if','then','else','do','end',
+        'output','keep','drop','retain','format','informat','label','array',
+        'link','return','stop','put','input','cards','datalines','run','quit',
+        'length','attrib','rename','missing','in','not','and','or',
+      ]);
+      const PROC_KW = new Set([
+        'proc','var','model','class','tables','freq','means','sort','print',
+        'report','univariate','options','libname','filename','title','footnote',
+        'weight','ways','types','id','strata','test','contrast','estimate',
+        'lsmeans','output','format','informat','ods','template',
+      ]);
+      const MACRO_KW = new Set([
+        '%macro','%mend','%let','%put','%if','%then','%else','%do','%end',
+        '%until','%while','%include','%global','%local','%return','%sysfunc',
+        '%eval','%str','%nrstr','%upcase','%lowcase','%left','%trim','%scan',
+        '%substr','%length','%index','%qscan','%qsubstr','%sysevalf',
+      ]);
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const wrap = (cls, s) => `<span class="${cls}">${esc(s)}</span>`;
+
+      const len = text.length;
+      const htmlParts = [];
+      let i = 0;
+      let atStmtStart = true;
+
+      while (i < len) {
+        const ch = text[i];
+
+        // Block comment /* ... */
+        if (ch === '/' && text[i + 1] === '*') {
+          const end = text.indexOf('*/', i + 2);
+          const raw = end === -1 ? text.slice(i) : text.slice(i, end + 2);
+          htmlParts.push(wrap('sas-comment', raw));
+          i = end === -1 ? len : end + 2;
+          continue;
+        }
+
+        // Statement comment: * ... ; only at start of statement
+        if (atStmtStart && ch === '*') {
+          const semi = text.indexOf(';', i + 1);
+          const raw = semi === -1 ? text.slice(i) : text.slice(i, semi + 1);
+          htmlParts.push(wrap('sas-comment', raw));
+          i = semi === -1 ? len : semi + 1;
+          atStmtStart = true;
+          continue;
+        }
+
+        // Single-quoted string
+        if (ch === "'") {
+          let j = i + 1;
+          while (j < len) {
+            if (text[j] === "'" && text[j + 1] === "'") { j += 2; continue; }
+            if (text[j] === "'") { j++; break; }
+            j++;
+          }
+          htmlParts.push(wrap('sas-string', text.slice(i, j)));
+          i = j;
+          atStmtStart = false;
+          continue;
+        }
+
+        // Double-quoted string
+        if (ch === '"') {
+          let j = i + 1;
+          while (j < len) {
+            if (text[j] === '"' && text[j + 1] === '"') { j += 2; continue; }
+            if (text[j] === '"') { j++; break; }
+            j++;
+          }
+          htmlParts.push(wrap('sas-string', text.slice(i, j)));
+          i = j;
+          atStmtStart = false;
+          continue;
+        }
+
+        // Macro variable: &name or &&name
+        if (ch === '&') {
+          let j = i + 1;
+          if (text[j] === '&') j++;
+          const start = j;
+          while (j < len && /\w/.test(text[j])) j++;
+          if (j > start) {
+            htmlParts.push(wrap('sas-macrovar', text.slice(i, j)));
+            i = j;
+            atStmtStart = false;
+            continue;
+          }
+        }
+
+        // Macro keyword: %keyword
+        if (ch === '%') {
+          let j = i + 1;
+          while (j < len && /\w/.test(text[j])) j++;
+          const token = text.slice(i, j).toLowerCase();
+          if (MACRO_KW.has(token)) {
+            htmlParts.push(wrap('sas-macro', text.slice(i, j)));
+          } else {
+            htmlParts.push(esc(text.slice(i, j)));
+          }
+          i = j;
+          atStmtStart = false;
+          continue;
+        }
+
+        // Word token
+        if (/[a-zA-Z_]/.test(ch)) {
+          let j = i + 1;
+          while (j < len && /\w/.test(text[j])) j++;
+          const word = text.slice(i, j);
+          const lower = word.toLowerCase();
+          if (DATA_KW.has(lower)) {
+            htmlParts.push(wrap('sas-keyword', word));
+          } else if (PROC_KW.has(lower)) {
+            htmlParts.push(wrap('sas-proc', word));
+          } else {
+            htmlParts.push(esc(word));
+          }
+          i = j;
+          atStmtStart = false;
+          continue;
+        }
+
+        // Number
+        if (/[0-9]/.test(ch) || (ch === '.' && /[0-9]/.test(text[i + 1] || ''))) {
+          let j = i + 1;
+          while (j < len && /[0-9.eE+\-]/.test(text[j])) j++;
+          htmlParts.push(wrap('sas-number', text.slice(i, j)));
+          i = j;
+          atStmtStart = false;
+          continue;
+        }
+
+        // Track statement boundaries via ';'
+        if (ch === ';') atStmtStart = true;
+        else if (ch !== ' ' && ch !== '\t' && ch !== '\n' && ch !== '\r') atStmtStart = false;
+
+        htmlParts.push(esc(ch));
+        i++;
+      }
+
+      return htmlParts.join('').split('\n');
+    },
+
+    // ── CLI tab completion ────────────────────────────────────
+    _cliCommonPrefix(arr) {
+      if (!arr.length) return '';
+      let prefix = arr[0];
+      for (let i = 1; i < arr.length; i++) {
+        while (!arr[i].toLowerCase().startsWith(prefix.toLowerCase())) {
+          prefix = prefix.slice(0, -1);
+          if (!prefix) return '';
+        }
+      }
+      return prefix;
+    },
+
+    async _cliTabCompletePath() {
+      const input = this.cli.input;
+      const m = input.match(/^cd\s*(.*)/i);
+      if (!m) return;
+      const partial = m[1];
+      const cwd = this.cli.cwd;
+      const depth = cwd.length;
+      let candidates = [];
+
+      if (depth === 0 || partial.startsWith('/')) {
+        candidates = (this.contexts.compounds || []);
+      } else if (depth === 1) {
+        const opts = await this.fetchFilterOptions(cwd[0], null);
+        candidates = opts.projects || [];
+      } else if (depth >= 2) {
+        const opts = await this.fetchFilterOptions(cwd[0], cwd[1]);
+        candidates = opts.tasks || [];
+      }
+
+      const lc = partial.toLowerCase();
+      const matches = candidates.filter(c => c.toLowerCase().startsWith(lc));
+      if (matches.length === 0) return;
+      if (matches.length === 1) {
+        this.cli.input = 'cd ' + matches[0];
+      } else {
+        const common = this._cliCommonPrefix(matches);
+        if (common.length > partial.length) {
+          this.cli.input = 'cd ' + common;
+        } else {
+          this.cliPrint(matches.join('  '), 'info');
+        }
+      }
+    },
+
+    async _cliTabCompleteProgram() {
+      const input = this.cli.input;
+      const parts = input.match(/"([^"]*)"|(\S+)/g) || [];
+      const tokens = parts.map(t => t.replace(/^"|"$/g, ''));
+      const cmd = (tokens[0] || '').toLowerCase();
+      const partial = tokens[tokens.length - 1] || '';
+      if (tokens.length <= 1) return;
+
+      const ctx = this._cliCwdContext();
+      if (!ctx.compound) return;
+      const params = new URLSearchParams();
+      params.set('compound', ctx.compound);
+      if (ctx.project) params.set('project', ctx.project);
+      if (ctx.task) params.set('task', ctx.task);
+      params.set('search', partial.replace(/@\d+$/, ''));
+      params.set('limit', '20');
+      try {
+        const rows = await this.api('/api/files/programs?' + params.toString());
+        const names = (rows || []).map(r => r.display_name);
+        const lc = partial.toLowerCase();
+        const matches = names.filter(n => n.toLowerCase().startsWith(lc));
+        if (matches.length === 0) return;
+        if (matches.length === 1) {
+          const before = tokens.slice(0, -1).join(' ');
+          this.cli.input = (before ? before + ' ' : '') + matches[0];
+        } else {
+          const common = this._cliCommonPrefix(matches);
+          if (common.length > partial.length) {
+            const before = tokens.slice(0, -1).join(' ');
+            this.cli.input = (before ? before + ' ' : '') + common;
+          } else {
+            this.cliPrint(matches.join('  '), 'info');
+          }
+        }
+      } catch (_) {}
+    },
+
+    async cliTabComplete() {
+      const input = (this.cli.input || '').trimStart();
+      if (!input) {
+        this.cliPrint('可用命令: help cd pwd ls cat timeline diff qc snap status reindex clear', 'info');
+        return;
+      }
+      const firstWord = input.split(/\s+/)[0].toLowerCase();
+      if (firstWord === 'cd') {
+        await this._cliTabCompletePath();
+        return;
+      }
+      if (['cat', 'timeline', 'snap', 'diff'].includes(firstWord) && input.includes(' ')) {
+        await this._cliTabCompleteProgram();
+        return;
+      }
+      // Complete command name
+      const cmds = ['help','cd','pwd','ls','cat','timeline','diff','qc','snap','status','reindex','clear'];
+      const matches = cmds.filter(c => c.startsWith(firstWord));
+      if (matches.length === 1 && matches[0] !== firstWord) {
+        this.cli.input = matches[0] + ' ';
+      } else if (matches.length > 1) {
+        this.cliPrint(matches.join('  '), 'info');
+      }
     },
 
     // ── Web CLI ─────────────────────────────────────────────────
