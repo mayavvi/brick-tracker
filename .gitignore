@@ -46,3 +46,7 @@ rsconnect-python/
 
 # Claude Code local settings
 .claude/
+.agent/
+
+# Git worktrees
+.worktrees/

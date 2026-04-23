@@ -1,1078 +1,516 @@
 {% extends "base.html" %}
-{% block title %}文件预览与比对 — PEAK{% endblock %}
+{% block title %}Program Replay | PEAK{% endblock %}
 
 {% block body %}
-<div x-data="fileCompareApp()" x-init="init()" @keydown.window="onCopyShortcut($event)" class="h-[calc(100vh-5rem)] px-6 py-5 max-w-[1920px] mx-auto">
-  <div class="h-full min-h-0 flex flex-col rounded-2xl border border-stone-200 dark:border-stone-800 bg-white/80 dark:bg-stone-900/70 backdrop-blur shadow-pop overflow-hidden">
-
-    <div class="px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-gradient-to-r from-warm-500/10 via-neon-500/10 to-transparent">
-      <div class="flex flex-col lg:flex-row lg:items-center gap-3">
-        <div class="flex-1 flex flex-col sm:flex-row gap-2">
-          <select x-model="selectedStudyId" @change="onStudyChange()"
-                  class="h-10 sm:w-64 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm
-                         text-stone-800 dark:text-stone-200 focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none">
-            <option value="">// 先选个 study</option>
-            <template x-for="sid in studyList" :key="sid">
-              <option :value="sid" x-text="sid"></option>
-            </template>
-          </select>
-          <div class="flex-1 flex flex-col gap-0.5">
-            <input type="text"
-                   id="file-compare-search"
-                   x-model="searchQuery"
-                   @input.debounce.300ms="runSearch()"
-                   :disabled="!selectedStudyId"
-                   placeholder="// 搜索文件名；正则：re:pattern 或 /pattern/i"
-                   :class="searchError ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-400/40' : 'border-stone-300 dark:border-stone-700 focus:ring-warm-400/40 focus:border-warm-400'"
-                   class="h-10 w-full rounded-md border bg-white dark:bg-stone-950 px-3 text-sm
-                          text-stone-800 dark:text-stone-200 placeholder:text-stone-400
-                          focus:ring-2 outline-none disabled:opacity-50 disabled:cursor-not-allowed" />
-            <div x-show="searchQuery.trim()" class="flex items-center gap-2 h-4 px-1">
-              <span x-show="searchQuery.startsWith('re:') || (searchQuery.startsWith('/') && searchQuery.slice(1).includes('/'))"
-                    class="text-[10px] font-semibold text-amber-500 font-mono">● 正则模式</span>
-              <span x-show="searchError" x-text="searchError"
-                    class="text-[10px] text-rose-500 font-mono truncate"></span>
-            </div>
+<div x-data="codeIndexWorkbench()" x-init="init()" class="h-[calc(100vh-5rem)] px-6 py-5 max-w-[1920px] mx-auto flex flex-col gap-4">
+  <section class="shrink-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white/85 dark:bg-stone-900/75 backdrop-blur shadow-pop overflow-hidden">
+    <div class="px-5 py-4 bg-gradient-to-r from-warm-500/10 via-neon-500/10 to-transparent">
+      <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[11px] uppercase tracking-[0.18em] text-warm-500 font-semibold">Program Replay</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900">程序回放台</span>
           </div>
+          <h2 class="mt-2 text-lg font-semibold text-stone-800 dark:text-stone-100"
+              x-text="selectedProgram ? selectedProgram.display_name : '按程序回看版本与比较结果'"></h2>
+          <p class="mt-1 text-xs text-stone-500 dark:text-stone-400 leading-5"
+             x-text="selectedVersion ? ('当前版本：' + selectedVersion.project + ' / ' + selectedVersion.task + ' · ' + selectedVersion.file_name) : '左侧选择程序与版本，右侧专注展示预览、比较和 QC 检查结果。'"></p>
         </div>
-        <div class="text-xs font-mono text-stone-500 dark:text-stone-400">
-          <span x-show="selectedStudyId && !loadingTree" x-text="'FILES: ' + totalFiles"></span>
-          <span x-show="!selectedStudyId">// 选择 study 后可浏览目录</span>
-          <span x-show="loadingTree" class="animate-pulse">扫描中…</span>
-        </div>
-      </div>
 
-      <div class="mt-3 flex flex-wrap items-center gap-2">
-        <button type="button" @click="switchTab('browse')"
-                :class="activeTab==='browse' ? 'bg-warm-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
-                class="px-3 py-1.5 rounded-md text-xs font-semibold transition">浏览预览</button>
-        <button type="button" @click="switchTab('compare')"
-                :class="activeTab==='compare' ? 'bg-sky-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
-                class="px-3 py-1.5 rounded-md text-xs font-semibold transition">程序对比</button>
-        <button type="button" @click="switchTab('qc')"
-                :class="activeTab==='qc' ? 'bg-amber-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
-                class="px-3 py-1.5 rounded-md text-xs font-semibold transition">QC 时间检查</button>
-        <div class="ml-auto flex flex-wrap items-center gap-1.5">
-          <template x-for="k in ['all','sas','log','lst']" :key="k">
-            <button type="button"
-                    @click="toggleKindFilter(k)"
-                    :class="kindFilter===k ? 'bg-warm-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400'"
-                    class="px-2 py-0.5 rounded-full text-[11px] font-medium transition"
-                    x-text="k === 'all' ? '全部' : '.' + k"></button>
-          </template>
-          <span class="text-stone-300 dark:text-stone-600 text-[11px] select-none">|</span>
-          <template x-for="r in ['all','main','qc']" :key="r">
-            <button type="button"
-                    @click="toggleRoleFilter(r)"
-                    :class="roleFilter===r ? 'bg-sky-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400'"
-                    class="px-2 py-0.5 rounded-full text-[11px] font-medium transition"
-                    x-text="r"></button>
-          </template>
+        <div class="flex flex-wrap items-center gap-2 text-[11px]">
+          <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 text-sky-700 dark:text-sky-300">
+            <span class="font-semibold">P</span>
+            <span class="truncate max-w-[20rem]" x-text="compareLabel(compareP)"></span>
+          </span>
+          <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+            <span class="font-semibold">Q</span>
+            <span class="truncate max-w-[20rem]" x-text="compareLabel(compareQ)"></span>
+          </span>
         </div>
       </div>
     </div>
+  </section>
 
-    <main class="flex-1 min-h-0">
-      <section x-show="activeTab === 'browse'" class="h-full min-h-0 flex flex-col lg:flex-row">
-        <aside class="w-full lg:w-[34%] h-1/2 lg:h-full min-h-0 border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-stone-800 flex flex-col">
-          <div class="p-4 border-b border-stone-200 dark:border-stone-800 space-y-3">
-            <div>
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-warm-400 mb-2">最近预览</p>
-              <div class="max-h-56 overflow-auto rounded-md border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/40">
-                <template x-if="recentFiles.length === 0">
-                  <p class="text-xs text-stone-500 px-3 py-4 font-mono">// 暂无记录</p>
-                </template>
-                <template x-for="item in recentFiles" :key="item.abs_path">
-                  <button type="button"
-                          @click="previewFile(item.abs_path)"
-                          class="w-full text-left px-3 py-2 text-xs border-b border-stone-100 dark:border-stone-800 last:border-0
-                                 text-stone-700 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-900 transition">
-                    <div class="truncate font-medium" x-text="item.name"></div>
-                    <div class="truncate text-[10px] text-stone-500" x-text="item.rel_path"></div>
-                  </button>
-                </template>
-              </div>
-            </div>
+  <div class="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)] gap-4">
+    <aside class="min-h-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white/80 dark:bg-stone-900/70 backdrop-blur shadow-pop flex flex-col overflow-hidden">
+      <div class="px-4 py-4 border-b border-stone-200 dark:border-stone-800">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-[11px] uppercase tracking-[0.18em] text-stone-400">Index</p>
+            <h3 class="mt-1 text-base font-semibold text-stone-800 dark:text-stone-100">程序选择</h3>
+          </div>
+          <button type="button"
+                  @click="rebuildIndex()"
+                  :disabled="reindexing"
+                  class="h-9 px-3 rounded-lg bg-neon-grad text-white text-sm font-semibold shadow-glow hover:shadow-glow-lg disabled:opacity-60 disabled:cursor-not-allowed transition">
+            <span x-text="reindexing ? '重建中…' : '重建索引'"></span>
+          </button>
+        </div>
 
+        <div class="mt-4 grid grid-cols-2 gap-2">
+          <div class="rounded-lg bg-stone-50 dark:bg-stone-950/40 px-3 py-2">
+            <p class="text-[10px] uppercase tracking-[0.16em] text-stone-400">Files</p>
+            <p class="mt-1 text-lg font-semibold text-stone-800 dark:text-stone-100" x-text="status.indexed_files || 0"></p>
+          </div>
+          <div class="rounded-lg bg-stone-50 dark:bg-stone-950/40 px-3 py-2">
+            <p class="text-[10px] uppercase tracking-[0.16em] text-stone-400">Programs</p>
+            <p class="mt-1 text-lg font-semibold text-stone-800 dark:text-stone-100" x-text="status.program_groups || 0"></p>
+          </div>
+        </div>
+
+        <p class="mt-3 text-[11px] font-mono text-stone-500 dark:text-stone-400">
+          Last indexed: <span x-text="formatDateTime(status.last_indexed_at)"></span>
+        </p>
+      </div>
+
+      <div class="p-4 space-y-4 overflow-auto">
+        <section class="space-y-3">
+          <div>
+            <label for="program-search" class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">搜索</label>
+            <input id="program-search"
+                   type="text"
+                   x-model="searchQuery"
+                   @input.debounce.300ms="loadPrograms()"
+                   placeholder="A1 / AE / re:pattern"
+                   class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm text-stone-800 dark:text-stone-100 focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none" />
           </div>
 
-          <div class="flex-1 min-h-0 overflow-auto p-3">
-            <template x-if="!selectedStudyId">
-              <p class="text-xs font-mono text-stone-500 px-2 py-4">// 先选个 study，然后让我们看看里面都藏了什么</p>
-            </template>
-
-            <template x-if="selectedStudyId && searching">
-              <p class="text-xs font-mono text-warm-300 px-2 py-4 animate-pulse">▰▰▰ 检索中…</p>
-            </template>
-
-            <template x-if="selectedStudyId && !searching && searchQuery.trim().length > 0 && searchResults.length === 0">
-              <p class="text-xs font-mono text-stone-500 px-2 py-4">// 没找到。换个关键字或者去掉筛选器试试</p>
-            </template>
-
-            <template x-if="selectedStudyId && searchQuery.trim().length > 0 && searchResults.length > 0">
-              <div class="space-y-1">
-                <template x-for="item in searchResults" :key="item.abs_path">
-                  <div class="flex items-stretch gap-1">
-                    <button type="button"
-                            @click="previewFile(item.abs_path)"
-                            class="flex-1 min-w-0 text-left p-2 rounded-md border border-stone-200 dark:border-stone-800 hover:border-warm-400/60 hover:bg-warm-500/5 transition">
-                      <div class="flex items-center gap-2">
-                        <span class="text-[10px] px-1.5 py-0.5 rounded"
-                              :class="kindBadgeClass(item.kind)"
-                              x-text="item.kind"></span>
-                        <span class="text-xs font-medium text-stone-800 dark:text-stone-200 truncate" x-text="basename(item.abs_path)"></span>
-                      </div>
-                      <div class="text-[10px] font-mono text-stone-500 truncate mt-1" x-text="item.rel_path"></div>
-                      <div class="text-[10px] text-stone-500 mt-1">
-                        <span x-text="item.role"></span> · <span x-text="fmtTime(item.mtime)"></span>
-                      </div>
-                    </button>
-                    <div class="shrink-0 flex flex-col gap-1 py-1">
-                      <button type="button"
-                              @click="setCurrentAsCompare('a', item.abs_path)"
-                              title="设为 A 侧"
-                              class="flex-1 w-7 rounded text-[10px] font-bold bg-sky-500 text-white hover:bg-sky-600 transition">A</button>
-                      <button type="button"
-                              @click="setCurrentAsCompare('b', item.abs_path)"
-                              title="设为 B 侧"
-                              class="flex-1 w-7 rounded text-[10px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition">B</button>
-                    </div>
-                  </div>
+          <div class="grid grid-cols-1 gap-3">
+            <div>
+              <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Compound</label>
+              <select x-model="filters.compound" @change="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
+                <option value="">All compounds</option>
+                <template x-for="item in contexts.compounds" :key="item">
+                  <option :value="item" x-text="item"></option>
                 </template>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Project</label>
+              <select x-model="filters.project" @change="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
+                <option value="">All projects</option>
+                <template x-for="item in contexts.projects" :key="item">
+                  <option :value="item" x-text="item"></option>
+                </template>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Task</label>
+              <select x-model="filters.task" @change="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
+                <option value="">All tasks</option>
+                <template x-for="item in contexts.tasks" :key="item">
+                  <option :value="item" x-text="item"></option>
+                </template>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Type</label>
+                <select x-model="filters.extension" @change="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
+                  <option value="">All</option>
+                  <template x-for="item in contexts.extensions" :key="item">
+                    <option :value="item" x-text="item"></option>
+                  </template>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Role</label>
+                <select x-model="filters.role" @change="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
+                  <option value="">All</option>
+                  <option value="main">main</option>
+                  <option value="qc">qc</option>
+                  <option value="unknown">unknown</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/40 overflow-hidden">
+          <button type="button"
+                  @click="toggleBrowserPanel()"
+                  class="w-full px-4 py-3 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3 text-left">
+            <div>
+              <p class="text-[11px] uppercase tracking-[0.16em] text-stone-400">按程序浏览</p>
+              <p class="mt-1 text-xs text-stone-500 dark:text-stone-400">展开程序后，在左侧完成版本选择、P/Q 绑定和最近两版比较。</p>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+              <span class="text-[11px] font-mono text-stone-500" x-text="programs.length + ' rows'"></span>
+              <span class="text-stone-500 text-sm" x-text="browserPanelOpen ? '▾' : '▸'"></span>
+            </div>
+          </button>
+
+          <div x-show="browserPanelOpen">
+            <template x-if="programLoading">
+              <div class="px-4 py-8 text-center text-xs font-mono text-warm-400 animate-pulse">正在加载程序列表…</div>
+            </template>
+
+            <template x-if="!programLoading && programs.length === 0">
+              <div class="px-4 py-8 text-center">
+                <p class="text-sm font-semibold text-stone-700 dark:text-stone-200">没有匹配结果</p>
+                <p class="mt-2 text-xs font-mono text-stone-500">试着放宽筛选条件或换一个程序名。</p>
               </div>
             </template>
 
-            <template x-if="selectedStudyId && !loadingTree && searchQuery.trim().length === 0">
-              <div class="space-y-2">
-                <template x-for="task in fileTree.tasks" :key="task.task">
-                  <div class="rounded-md border border-stone-200 dark:border-stone-800 overflow-hidden">
-                    <button type="button" @click="toggleTask(task.task)"
-                            class="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold bg-stone-50 dark:bg-stone-950/40 text-stone-700 dark:text-stone-300">
-                      <span x-text="task.task"></span>
-                      <span class="font-mono text-[10px]" x-text="taskOpen[task.task] ? '-' : '+'"></span>
-                    </button>
-                    <div x-show="taskOpen[task.task]" class="p-2 space-y-2">
-                      <template x-for="folder in task.folders" :key="folder.path">
-                        <div class="rounded border border-stone-100 dark:border-stone-800">
-                          <button type="button" @click="toggleFolder(folder.path)"
-                                  class="w-full flex items-center justify-between px-2 py-1.5 text-[11px] text-stone-600 dark:text-stone-400 bg-white/70 dark:bg-stone-900/40">
-                            <span class="truncate" x-text="folder.path"></span>
-                            <span class="font-mono" x-text="folderOpen[folder.path] ? '-' : '+'"></span>
-                          </button>
-                          <div x-show="folderOpen[folder.path]" class="py-1">
-                            <template x-for="file in folder.files" :key="file.abs_path">
-                              <div class="group/file flex items-center gap-1 px-2 py-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 transition">
-                                <button type="button" @click="previewFile(file.abs_path)"
-                                        class="flex-1 min-w-0 text-left text-[11px]">
-                                  <div class="flex items-center gap-2">
-                                    <span class="text-[10px] px-1.5 py-0.5 rounded"
-                                          :class="kindBadgeClass(file.kind)"
-                                          x-text="file.kind"></span>
-                                    <span class="truncate text-stone-700 dark:text-stone-300" x-text="basename(file.abs_path)"></span>
-                                  </div>
-                                  <div class="text-[10px] text-stone-500 mt-0.5" x-text="fmtTime(file.mtime)"></div>
-                                </button>
-                                <div class="shrink-0 flex gap-1 opacity-0 group-hover/file:opacity-100 transition-opacity">
-                                  <button type="button"
-                                          @click.stop="setCurrentAsCompare('a', file.abs_path)"
-                                          title="设为 A"
-                                          class="w-5 h-5 rounded text-[9px] font-bold bg-sky-500 text-white hover:bg-sky-600 flex items-center justify-center">A</button>
-                                  <button type="button"
-                                          @click.stop="setCurrentAsCompare('b', file.abs_path)"
-                                          title="设为 B"
-                                          class="w-5 h-5 rounded text-[9px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 flex items-center justify-center">B</button>
-                                </div>
+            <div class="divide-y divide-stone-200 dark:divide-stone-800" x-show="!programLoading && programs.length > 0">
+              <template x-for="program in programs" :key="program.display_name">
+                <div>
+                  <button type="button"
+                          @click="selectProgram(program)"
+                          class="w-full text-left px-3 py-2 transition"
+                          :class="programIsSelected(program) ? 'bg-warm-500/10' : 'hover:bg-warm-500/5'">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                          <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-neon-500/10 text-neon-600 dark:text-neon-300" x-text="program.extension"></span>
+                          <p class="text-[13px] font-semibold text-stone-800 dark:text-stone-100 truncate" x-text="program.display_name"></p>
+                        </div>
+                        <p class="mt-1 text-[11px] text-stone-500 dark:text-stone-400 truncate" x-text="joinCompact(program.tasks)"></p>
+                      </div>
+                      <div class="shrink-0 text-right">
+                        <p class="text-[12px] font-semibold text-stone-800 dark:text-stone-100" x-text="program.version_count"></p>
+                        <p class="mt-0.5 text-[10px] font-mono text-stone-500" x-text="formatDateTime(program.latest_modified_time)"></p>
+                      </div>
+                    </div>
+                  </button>
+
+                  <div x-show="programIsSelected(program)" class="px-2 pb-2">
+                    <div class="px-2 py-2 flex items-center justify-between gap-2 text-[11px]">
+                      <span class="uppercase tracking-[0.14em] text-stone-400">Versions</span>
+                      <button type="button"
+                              @click="compareLatestTwo()"
+                              :disabled="timeline.length < 2"
+                              class="h-7 px-2 rounded border border-stone-300 dark:border-stone-700 text-[11px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
+                        最近两版
+                      </button>
+                    </div>
+
+                    <template x-if="timelineLoading">
+                      <div class="px-2 py-3 text-xs font-mono text-warm-400 animate-pulse">正在加载版本历史…</div>
+                    </template>
+
+                    <div class="space-y-1" x-show="!timelineLoading">
+                      <template x-for="version in timeline" :key="version.id">
+                        <div class="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-950/60 px-2.5 py-2"
+                             :class="selectedVersion && selectedVersion.id === version.id ? 'ring-1 ring-warm-400/50 border-warm-300 dark:border-warm-700' : ''">
+                          <button type="button" @click="selectVersion(version)" class="w-full text-left">
+                            <div class="flex items-start justify-between gap-2">
+                              <div class="min-w-0">
+                                <p class="text-[12px] font-semibold text-stone-800 dark:text-stone-100 truncate" x-text="version.file_name"></p>
+                                <p class="mt-0.5 text-[10px] text-stone-500 dark:text-stone-400 truncate" x-text="version.project + ' / ' + version.task"></p>
                               </div>
-                            </template>
+                              <span class="text-[10px] font-mono text-stone-500" x-text="formatDateTime(version.modified_time)"></span>
+                            </div>
+                          </button>
+                          <div class="mt-2 flex items-center gap-2">
+                            <button type="button" @click="setCompareVersion('p', version)" class="h-6 px-2 rounded bg-sky-500 text-white text-[10px] font-semibold">P</button>
+                            <button type="button" @click="setCompareVersion('q', version)" class="h-6 px-2 rounded bg-emerald-500 text-white text-[10px] font-semibold">Q</button>
+                            <button type="button" @click="selectVersion(version)" class="h-6 px-2 rounded border border-stone-300 dark:border-stone-700 text-[10px] font-semibold">预览</button>
                           </div>
                         </div>
                       </template>
                     </div>
                   </div>
-                </template>
+                </div>
+              </template>
+            </div>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <section class="min-h-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white/80 dark:bg-stone-900/70 backdrop-blur shadow-pop flex flex-col overflow-hidden">
+      <template x-if="!selectedProgram">
+        <div class="h-full flex items-center justify-center px-10 text-center">
+          <div>
+            <p class="text-base font-semibold text-stone-700 dark:text-stone-200">等待选择程序</p>
+            <p class="mt-3 text-xs font-mono text-stone-500 dark:text-stone-400">左侧点击程序可展开版本历史；再次点击当前程序可取消选择。</p>
+          </div>
+        </div>
+      </template>
+
+      <template x-if="selectedProgram">
+        <div class="h-full min-h-0 flex flex-col">
+          <div class="px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/40 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warm-500/10 text-warm-600 dark:text-warm-300" x-text="selectedProgram.extension"></span>
+                <h3 class="text-base font-semibold text-stone-800 dark:text-stone-100 truncate" x-text="selectedProgram.display_name"></h3>
+              </div>
+              <p class="mt-1 text-[11px] font-mono text-stone-500 dark:text-stone-400" x-text="'Latest: ' + formatDateTime(selectedProgram.latest_modified_time)"></p>
+            </div>
+
+            <div class="inline-flex rounded-xl border border-stone-300 dark:border-stone-700 overflow-hidden shrink-0">
+              <button type="button"
+                      @click="setResultMode('preview')"
+                      class="px-4 h-9 text-sm font-semibold transition"
+                      :class="resultMode === 'preview' ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-300'">
+                预览
+              </button>
+              <button type="button"
+                      @click="setResultMode('compare')"
+                      class="px-4 h-9 text-sm font-semibold transition border-l border-stone-300 dark:border-stone-700"
+                      :class="resultMode === 'compare' ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-300'">
+                比较
+              </button>
+              <button type="button"
+                      @click="setResultMode('qc')"
+                      class="px-4 h-9 text-sm font-semibold transition border-l border-stone-300 dark:border-stone-700"
+                      :class="resultMode === 'qc' ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900' : 'bg-white dark:bg-stone-950 text-stone-700 dark:text-stone-300'">
+                QC 检查
+              </button>
+            </div>
+          </div>
+
+          <div x-show="resultMode === 'preview'" class="h-full min-h-0 flex flex-col">
+            <template x-if="!preview">
+              <div class="h-full flex items-center justify-center px-8 text-center">
+                <div>
+                  <p class="text-sm font-semibold text-stone-700 dark:text-stone-200">还没有预览内容</p>
+                  <p class="mt-2 text-xs font-mono text-stone-500">在左侧选择一个版本，右侧会直接打开预览。</p>
+                </div>
+              </div>
+            </template>
+
+            <template x-if="preview">
+              <div class="h-full min-h-0 flex flex-col">
+                <div class="px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/40">
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warm-500/10 text-warm-600 dark:text-warm-300" x-text="preview.file.extension"></span>
+                        <p class="text-sm font-semibold text-stone-800 dark:text-stone-100 truncate" x-text="preview.file.file_name"></p>
+                      </div>
+                      <p class="mt-1 text-[11px] font-mono text-stone-500 dark:text-stone-400 truncate" x-text="preview.file.rel_path"></p>
+                      <div class="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-stone-500 dark:text-stone-400">
+                        <span x-text="'Encoding: ' + preview.encoding"></span>
+                        <span x-text="'Size: ' + formatSize(preview.size_bytes)"></span>
+                        <span x-text="'Lines: ' + preview.line_count"></span>
+                        <span x-text="'Hash: ' + preview.file.content_hash.slice(0, 10)"></span>
+                      </div>
+                    </div>
+                    <div class="shrink-0">
+                      <button type="button" @click="takeSnapshot()" class="h-8 px-3 rounded-lg bg-neon-500 text-white text-xs font-semibold">创建快照</button>
+                    </div>
+                  </div>
+                  <p x-show="preview.truncated" class="mt-3 text-[11px] font-medium text-amber-500">文件较大，当前只显示截断后的预览内容。</p>
+                </div>
+
+                <div class="flex-1 min-h-0 overflow-auto bg-white dark:bg-stone-950">
+                  <table class="w-full border-collapse">
+                    <tbody>
+                      <template x-for="(line, idx) in previewLines()" :key="idx">
+                        <tr class="align-top border-b border-stone-100 dark:border-stone-900">
+                          <td class="w-16 text-right pr-3 py-0.5 text-[11px] font-mono text-stone-500 bg-stone-50 dark:bg-stone-950/60 sticky left-0" x-text="idx + 1"></td>
+                          <td class="py-0.5 pr-3">
+                            <pre class="text-[12px] leading-5 font-mono text-stone-800 dark:text-stone-200 whitespace-pre-wrap break-words" x-text="line || ' '"></pre>
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="border-t border-stone-200 dark:border-stone-800">
+                  <button type="button"
+                          @click="snapshotPanelOpen = !snapshotPanelOpen"
+                          class="w-full px-4 py-3 flex items-center justify-between text-left bg-stone-50/80 dark:bg-stone-950/40">
+                    <span class="text-[11px] uppercase tracking-[0.16em] text-stone-400">Snapshots</span>
+                    <span class="text-[11px] font-mono text-stone-500" x-text="snapshots.length"></span>
+                  </button>
+                  <div x-show="snapshotPanelOpen" class="max-h-56 overflow-auto divide-y divide-stone-200 dark:divide-stone-800">
+                    <template x-if="snapshots.length === 0">
+                      <p class="px-4 py-4 text-xs font-mono text-stone-500">No snapshots yet.</p>
+                    </template>
+                    <template x-for="snap in snapshots" :key="snap.id">
+                      <div class="px-4 py-3 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                          <p class="text-sm font-semibold text-stone-800 dark:text-stone-100" x-text="'#' + snap.id"></p>
+                          <p class="mt-1 text-[11px] font-mono text-stone-500 truncate" x-text="formatDateTime(snap.snapshot_ts)"></p>
+                          <p class="mt-1 text-[11px] text-stone-500 truncate" x-text="snap.note || 'No note'"></p>
+                        </div>
+                        <button type="button" @click="compareSnapshotWithCurrent(snap)" class="h-8 px-3 rounded-lg bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold">
+                          与当前版本比较
+                        </button>
+                      </div>
+                    </template>
+                  </div>
+                </div>
               </div>
             </template>
           </div>
-        </aside>
 
-        <section class="flex-1 min-h-0 flex flex-col">
-          <template x-if="!currentPreview">
-            <div class="h-full flex items-center justify-center px-8">
-              <div class="text-center">
-                <p class="text-base font-semibold text-stone-700 dark:text-stone-300">等待文件选择</p>
-                <p class="mt-2 text-xs font-mono text-stone-500">// 左侧点一个 .sas / .log / .lst 就会在这里预览</p>
+          <div x-show="resultMode === 'compare'" class="h-full min-h-0 flex flex-col">
+            <div class="px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/40 space-y-3">
+              <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 items-center">
+                <div class="rounded-xl border-l-4 border-sky-500 bg-white dark:bg-stone-950 px-3 py-3 min-w-0">
+                  <p class="text-[10px] uppercase tracking-[0.16em] text-sky-500">P</p>
+                  <p class="mt-1 text-sm font-semibold text-stone-800 dark:text-stone-100 truncate" x-text="compareLabel(compareP)"></p>
+                </div>
+                <button type="button" @click="swapCompareSides()" :disabled="!compareP || !compareQ" class="h-9 px-3 rounded-lg border border-stone-300 dark:border-stone-700 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">交换 P/Q</button>
+                <div class="rounded-xl border-l-4 border-emerald-500 bg-white dark:bg-stone-950 px-3 py-3 min-w-0">
+                  <p class="text-[10px] uppercase tracking-[0.16em] text-emerald-500">Q</p>
+                  <p class="mt-1 text-sm font-semibold text-stone-800 dark:text-stone-100 truncate" x-text="compareLabel(compareQ)"></p>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-3">
+                <div class="inline-flex rounded-lg border border-stone-300 dark:border-stone-700 overflow-hidden">
+                  <button type="button" @click="setDiffViewMode('side-by-side')" class="px-3 h-8 text-xs font-semibold transition" :class="diffViewMode === 'side-by-side' ? 'bg-neon-500 text-white' : 'bg-white dark:bg-stone-950'">side-by-side</button>
+                  <button type="button" @click="setDiffViewMode('unified')" class="px-3 h-8 text-xs font-semibold transition border-l border-stone-300 dark:border-stone-700" :class="diffViewMode === 'unified' ? 'bg-neon-500 text-white' : 'bg-white dark:bg-stone-950'">unified</button>
+                </div>
+                <label class="text-[11px] flex items-center gap-1.5 text-stone-500">
+                  <input type="checkbox" x-model="diffIgnoreWhitespace" @change="rerunDiff()" />
+                  忽略空白
+                </label>
+                <label class="text-[11px] flex items-center gap-1.5 text-stone-500">
+                  <input type="checkbox" x-model="diffIgnoreCase" @change="rerunDiff()" />
+                  忽略大小写
+                </label>
+                <button type="button"
+                        @click="runDiff()"
+                        :disabled="!compareP || !compareQ || diffLoading"
+                        class="h-8 px-3 rounded-lg bg-neon-500 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                  <span x-text="diffLoading ? '比较中…' : '刷新比较'"></span>
+                </button>
+                <span class="ml-auto text-[11px] font-mono text-stone-500" x-show="diffResult" x-text="diffSummary()"></span>
               </div>
             </div>
-          </template>
 
-          <template x-if="currentPreview">
-            <div class="h-full min-h-0 flex flex-col">
-              <div class="px-4 py-3 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50">
-                <div class="flex items-start justify-between gap-3">
-                  <div class="text-xs font-mono text-stone-500 truncate" x-text="currentPreview.rel_path"></div>
-                  <div class="shrink-0 flex items-center gap-1.5">
-                    <button type="button"
-                            @click="takeSnapshot()"
-                            title="打快照"
-                            aria-label="打快照"
-                            class="w-8 h-8 rounded-md flex items-center justify-center
-                                   bg-neon-500 text-white hover:bg-neon-600 transition">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-4m0 0V8m0 4h4m-4 0H8"></path>
-                        <rect x="3" y="4" width="18" height="16" rx="2"></rect>
-                      </svg>
-                    </button>
-                    <button type="button"
-                            @click="toggleHistory()"
-                            title="历史快照"
-                            aria-label="历史快照"
-                            class="w-8 h-8 rounded-md flex items-center justify-center
-                                   bg-stone-500 text-white hover:bg-stone-600 transition relative">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M3 12h18M3 18h18"></path>
-                      </svg>
-                      <span x-show="snapshots.length > 0"
-                            x-text="snapshots.length"
-                            class="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-1 rounded-full
-                                   bg-warm-400 text-ink-950 text-[9px] leading-[14px] font-bold text-center"></span>
-                    </button>
-                    <button type="button"
-                            @click="setCurrentAsCompare('a')"
-                            title="设为A侧"
-                            aria-label="设为A侧"
-                            class="w-8 h-8 rounded-md flex items-center justify-center
-                                   bg-sky-500 text-white hover:bg-sky-600 transition text-[11px] font-bold">
-                      A
-                    </button>
-                    <button type="button"
-                            @click="setCurrentAsCompare('b')"
-                            title="设为B侧"
-                            aria-label="设为B侧"
-                            class="w-8 h-8 rounded-md flex items-center justify-center
-                                   bg-emerald-500 text-white hover:bg-emerald-600 transition text-[11px] font-bold">
-                      B
-                    </button>
-                    <button type="button"
-                            @click="copyAllText()"
-                            title="复制全文"
-                            aria-label="复制全文"
-                            class="w-8 h-8 rounded-md flex items-center justify-center
-                                   bg-warm-500 text-white hover:bg-warm-600 transition">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <rect x="9" y="9" width="11" height="11" rx="2"></rect>
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15V6a2 2 0 012-2h9"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div class="mt-1 flex items-center gap-3 text-[11px] text-stone-500">
-                  <span x-text="'编码: ' + currentPreview.encoding"></span>
-                  <span x-text="'大小: ' + formatSize(currentPreview.size_bytes)"></span>
-                  <span x-text="'行数: ' + currentPreview.line_count"></span>
-                </div>
-                <p x-show="currentPreview.truncated" class="mt-2 text-[11px] text-amber-500 font-medium">
-                  文件过大，当前仅展示前 2MB 内容。
-                </p>
-                <div x-show="historyOpen" class="mt-3 rounded-md border border-stone-200 dark:border-stone-800 bg-white/70 dark:bg-stone-900/70 max-h-52 overflow-auto">
-                  <template x-if="loadingSnapshots">
-                    <p class="text-xs font-mono text-warm-300 px-3 py-3 animate-pulse">▰▰▰ 读取历史中…</p>
-                  </template>
-                  <template x-if="!loadingSnapshots && snapshots.length === 0">
-                    <p class="text-xs font-mono text-stone-500 px-3 py-3">// 暂无快照，先打一个</p>
-                  </template>
-                  <template x-for="snap in snapshots" :key="snap.id">
-                    <div class="px-3 py-2 border-b border-stone-100 dark:border-stone-800 last:border-0 flex items-center justify-between gap-2">
-                      <div class="min-w-0">
-                        <div class="text-xs font-semibold text-stone-700 dark:text-stone-200 truncate"
-                             x-text="'#' + snap.id + ' · ' + fmtIsoTime(snap.snapshot_ts)"></div>
-                        <div class="text-[11px] text-stone-500 truncate" x-text="snap.note || '// 无备注'"></div>
-                      </div>
-                      <button type="button"
-                              @click="compareSnapshotWithCurrent(snap)"
-                              class="shrink-0 px-2 py-1 rounded text-[11px] font-semibold
-                                     bg-neon-500 text-white hover:bg-neon-600 transition">
-                        对比当前
-                      </button>
-                    </div>
-                  </template>
+            <template x-if="!compareP || !compareQ">
+              <div class="h-full flex items-center justify-center px-8 text-center">
+                <div>
+                  <p class="text-sm font-semibold text-stone-700 dark:text-stone-200">等待比较对象</p>
+                  <p class="mt-2 text-xs font-mono text-stone-500">先在左侧版本列表里把两个版本设为 P / Q，再进入比较。</p>
                 </div>
               </div>
+            </template>
 
-              <div class="flex-1 min-h-0 overflow-auto">
-                <table class="w-full border-collapse">
-                  <tbody>
-                    <template x-for="(line, idx) in previewLines()" :key="idx">
-                      <tr class="align-top border-b border-stone-100 dark:border-stone-900">
-                        <td class="w-14 select-none text-right pr-3 py-0.5 text-[11px] font-mono text-stone-500 bg-stone-50 dark:bg-stone-950/50 sticky left-0"
-                            x-text="idx + 1"></td>
-                        <td class="py-0.5 pr-3">
-                          <pre class="select-text text-[12px] leading-5 font-mono text-stone-800 dark:text-stone-200 whitespace-pre-wrap break-words" x-text="line || ' '"></pre>
-                        </td>
+            <template x-if="compareP && compareQ && diffLoading">
+              <div class="h-full flex items-center justify-center">
+                <p class="text-xs font-mono text-warm-400 animate-pulse">正在计算结构化比较结果…</p>
+              </div>
+            </template>
+
+            <template x-if="compareP && compareQ && diffResult && !diffLoading">
+              <div class="flex-1 min-h-0 flex flex-col">
+                <div class="px-4 py-2 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/40 flex flex-wrap items-center gap-2">
+                  <span class="text-[11px] font-semibold text-sky-500" x-text="diffResult.a_label"></span>
+                  <span class="text-stone-400">→</span>
+                  <span class="text-[11px] font-semibold text-emerald-500" x-text="diffResult.b_label"></span>
+                </div>
+
+                <div class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'side-by-side'">
+                  <table class="w-full border-collapse text-[12px]">
+                    <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
+                      <tr class="text-[11px]">
+                        <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-sky-500">P#</th>
+                        <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800 text-sky-500">P</th>
+                        <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-emerald-500">Q#</th>
+                        <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800 text-emerald-500">Q</th>
                       </tr>
-                    </template>
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      <template x-for="(line, idx) in diffResult.lines" :key="idx">
+                        <tr class="align-top border-b border-stone-100 dark:border-stone-900">
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="line.a_lineno || ''"></td>
+                          <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(line.op, 'p')" x-text="line.a_text || ' '"></pre></td>
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="line.b_lineno || ''"></td>
+                          <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(line.op, 'q')" x-text="line.b_text || ' '"></pre></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'unified'">
+                  <table class="w-full border-collapse text-[12px]">
+                    <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
+                      <tr class="text-[11px]">
+                        <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-sky-500">P#</th>
+                        <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-emerald-500">Q#</th>
+                        <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800">Unified Diff</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="(line, idx) in diffResult.unified_lines || []" :key="idx">
+                        <tr class="align-top border-b border-stone-100 dark:border-stone-900">
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="line.kind === 'hunk' ? '' : (line.a_lineno || '')"></td>
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="line.kind === 'hunk' ? '' : (line.b_lineno || '')"></td>
+                          <td class="py-1 pr-2">
+                            <pre class="font-mono whitespace-pre-wrap break-words" :class="unifiedLineClass(line)" x-text="line.text || ' '"></pre>
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
               </div>
+            </template>
+          </div>
 
-              <div class="px-4 py-2 border-t border-stone-200 dark:border-stone-800 text-[11px] text-stone-500 font-mono">
-                // 只读模式 · 原文件仍可在 SAS 中编辑
+          <div x-show="resultMode === 'qc'" class="h-full min-h-0 flex flex-col">
+            <div class="px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-950/40 flex items-center justify-between gap-3">
+              <div>
+                <p class="text-[11px] uppercase tracking-[0.16em] text-stone-400">QC 检查</p>
+                <p class="mt-1 text-xs text-stone-500 dark:text-stone-400">当前 project/task 维度下的 Main vs QC 落后检查。</p>
               </div>
+              <button type="button" @click="loadQcRows()" class="h-8 px-3 rounded-lg bg-neon-500 text-white text-xs font-semibold">刷新</button>
             </div>
-          </template>
-        </section>
-      </section>
 
-      <section x-show="activeTab === 'compare'" class="h-full min-h-0 flex flex-col">
-        <div class="px-4 py-3 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 space-y-2">
-          <!-- A/B card row -->
-          <div class="flex flex-col xl:flex-row gap-2 items-stretch xl:items-center">
-            <!-- A card -->
-            <div class="flex-1 min-w-0 border-l-4 border-sky-500 bg-white dark:bg-stone-950 rounded-md px-3 py-2 flex items-center justify-between gap-2">
-              <div class="min-w-0 flex-1">
-                <span class="text-[10px] font-bold text-sky-500 uppercase tracking-wider">A 侧</span>
-                <template x-if="compareAPath">
-                  <div>
-                    <p class="text-xs font-semibold text-sky-600 dark:text-sky-300 truncate" x-text="basename(compareAPath)"></p>
-                    <p class="text-[10px] font-mono text-stone-400 truncate" x-text="compareAPath"></p>
-                  </div>
-                </template>
-                <template x-if="!compareAPath">
-                  <p class="text-[11px] font-mono text-stone-400 mt-0.5">// 未选择</p>
-                </template>
+            <template x-if="qcLoading">
+              <div class="h-full flex items-center justify-center">
+                <p class="text-xs font-mono text-warm-400 animate-pulse">正在加载 QC 检查结果…</p>
               </div>
-              <button x-show="compareAPath" type="button" @click="compareAPath=''; diffResult=null;"
-                      class="shrink-0 text-[13px] leading-none text-stone-400 hover:text-rose-500 transition font-semibold">×</button>
-            </div>
-            <!-- swap + run -->
-            <div class="flex xl:flex-col gap-2 justify-center items-center">
-              <button type="button" @click="swapCompareSides()"
-                      class="h-8 w-8 rounded-md text-base font-bold bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-700 transition"
-                      title="交换 A/B">⇄</button>
-              <button type="button" @click="compareFiles()"
-                      :disabled="!compareAPath || !compareBPath || diffLoading"
-                      class="h-8 px-4 rounded-md text-[11px] font-semibold bg-neon-500 text-white hover:bg-neon-600 disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap">
-                ▶ 比较
-              </button>
-            </div>
-            <!-- B card -->
-            <div class="flex-1 min-w-0 border-l-4 border-emerald-500 bg-white dark:bg-stone-950 rounded-md px-3 py-2 flex items-center justify-between gap-2">
-              <div class="min-w-0 flex-1">
-                <span class="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">B 侧</span>
-                <template x-if="compareBPath">
-                  <div>
-                    <p class="text-xs font-semibold text-emerald-600 dark:text-emerald-300 truncate" x-text="basename(compareBPath)"></p>
-                    <p class="text-[10px] font-mono text-stone-400 truncate" x-text="compareBPath"></p>
-                  </div>
-                </template>
-                <template x-if="!compareBPath">
-                  <p class="text-[11px] font-mono text-stone-400 mt-0.5">// 未选择</p>
-                </template>
+            </template>
+
+            <template x-if="!qcLoading && qcRows.length === 0">
+              <div class="h-full flex items-center justify-center px-8 text-center">
+                <div>
+                  <p class="text-sm font-semibold text-stone-700 dark:text-stone-200">没有可展示的 QC 行</p>
+                  <p class="mt-2 text-xs font-mono text-stone-500">先选择具体 project 或版本，再刷新 QC 检查。</p>
+                </div>
               </div>
-              <button x-show="compareBPath" type="button" @click="compareBPath=''; diffResult=null;"
-                      class="shrink-0 text-[13px] leading-none text-stone-400 hover:text-rose-500 transition font-semibold">×</button>
-            </div>
-          </div>
-          <!-- options row -->
-          <div class="flex flex-wrap items-center gap-3">
-            <div class="inline-flex rounded-md border border-stone-300 dark:border-stone-700 overflow-hidden">
-              <button type="button"
-                      @click="setDiffViewMode('side-by-side')"
-                      :class="diffViewMode === 'side-by-side' ? 'bg-neon-500 text-white' : 'bg-white dark:bg-stone-950 text-stone-600 dark:text-stone-300'"
-                      class="px-2.5 h-7 text-[11px] font-semibold transition">
-                side-by-side
-              </button>
-              <button type="button"
-                      @click="setDiffViewMode('unified')"
-                      :class="diffViewMode === 'unified' ? 'bg-neon-500 text-white' : 'bg-white dark:bg-stone-950 text-stone-600 dark:text-stone-300'"
-                      class="px-2.5 h-7 text-[11px] font-semibold transition border-l border-stone-300 dark:border-stone-700">
-                unified
-              </button>
-            </div>
-            <label class="text-[11px] text-stone-600 dark:text-stone-400 flex items-center gap-1.5">
-              <input type="checkbox" x-model="diffIgnoreWhitespace" @change="rerunDiffWithOptions()" />
-              忽略空白
-            </label>
-            <label class="text-[11px] text-stone-600 dark:text-stone-400 flex items-center gap-1.5">
-              <input type="checkbox" x-model="diffIgnoreCase" @change="rerunDiffWithOptions()" />
-              忽略大小写
-            </label>
-            <span x-show="diffResult" class="text-xs font-semibold text-stone-600 dark:text-stone-300"
-                  x-text="diffResult ? `+${diffResult.summary.inserted} / -${diffResult.summary.deleted} / ~${diffResult.summary.replaced}  (${diffResult.summary.total} lines)` : ''"></span>
-          </div>
-        </div>
+            </template>
 
-        <template x-if=”!diffResult && !diffLoading”>
-          <div class=”h-full flex flex-col items-center justify-center gap-6”>
-            <div class=”flex items-center gap-6”>
-              <div :class=”compareAPath ? 'border-sky-500 text-sky-500' : 'border-stone-300 dark:border-stone-600 text-stone-400'”
-                   class=”w-16 h-16 rounded-xl border-2 flex items-center justify-center text-2xl font-black transition-colors”>A</div>
-              <span class=”text-stone-300 dark:text-stone-600 text-3xl select-none”>→</span>
-              <div :class=”compareBPath ? 'border-emerald-500 text-emerald-500' : 'border-stone-300 dark:border-stone-600 text-stone-400'”
-                   class=”w-16 h-16 rounded-xl border-2 flex items-center justify-center text-2xl font-black transition-colors”>B</div>
-            </div>
-            <p class=”text-xs font-mono text-stone-500” x-text=”emptyStateHint()”></p>
-          </div>
-        </template>
-
-        <template x-if="diffLoading">
-          <div class="h-full flex items-center justify-center">
-            <p class="text-xs font-mono text-warm-300 animate-pulse">▰▰▰ 正在计算 diff…</p>
-          </div>
-        </template>
-
-        <template x-if="diffResult">
-          <div class="h-full min-h-0 flex flex-col">
-            <div class="px-4 py-2 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/30 flex flex-wrap items-center gap-2">
-              <span class="text-[11px] font-bold text-sky-500">A</span>
-              <span class="text-[11px] font-mono text-stone-500 truncate max-w-[28%]" x-text="diffResult.a_label"></span>
-              <span class="text-stone-400 text-[11px]">→</span>
-              <span class="text-[11px] font-bold text-emerald-500">B</span>
-              <span class="text-[11px] font-mono text-stone-500 truncate max-w-[28%]" x-text="diffResult.b_label"></span>
-              <span class="ml-auto text-[11px] font-semibold text-stone-600 dark:text-stone-300 whitespace-nowrap"
-                    x-text="`+${diffResult.summary.inserted} -${diffResult.summary.deleted} ~${diffResult.summary.replaced}  (${diffResult.summary.total} lines)`"></span>
-            </div>
-            <div class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'side-by-side'">
+            <div class="flex-1 min-h-0 overflow-auto" x-show="!qcLoading && qcRows.length > 0">
               <table class="w-full border-collapse text-[12px]">
                 <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
-                  <tr class="text-[11px]">
-                    <th class="w-14 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-sky-500">A#</th>
-                    <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800 text-sky-500">A 侧</th>
-                    <th class="w-14 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-emerald-500">B#</th>
-                    <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800 text-emerald-500">B 侧</th>
+                  <tr class="text-[11px] text-stone-500">
+                    <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Task</th>
+                    <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Program</th>
+                    <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Main Log</th>
+                    <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">QC Log</th>
+                    <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Status</th>
+                    <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <template x-for="(line, idx) in diffResult.lines" :key="idx">
-                    <tr class="align-top border-b border-stone-100 dark:border-stone-900">
-                      <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="line.a_lineno || ''"></td>
-                      <td class="py-1 pr-2">
-                        <pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(line.op, 'a')" x-text="line.a_text || ' '"></pre>
-                      </td>
-                      <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="line.b_lineno || ''"></td>
-                      <td class="py-1 pr-2">
-                        <pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(line.op, 'b')" x-text="line.b_text || ' '"></pre>
+                  <template x-for="(row, idx) in qcRows" :key="row.task + '::' + row.program + '::' + idx">
+                    <tr class="border-b border-stone-100 dark:border-stone-900" :class="row.stale ? 'bg-violet-50/60 dark:bg-violet-900/15' : ''">
+                      <td class="px-2 py-2 font-mono text-[11px]" x-text="row.task"></td>
+                      <td class="px-2 py-2 font-semibold" x-text="row.program"></td>
+                      <td class="px-2 py-2 text-[11px] font-mono" x-text="formatDateTime(row.main_log_mtime)"></td>
+                      <td class="px-2 py-2 text-[11px] font-mono" x-text="formatDateTime(row.qc_log_mtime)"></td>
+                      <td class="px-2 py-2"><span class="px-2 py-0.5 rounded-full text-[10px] font-semibold" :class="qcBadgeClass(row.reason)" x-text="qcText(row.reason)"></span></td>
+                      <td class="px-2 py-2">
+                        <button type="button" @click="compareQcRow(row)" :disabled="!row.main_sas_path || !row.qc_sas_path" class="h-8 px-3 rounded-lg border border-stone-300 dark:border-stone-700 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
+                          作为 P/Q 比较
+                        </button>
                       </td>
                     </tr>
                   </template>
                 </tbody>
               </table>
             </div>
-            <div class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'unified'">
-              <template x-if="!diffResult.unified_lines || diffResult.unified_lines.length === 0">
-                <div class="h-full flex items-center justify-center">
-                  <p class="text-xs font-mono text-stone-500">// 无差异</p>
-                </div>
-              </template>
-              <template x-if="diffResult.unified_lines && diffResult.unified_lines.length > 0">
-                <table class="w-full border-collapse text-[12px]">
-                  <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
-                    <tr class="text-[11px] text-stone-500">
-                      <th class="w-14 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800">#</th>
-                      <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800">Unified Diff</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <template x-for="(line, idx) in diffResult.unified_lines" :key="idx">
-                      <tr class="align-top border-b border-stone-100 dark:border-stone-900">
-                        <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="idx + 1"></td>
-                        <td class="py-1 pr-2">
-                          <pre class="font-mono whitespace-pre-wrap break-words" :class="unifiedLineClass(line)" x-text="line || ' '"></pre>
-                        </td>
-                      </tr>
-                    </template>
-                  </tbody>
-                </table>
-              </template>
-            </div>
           </div>
-        </template>
-      </section>
-
-      <section x-show="activeTab === 'qc'" class="h-full min-h-0 flex flex-col">
-        <div class="px-4 py-3 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p class="text-sm font-semibold text-stone-700 dark:text-stone-200">Main vs QC Log 时间检查</p>
-            <p class="text-[11px] font-mono text-stone-500">基于文件修改时间（mtime）判断 QC 是否落后于 Main</p>
-          </div>
-          <button type="button"
-                  @click="loadQcTiming()"
-                  :disabled="!selectedStudyId || qcLoading"
-                  class="h-8 px-3 rounded-md text-[11px] font-semibold bg-neon-500 text-white hover:bg-neon-600 disabled:opacity-50 disabled:cursor-not-allowed transition">
-            刷新检查
-          </button>
         </div>
-
-        <template x-if="!selectedStudyId">
-          <div class="h-full flex items-center justify-center">
-            <p class="text-xs font-mono text-stone-500">// 先选个 study，然后再检查 QC 时间</p>
-          </div>
-        </template>
-
-        <template x-if="selectedStudyId && qcLoading">
-          <div class="h-full flex items-center justify-center">
-            <p class="text-xs font-mono text-warm-300 animate-pulse">▰▰▰ 正在检查 QC 时间…</p>
-          </div>
-        </template>
-
-        <template x-if="selectedStudyId && !qcLoading && qcRows.length === 0">
-          <div class="h-full flex items-center justify-center">
-            <p class="text-xs font-mono text-stone-500">// 全部 qc log 都晚于 main log。干净。</p>
-          </div>
-        </template>
-
-        <template x-if="selectedStudyId && !qcLoading && qcRows.length > 0">
-          <div class="flex-1 min-h-0 overflow-auto">
-            <table class="w-full border-collapse text-[12px]">
-              <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
-                <tr class="text-[11px] text-stone-500">
-                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Task</th>
-                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Program</th>
-                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">Main Log</th>
-                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">QC Log</th>
-                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">状态</th>
-                  <th class="text-left py-2 px-2 border-b border-stone-200 dark:border-stone-800">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template x-for="(row, idx) in qcRows" :key="row.task + '::' + row.program + '::' + idx">
-                  <tr class="border-b border-stone-100 dark:border-stone-900"
-                      :class="row.stale ? 'bg-violet-50/60 dark:bg-violet-900/15' : ''">
-                    <td class="px-2 py-2 font-mono text-[11px] text-stone-600 dark:text-stone-300" x-text="row.task"></td>
-                    <td class="px-2 py-2">
-                      <button type="button"
-                              @click="prefillCompareFromQc(row)"
-                              class="text-[11px] font-semibold text-neon-600 dark:text-neon-300 hover:underline"
-                              x-text="row.program"></button>
-                    </td>
-                    <td class="px-2 py-2 text-[11px] text-stone-600 dark:text-stone-300 font-mono" x-text="fmtIsoTime(row.main_log_mtime)"></td>
-                    <td class="px-2 py-2 text-[11px] text-stone-600 dark:text-stone-300 font-mono"
-                        :class="row.reason === 'qc-missing' ? 'text-amber-600 dark:text-amber-300' : ''"
-                        x-text="row.qc_log_mtime ? fmtIsoTime(row.qc_log_mtime) : '—'"></td>
-                    <td class="px-2 py-2">
-                      <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                            :class="qcReasonBadgeClass(row.reason)"
-                            x-text="qcReasonText(row.reason)"></span>
-                    </td>
-                    <td class="px-2 py-2">
-                      <button type="button"
-                              @click="prefillCompareFromQc(row)"
-                              :disabled="!canCompareQcRow(row)"
-                              class="px-2 py-1 rounded text-[11px] font-semibold bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300
-                                     hover:bg-stone-300 dark:hover:bg-stone-700 disabled:opacity-40 disabled:cursor-not-allowed">
-                        对比程序
-                      </button>
-                    </td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-          </div>
-        </template>
-      </section>
-    </main>
+      </template>
+    </section>
   </div>
 </div>
 {% endblock %}
 
 {% block app_scripts %}
-<script>
-function fileCompareApp() {
-  return {
-    activeTab: 'browse',
-    studyList: [],
-    selectedStudyId: '',
-    loadingTree: false,
-    searching: false,
-    searchQuery: '',
-    searchError: '',
-    searchResults: [],
-    kindFilter: 'all',
-    roleFilter: 'all',
-    totalFiles: 0,
-    fileTree: { tasks: [] },
-    taskOpen: {},
-    folderOpen: {},
-    currentPreview: null,
-    recentFiles: [],
-    historyOpen: false,
-    snapshots: [],
-    loadingSnapshots: false,
-    diffResult: null,
-    diffLoading: false,
-    diffViewMode: 'side-by-side',
-    diffIgnoreWhitespace: false,
-    diffIgnoreCase: false,
-    lastDiffParams: null,
-    compareAPath: '',
-    compareBPath: '',
-    qcRows: [],
-    qcLoading: false,
-    qcLoadedStudyId: '',
-
-    async init() {
-      this.loadRecent();
-      await this.loadStudies();
-    },
-
-    async loadStudies() {
-      try {
-        const data = await this.api('/api/studies');
-        const ids = [];
-        for (const s of data || []) {
-          if (s && s.study_id) ids.push(s.study_id);
-        }
-        this.studyList = ids.sort();
-      } catch (err) {
-        this.toast('加载 study 列表失败', 'error');
-      }
-    },
-
-    async switchTab(tab) {
-      this.activeTab = tab;
-      if (tab === 'qc' && this.selectedStudyId) {
-        if (this.qcLoadedStudyId !== this.selectedStudyId || this.qcRows.length === 0) {
-          await this.loadQcTiming();
-        }
-      }
-      if (tab === 'compare' && this.compareAPath && this.compareBPath && !this.diffResult && !this.diffLoading) {
-        await this.compareFiles();
-      }
-    },
-
-    async onStudyChange() {
-      this.searchQuery = '';
-      this.searchResults = [];
-      this.currentPreview = null;
-      this.historyOpen = false;
-      this.snapshots = [];
-      this.diffResult = null;
-      this.lastDiffParams = null;
-      this.diffViewMode = 'side-by-side';
-      this.compareAPath = '';
-      this.compareBPath = '';
-      this.qcRows = [];
-      this.qcLoading = false;
-      this.qcLoadedStudyId = '';
-      this.fileTree = { tasks: [] };
-      this.taskOpen = {};
-      this.folderOpen = {};
-      this.totalFiles = 0;
-      if (!this.selectedStudyId) return;
-      await this.loadTree();
-      if (this.activeTab === 'qc') {
-        await this.loadQcTiming();
-      }
-    },
-
-    async loadTree() {
-      this.loadingTree = true;
-      try {
-        const data = await this.api('/api/files/tree?study_id=' + encodeURIComponent(this.selectedStudyId));
-        this.fileTree = data || { tasks: [] };
-        this.totalFiles = data && data.total_files ? data.total_files : 0;
-        for (const task of (this.fileTree.tasks || [])) {
-          this.taskOpen[task.task] = false;
-          for (const folder of (task.folders || [])) {
-            this.folderOpen[folder.path] = false;
-          }
-        }
-      } catch (err) {
-        this.toast('加载目录树失败', 'error');
-      } finally {
-        this.loadingTree = false;
-      }
-    },
-
-    async runSearch() {
-      if (!this.selectedStudyId) return;
-      const q = this.searchQuery.trim();
-      this.searchError = '';
-      if (!q) {
-        this.searchResults = [];
-        return;
-      }
-      this.searching = true;
-      try {
-        const params = new URLSearchParams();
-        params.set('q', q);
-        params.set('study_id', this.selectedStudyId);
-        params.set('limit', '100');
-        if (this.kindFilter !== 'all') params.set('kind', this.kindFilter);
-        if (this.roleFilter !== 'all') params.set('role', this.roleFilter);
-        this.searchResults = await this.api('/api/files/search?' + params.toString());
-      } catch (err) {
-        const msg = (err && err.message) ? err.message : '文件搜索失败';
-        this.searchError = msg;
-        this.searchResults = [];
-      } finally {
-        this.searching = false;
-      }
-    },
-
-    toggleKindFilter(next) {
-      this.kindFilter = next;
-      if (this.searchQuery.trim()) this.runSearch();
-    },
-
-    toggleRoleFilter(next) {
-      this.roleFilter = next;
-      if (this.searchQuery.trim()) this.runSearch();
-    },
-
-    toggleTask(taskName) {
-      this.taskOpen[taskName] = !this.taskOpen[taskName];
-    },
-
-    toggleFolder(path) {
-      this.folderOpen[path] = !this.folderOpen[path];
-    },
-
-    async previewFile(absPath) {
-      if (!absPath) return;
-      try {
-        const data = await this.api('/api/files/preview?path=' + encodeURIComponent(absPath));
-        this.currentPreview = data;
-        this.pushRecent(data);
-        if (this.historyOpen) await this.loadSnapshots(absPath);
-      } catch (err) {
-        this.toast('文件预览失败', 'error');
-      }
-    },
-
-    previewLines() {
-      if (!this.currentPreview || !this.currentPreview.text) return [];
-      return this.currentPreview.text.split('\n');
-    },
-
-    async takeSnapshot() {
-      if (!this.currentPreview || !this.currentPreview.abs_path) {
-        this.toast('请先预览一个文件', 'warning');
-        return;
-      }
-      const noteInput = window.prompt('快照备注（可选）', '');
-      if (noteInput === null) return;
-      const note = noteInput || '';
-      try {
-        const payload = {
-          path: this.currentPreview.abs_path,
-          note,
-        };
-        const data = await this.api('/api/files/snapshot', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        if (data && data.deduplicated) this.toast('内容未变化，复用最近快照', 'info');
-        else this.toast('快照已保存', 'success');
-        this.historyOpen = true;
-        await this.loadSnapshots(this.currentPreview.abs_path);
-      } catch (err) {
-        this.toast((err && err.message) ? err.message : '打快照失败', 'error');
-      }
-    },
-
-    async toggleHistory() {
-      this.historyOpen = !this.historyOpen;
-      if (this.historyOpen && this.currentPreview && this.currentPreview.abs_path) {
-        await this.loadSnapshots(this.currentPreview.abs_path);
-      }
-    },
-
-    async loadSnapshots(absPath) {
-      this.loadingSnapshots = true;
-      try {
-        this.snapshots = await this.api('/api/files/snapshots?path=' + encodeURIComponent(absPath));
-      } catch (err) {
-        this.toast((err && err.message) ? err.message : '读取快照失败', 'error');
-        this.snapshots = [];
-      } finally {
-        this.loadingSnapshots = false;
-      }
-    },
-
-    async compareSnapshotWithCurrent(snapshot) {
-      if (!snapshot || !snapshot.id) return;
-      if (!this.currentPreview || !this.currentPreview.abs_path) return;
-      await this.loadDiffWithParams({
-        a_snap_id: String(snapshot.id),
-        b_path: this.currentPreview.abs_path,
-      });
-    },
-
-    setCurrentAsCompare(side, path) {
-      const p = path || (this.currentPreview && this.currentPreview.abs_path);
-      if (!p) {
-        this.toast('请先在浏览页打开一个文件', 'warning');
-        return;
-      }
-      if (side === 'a') {
-        this.compareAPath = p;
-        this.toast('已设置为 A 侧', 'info');
-      } else {
-        this.compareBPath = p;
-        this.toast('已设置为 B 侧', 'info');
-      }
-      if (this.compareAPath && this.compareBPath) {
-        this.switchTab('compare');
-      }
-    },
-
-    swapCompareSides() {
-      const t = this.compareAPath;
-      this.compareAPath = this.compareBPath;
-      this.compareBPath = t;
-    },
-
-    emptyStateHint() {
-      if (!this.compareAPath && !this.compareBPath) return '// 在搜索结果或文件树中点 [A][B] 来选文件';
-      if (!this.compareAPath) return '// B 已就绪，再选一个文件设为 A';
-      if (!this.compareBPath) return '// A 已就绪，再选一个文件设为 B';
-      return '// 点"▶ 比较"开始';
-    },
-
-    async compareFiles() {
-      const aPath = (this.compareAPath || '').trim();
-      const bPath = (this.compareBPath || '').trim();
-      if (!aPath || !bPath) {
-        this.toast('请先设置 A/B 两个文件', 'warning');
-        return;
-      }
-      await this.loadDiffWithParams({
-        a_path: aPath,
-        b_path: bPath,
-      });
-    },
-
-    async loadDiffWithParams(baseParams) {
-      this.activeTab = 'compare';
-      this.diffLoading = true;
-      this.lastDiffParams = { ...(baseParams || {}) };
-      try {
-        const params = new URLSearchParams();
-        for (const [k, v] of Object.entries(this.lastDiffParams)) {
-          if (v !== null && v !== undefined && String(v).trim() !== '') {
-            params.set(k, String(v));
-          }
-        }
-        if (this.diffIgnoreWhitespace) params.set('ignore_whitespace', 'true');
-        if (this.diffIgnoreCase) params.set('ignore_case', 'true');
-        params.set('mode', this.diffViewMode);
-        this.diffResult = await this.api('/api/files/diff?' + params.toString());
-      } catch (err) {
-        this.toast((err && err.message) ? err.message : '读取 diff 失败', 'error');
-      } finally {
-        this.diffLoading = false;
-      }
-    },
-
-    async setDiffViewMode(mode) {
-      const next = mode === 'unified' ? 'unified' : 'side-by-side';
-      if (this.diffViewMode === next) return;
-      this.diffViewMode = next;
-      if (!this.lastDiffParams) return;
-      await this.loadDiffWithParams(this.lastDiffParams);
-    },
-
-    async rerunDiffWithOptions() {
-      if (!this.lastDiffParams) return;
-      await this.loadDiffWithParams(this.lastDiffParams);
-    },
-
-    unifiedLineClass(line) {
-      if (!line) return 'text-stone-700 dark:text-stone-300';
-      if (line.startsWith('@@')) return 'bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300';
-      if (line.startsWith('+')) return 'bg-emerald-50 dark:bg-emerald-900/20 text-stone-800 dark:text-stone-200';
-      if (line.startsWith('-')) return 'bg-rose-50 dark:bg-rose-900/20 text-stone-800 dark:text-stone-200';
-      return 'text-stone-700 dark:text-stone-300';
-    },
-
-    async loadQcTiming() {
-      if (!this.selectedStudyId) return;
-      this.qcLoading = true;
-      try {
-        const q = encodeURIComponent(this.selectedStudyId);
-        this.qcRows = await this.api('/api/files/qc-timing?study_id=' + q);
-        this.qcLoadedStudyId = this.selectedStudyId;
-      } catch (err) {
-        this.qcRows = [];
-        this.toast((err && err.message) ? err.message : 'QC 时间检查失败', 'error');
-      } finally {
-        this.qcLoading = false;
-      }
-    },
-
-    canCompareQcRow(row) {
-      if (!row) return false;
-      const left = row.main_sas_path || row.main_log_path;
-      const right = row.qc_sas_path || row.qc_log_path;
-      return !!(left && right);
-    },
-
-    async prefillCompareFromQc(row) {
-      if (!row) return;
-      const aPath = row.main_sas_path || row.main_log_path || '';
-      const bPath = row.qc_sas_path || row.qc_log_path || '';
-      if (!aPath || !bPath) {
-        this.toast('缺少可对比的 main/qc 文件路径', 'warning');
-        return;
-      }
-      this.compareAPath = aPath;
-      this.compareBPath = bPath;
-      this.activeTab = 'compare';
-      await this.compareFiles();
-    },
-
-    async copyAllText() {
-      if (!this.currentPreview || !this.currentPreview.text) {
-        this.toast('暂无可复制内容', 'warning');
-        return;
-      }
-      const ok = await this.copyToClipboard(this.currentPreview.text);
-      if (ok) this.toast('已复制全文', 'success');
-      else this.toast('复制失败，请手动 Ctrl/Cmd + C', 'error');
-    },
-
-    onCopyShortcut(event) {
-      const key = String(event.key || '').toLowerCase();
-      if (!(event.ctrlKey || event.metaKey) || key !== 'c') return;
-      if (this.isEditableTarget(event.target)) return;
-
-      const selection = window.getSelection ? String(window.getSelection()) : '';
-      if (selection && selection.length > 0) {
-        // Keep browser default behavior for partial copy.
-        return;
-      }
-      if (!this.currentPreview || !this.currentPreview.text) return;
-
-      event.preventDefault();
-      this.copyAllText();
-    },
-
-    isEditableTarget(target) {
-      if (!target) return false;
-      if (target.isContentEditable) return true;
-      const tag = String(target.tagName || '').toLowerCase();
-      return tag === 'input' || tag === 'textarea' || tag === 'select';
-    },
-
-    async copyToClipboard(text) {
-      try {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(text);
-          return true;
-        }
-      } catch (e) {}
-
-      try {
-        const area = document.createElement('textarea');
-        area.value = text;
-        area.setAttribute('readonly', '');
-        area.style.position = 'fixed';
-        area.style.left = '-9999px';
-        area.style.top = '0';
-        area.style.opacity = '0';
-        document.body.appendChild(area);
-        area.focus();
-        area.select();
-        area.setSelectionRange(0, area.value.length);
-        const ok = document.execCommand('copy');
-        document.body.removeChild(area);
-        return !!ok;
-      } catch (e) {
-        return false;
-      }
-    },
-
-    pushRecent(fileMeta) {
-      const item = {
-        abs_path: fileMeta.abs_path,
-        rel_path: fileMeta.rel_path || '',
-        name: this.basename(fileMeta.abs_path),
-      };
-      this.recentFiles = [item, ...this.recentFiles.filter(x => x.abs_path !== item.abs_path)].slice(0, 10);
-      try {
-        localStorage.setItem('file-compare-recent', JSON.stringify(this.recentFiles));
-      } catch (e) {}
-    },
-
-    loadRecent() {
-      try {
-        const raw = localStorage.getItem('file-compare-recent');
-        this.recentFiles = raw ? JSON.parse(raw) : [];
-      } catch (e) {
-        this.recentFiles = [];
-      }
-    },
-
-    basename(absPath) {
-      if (!absPath) return '';
-      return String(absPath).replace(/\\/g, '/').split('/').pop() || absPath;
-    },
-
-    fmtTime(ts) {
-      if (!ts) return '-';
-      const d = new Date(ts * 1000);
-      return isNaN(d.getTime()) ? '-' : d.toLocaleString();
-    },
-
-    formatSize(bytes) {
-      if (!bytes || bytes < 0) return '0 B';
-      if (bytes < 1024) return bytes + ' B';
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-    },
-
-    fmtIsoTime(isoText) {
-      if (!isoText) return '-';
-      const d = new Date(isoText);
-      return isNaN(d.getTime()) ? String(isoText) : d.toLocaleString();
-    },
-
-    diffCellClass(op, side) {
-      if (op === 'replace') return 'bg-violet-50 dark:bg-violet-900/20 text-stone-800 dark:text-stone-200';
-      if (op === 'delete' && side === 'a') return 'bg-rose-50 dark:bg-rose-900/20 text-stone-800 dark:text-stone-200';
-      if (op === 'insert' && side === 'b') return 'bg-emerald-50 dark:bg-emerald-900/20 text-stone-800 dark:text-stone-200';
-      return 'text-stone-700 dark:text-stone-300';
-    },
-
-    qcReasonText(reason) {
-      if (reason === 'qc-older') return 'QC 早于 Main';
-      if (reason === 'qc-missing') return '缺少 QC Log';
-      return 'OK';
-    },
-
-    qcReasonBadgeClass(reason) {
-      if (reason === 'qc-older') return 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300';
-      if (reason === 'qc-missing') return 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300';
-      return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
-    },
-
-    kindBadgeClass(kind) {
-      if (kind === 'sas') return 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300';
-      if (kind === 'log') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
-      if (kind === 'lst') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
-      return 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300';
-    },
-
-    async api(url, options) {
-      const resp = await fetch(url, options || {});
-      if (!resp.ok) {
-        let detail = '';
-        try {
-          const body = await resp.json();
-          detail = body && body.detail ? String(body.detail) : '';
-        } catch (e) {}
-        throw new Error(detail || ('HTTP ' + resp.status));
-      }
-      return await resp.json();
-    },
-
-    toast(msg, type) {
-      if (window.Alpine && Alpine.store('toast')) {
-        Alpine.store('toast').push(msg, type || 'info');
-      }
-    },
-  };
-}
-</script>
+<script src="{{ url_for('static', path='js/file_compare_workbench.js') }}"></script>
 {% endblock %}

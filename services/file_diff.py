@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from difflib import SequenceMatcher
 
-from models import DiffLine
+from models import DiffLine, UnifiedDiffLine
 
 
 def _prepare_diff(
@@ -38,7 +38,7 @@ def diff_both(
     ignore_case: bool = False,
     context_lines: int = 3,
     want_unified: bool = False,
-) -> tuple[list[DiffLine], list[str]]:
+) -> tuple[list[DiffLine], list[UnifiedDiffLine]]:
     """Build side-by-side rows and, optionally, unified lines from one matcher."""
     a_lines, b_lines, matcher = _prepare_diff(a, b, ignore_whitespace, ignore_case)
     side_lines = _diff_from_matcher(matcher, a_lines, b_lines)
@@ -69,7 +69,7 @@ def unified_diff_texts(
     ignore_whitespace: bool = False,
     ignore_case: bool = False,
     context_lines: int = 3,
-) -> list[str]:
+) -> list[UnifiedDiffLine]:
     """Build unified-style diff lines.
 
     The matcher uses normalized text (for ignore options), but emits original lines.
@@ -173,33 +173,73 @@ def _unified_from_matcher(
     a_lines: list[str],
     b_lines: list[str],
     context_lines: int,
-) -> list[str]:
+) -> list[UnifiedDiffLine]:
     grouped = list(matcher.get_grouped_opcodes(max(0, context_lines)))
     if not grouped:
         return []
 
-    out: list[str] = []
+    out: list[UnifiedDiffLine] = []
     for group in grouped:
         first = group[0]
         last = group[-1]
         out.append(
-            f"@@ -{_hunk_range(first[1], last[2])} +{_hunk_range(first[3], last[4])} @@"
+            UnifiedDiffLine(
+                kind="hunk",
+                a_lineno=None,
+                b_lineno=None,
+                text=f"@@ -{_hunk_range(first[1], last[2])} +{_hunk_range(first[3], last[4])} @@",
+            )
         )
         for tag, i1, i2, j1, j2 in group:
             if tag == "equal":
                 for i in range(i1, i2):
-                    out.append(f" {a_lines[i]}")
+                    out.append(
+                        UnifiedDiffLine(
+                            kind="context",
+                            a_lineno=i + 1,
+                            b_lineno=i - i1 + j1 + 1,
+                            text=f" {a_lines[i]}",
+                        )
+                    )
             elif tag == "delete":
                 for i in range(i1, i2):
-                    out.append(f"-{a_lines[i]}")
+                    out.append(
+                        UnifiedDiffLine(
+                            kind="delete",
+                            a_lineno=i + 1,
+                            b_lineno=None,
+                            text=f"-{a_lines[i]}",
+                        )
+                    )
             elif tag == "insert":
                 for j in range(j1, j2):
-                    out.append(f"+{b_lines[j]}")
+                    out.append(
+                        UnifiedDiffLine(
+                            kind="insert",
+                            a_lineno=None,
+                            b_lineno=j + 1,
+                            text=f"+{b_lines[j]}",
+                        )
+                    )
             else:
                 for i in range(i1, i2):
-                    out.append(f"-{a_lines[i]}")
+                    out.append(
+                        UnifiedDiffLine(
+                            kind="delete",
+                            a_lineno=i + 1,
+                            b_lineno=None,
+                            text=f"-{a_lines[i]}",
+                        )
+                    )
                 for j in range(j1, j2):
-                    out.append(f"+{b_lines[j]}")
+                    out.append(
+                        UnifiedDiffLine(
+                            kind="insert",
+                            a_lineno=None,
+                            b_lineno=j + 1,
+                            text=f"+{b_lines[j]}",
+                        )
+                    )
     return out
 
 

@@ -64,6 +64,33 @@ CREATE TABLE IF NOT EXISTS file_snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_snap_path ON file_snapshots(abs_path, snapshot_ts DESC);
 CREATE INDEX IF NOT EXISTS idx_snap_user ON file_snapshots(username, snapshot_ts DESC);
+
+CREATE TABLE IF NOT EXISTS indexed_files (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    full_path     TEXT NOT NULL UNIQUE,
+    rel_path      TEXT NOT NULL,
+    compound      TEXT NOT NULL,
+    project       TEXT NOT NULL,
+    task          TEXT NOT NULL,
+    file_name     TEXT NOT NULL,
+    program_key   TEXT NOT NULL,
+    extension     TEXT NOT NULL,
+    role          TEXT NOT NULL,
+    modified_time REAL NOT NULL,
+    size          INTEGER NOT NULL,
+    content_hash  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_index_rel_path ON indexed_files(rel_path);
+CREATE INDEX IF NOT EXISTS idx_index_program ON indexed_files(program_key, extension, modified_time DESC);
+CREATE INDEX IF NOT EXISTS idx_index_context ON indexed_files(compound, project, task);
+CREATE INDEX IF NOT EXISTS idx_index_role ON indexed_files(role, extension);
+
+CREATE TABLE IF NOT EXISTS code_index_runs (
+    id              INTEGER PRIMARY KEY CHECK (id = 1),
+    last_indexed_at TEXT NOT NULL,
+    indexed_files   INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
