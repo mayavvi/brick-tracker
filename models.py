@@ -220,6 +220,58 @@ class FileSnapshot(BaseModel):
     snapshot_ts: datetime
 
 
+class IndexedFile(BaseModel):
+    """One globally indexed file record."""
+
+    id: int
+    full_path: str
+    rel_path: str
+    compound: str
+    project: str
+    task: str
+    file_name: str
+    program_key: str
+    extension: str
+    role: Literal["main", "qc", "unknown"]
+    modified_time: datetime
+    size: int
+    content_hash: str
+
+
+class ProgramGroup(BaseModel):
+    """Aggregated program listing row for the workbench."""
+
+    program_key: str
+    extension: str
+    display_name: str
+    version_count: int
+    latest_modified_time: datetime
+    tasks: list[str] = Field(default_factory=list)
+    projects: list[str] = Field(default_factory=list)
+    compounds: list[str] = Field(default_factory=list)
+
+
+class ProgramVersion(IndexedFile):
+    """Concrete indexed version row used in timelines and comparisons."""
+
+
+class CodeIndexContext(BaseModel):
+    """Distinct filter values available in the indexed workbench."""
+
+    compounds: list[str] = Field(default_factory=list)
+    projects: list[str] = Field(default_factory=list)
+    tasks: list[str] = Field(default_factory=list)
+    extensions: list[str] = Field(default_factory=list)
+
+
+class CodeIndexStatus(BaseModel):
+    """Top-level status summary for the code index."""
+
+    indexed_files: int = 0
+    program_groups: int = 0
+    last_indexed_at: datetime | None = None
+
+
 class DiffLine(BaseModel):
     """One row in a structured diff view."""
 
@@ -228,6 +280,15 @@ class DiffLine(BaseModel):
     b_lineno: int | None
     a_text: str = ""
     b_text: str = ""
+
+
+class UnifiedDiffLine(BaseModel):
+    """One row in a unified diff view with real source line numbers."""
+
+    kind: Literal["hunk", "context", "insert", "delete"]
+    a_lineno: int | None
+    b_lineno: int | None
+    text: str
 
 
 class QcTimingRow(BaseModel):
