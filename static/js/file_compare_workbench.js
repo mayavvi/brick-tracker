@@ -13,6 +13,10 @@ function codeIndexWorkbench() {
     timelineLoading: false,
     selectedVersion: null,
     preview: null,
+    _previewLineCache: null,
+    previewRowHeight: 18,
+    previewVisibleStart: 0,
+    previewVisibleEnd: 0,
     snapshots: [],
     snapshotPanelOpen: true,
     resultMode: 'preview',
@@ -23,6 +27,11 @@ function codeIndexWorkbench() {
     diffViewMode: 'side-by-side',
     diffIgnoreWhitespace: false,
     diffIgnoreCase: false,
+    diffRowHeight: 22,
+    diffVisibleStart: 0,
+    diffVisibleEnd: 0,
+    diffUnifiedVisibleStart: 0,
+    diffUnifiedVisibleEnd: 0,
     qcRows: [],
     qcLoading: false,
 
@@ -121,12 +130,19 @@ function codeIndexWorkbench() {
       this.timeline = [];
       this.selectedVersion = null;
       this.preview = null;
+      this._previewLineCache = null;
+      this.previewVisibleStart = 0;
+      this.previewVisibleEnd = 0;
       this.snapshots = [];
       this.snapshotPanelOpen = true;
       this.resultMode = 'preview';
       this.compareP = null;
       this.compareQ = null;
       this.diffResult = null;
+      this.diffVisibleStart = 0;
+      this.diffVisibleEnd = 0;
+      this.diffUnifiedVisibleStart = 0;
+      this.diffUnifiedVisibleEnd = 0;
       this.qcRows = [];
     },
 
@@ -144,6 +160,7 @@ function codeIndexWorkbench() {
       this.timelineLoading = true;
       this.selectedVersion = null;
       this.preview = null;
+      this._previewLineCache = null;
       this.snapshots = [];
       this.resultMode = 'preview';
       this.compareP = null;
@@ -181,10 +198,54 @@ function codeIndexWorkbench() {
     async loadPreview(fileId) {
       try {
         this.preview = await this.api('/api/files/indexed-preview/' + fileId);
+        this._previewLineCache = this.preview.text ? this.preview.text.split('\n') : [];
+        this.previewVisibleStart = 0;
+        this.previewVisibleEnd = 0;
         await this.loadSnapshots(this.preview.file.full_path);
+        queueMicrotask(() => {
+          const el = this.$refs.previewScrollContainer;
+          if (el) {
+            el.scrollTop = 0;
+            this.onPreviewScroll({ target: el });
+          }
+        });
       } catch (err) {
         this.toast(err.message || '加载预览失败', 'error');
       }
+    },
+
+    onPreviewScroll(ev) {
+      const el = ev.target;
+      const st = el.scrollTop;
+      const vh = el.clientHeight || 480;
+      const rh = this.previewRowHeight;
+      const total = this._previewLineCache ? this._previewLineCache.length : 0;
+      const overscan = 20;
+      this.previewVisibleStart = Math.max(0, Math.floor(st / rh) - overscan);
+      const visible = Math.ceil(vh / rh) + overscan * 2 + 2;
+      this.previewVisibleEnd = Math.min(total, this.previewVisibleStart + visible);
+    },
+
+    visiblePreviewRows() {
+      if (!this._previewLineCache || this._previewLineCache.length === 0) return [];
+      const end = this.previewVisibleEnd || this._previewLineCache.length;
+      const out = [];
+      for (let i = this.previewVisibleStart; i < end; i++) {
+        out.push({ n: i + 1, text: this._previewLineCache[i] });
+      }
+      return out;
+    },
+
+    previewTopSpacer() {
+      return this.previewVisibleStart * this.previewRowHeight;
+    },
+
+    previewBottomSpacer() {
+      const total = this._previewLineCache ? this._previewLineCache.length : 0;
+      if (total === 0) return 0;
+      const end = this.previewVisibleEnd || total;
+      const shown = end - this.previewVisibleStart;
+      return Math.max(0, total - this.previewVisibleStart - shown) * this.previewRowHeight;
     },
 
     async loadSnapshots(path) {
@@ -294,7 +355,7 @@ function codeIndexWorkbench() {
       this.appendCompareTarget(params, 'b', this.compareQ);
       if (this.diffIgnoreWhitespace) params.set('ignore_whitespace', 'true');
       if (this.diffIgnoreCase) params.set('ignore_case', 'true');
-      params.set('mode', this.diffViewMode);
+      params.set('mode', 'unified');
       return params.toString();
     },
 
@@ -311,6 +372,22 @@ function codeIndexWorkbench() {
       this.resultMode = 'compare';
       try {
         this.diffResult = await this.api('/api/files/indexed-diff?' + this.buildDiffParams());
+        this.diffVisibleStart = 0;
+        this.diffVisibleEnd = 0;
+        this.diffUnifiedVisibleStart = 0;
+        this.diffUnifiedVisibleEnd = 0;
+        queueMicrotask(() => {
+          const side = this.$refs.diffSideScrollContainer;
+          if (side) {
+            side.scrollTop = 0;
+            this.onDiffSideScroll({ target: side });
+          }
+          const uni = this.$refs.diffUnifiedScrollContainer;
+          if (uni) {
+            uni.scrollTop = 0;
+            this.onDiffUnifiedScroll({ target: uni });
+          }
+        });
       } catch (err) {
         this.toast(err.message || '读取比较结果失败', 'error');
       } finally {
@@ -325,9 +402,90 @@ function codeIndexWorkbench() {
 
     setDiffViewMode(mode) {
       this.diffViewMode = mode === 'unified' ? 'unified' : 'side-by-side';
-      if (this.diffResult) {
-        this.runDiff();
+      queueMicrotask(() => {
+        const side = this.$refs.diffSideScrollContainer;
+        if (side && this.diffViewMode === 'side-by-side') {
+          this.onDiffSideScroll({ target: side });
+        }
+        const uni = this.$refs.diffUnifiedScrollContainer;
+        if (uni && this.diffViewMode === 'unified') {
+          this.onDiffUnifiedScroll({ target: uni });
+        }
+      });
+    },
+
+    onDiffSideScroll(ev) {
+      const el = ev.target;
+      const lines = (this.diffResult && this.diffResult.lines) || [];
+      const st = el.scrollTop;
+      const vh = el.clientHeight || 400;
+      const rh = this.diffRowHeight;
+      const total = lines.length;
+      const overscan = 15;
+      this.diffVisibleStart = Math.max(0, Math.floor(st / rh) - overscan);
+      const visible = Math.ceil(vh / rh) + overscan * 2 + 2;
+      this.diffVisibleEnd = Math.min(total, this.diffVisibleStart + visible);
+    },
+
+    visibleDiffLines() {
+      const lines = (this.diffResult && this.diffResult.lines) || [];
+      if (!lines.length) return [];
+      const end = this.diffVisibleEnd || lines.length;
+      const out = [];
+      for (let i = this.diffVisibleStart; i < end; i++) {
+        out.push({ idx: i, line: lines[i] });
       }
+      return out;
+    },
+
+    diffTopSpacer() {
+      return this.diffVisibleStart * this.diffRowHeight;
+    },
+
+    diffBottomSpacer() {
+      const lines = (this.diffResult && this.diffResult.lines) || [];
+      const total = lines.length;
+      if (total === 0) return 0;
+      const end = this.diffVisibleEnd || total;
+      const shown = end - this.diffVisibleStart;
+      return Math.max(0, total - this.diffVisibleStart - shown) * this.diffRowHeight;
+    },
+
+    onDiffUnifiedScroll(ev) {
+      const el = ev.target;
+      const lines = (this.diffResult && this.diffResult.unified_lines) || [];
+      const st = el.scrollTop;
+      const vh = el.clientHeight || 400;
+      const rh = this.diffRowHeight;
+      const total = lines.length;
+      const overscan = 15;
+      this.diffUnifiedVisibleStart = Math.max(0, Math.floor(st / rh) - overscan);
+      const visible = Math.ceil(vh / rh) + overscan * 2 + 2;
+      this.diffUnifiedVisibleEnd = Math.min(total, this.diffUnifiedVisibleStart + visible);
+    },
+
+    visibleUnifiedLines() {
+      const lines = (this.diffResult && this.diffResult.unified_lines) || [];
+      if (!lines.length) return [];
+      const end = this.diffUnifiedVisibleEnd || lines.length;
+      const out = [];
+      for (let i = this.diffUnifiedVisibleStart; i < end; i++) {
+        out.push({ idx: i, line: lines[i] });
+      }
+      return out;
+    },
+
+    diffUnifiedTopSpacer() {
+      return this.diffUnifiedVisibleStart * this.diffRowHeight;
+    },
+
+    diffUnifiedBottomSpacer() {
+      const lines = (this.diffResult && this.diffResult.unified_lines) || [];
+      const total = lines.length;
+      if (total === 0) return 0;
+      const end = this.diffUnifiedVisibleEnd || total;
+      const shown = end - this.diffUnifiedVisibleStart;
+      return Math.max(0, total - this.diffUnifiedVisibleStart - shown) * this.diffRowHeight;
     },
 
     async setResultMode(mode) {
@@ -357,11 +515,6 @@ function codeIndexWorkbench() {
       } finally {
         this.qcLoading = false;
       }
-    },
-
-    previewLines() {
-      if (!this.preview || !this.preview.text) return [];
-      return this.preview.text.split('\n');
     },
 
     diffSummary() {

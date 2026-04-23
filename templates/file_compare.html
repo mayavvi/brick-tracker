@@ -78,7 +78,7 @@
           <div class="grid grid-cols-1 gap-3">
             <div>
               <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Compound</label>
-              <select x-model="filters.compound" @change="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
+              <select x-model="filters.compound" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
                 <option value="">All compounds</option>
                 <template x-for="item in contexts.compounds" :key="item">
                   <option :value="item" x-text="item"></option>
@@ -87,7 +87,7 @@
             </div>
             <div>
               <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Project</label>
-              <select x-model="filters.project" @change="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
+              <select x-model="filters.project" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
                 <option value="">All projects</option>
                 <template x-for="item in contexts.projects" :key="item">
                   <option :value="item" x-text="item"></option>
@@ -96,7 +96,7 @@
             </div>
             <div>
               <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Task</label>
-              <select x-model="filters.task" @change="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
+              <select x-model="filters.task" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
                 <option value="">All tasks</option>
                 <template x-for="item in contexts.tasks" :key="item">
                   <option :value="item" x-text="item"></option>
@@ -106,7 +106,7 @@
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Type</label>
-                <select x-model="filters.extension" @change="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
+                <select x-model="filters.extension" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
                   <option value="">All</option>
                   <template x-for="item in contexts.extensions" :key="item">
                     <option :value="item" x-text="item"></option>
@@ -115,7 +115,7 @@
               </div>
               <div>
                 <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Role</label>
-                <select x-model="filters.role" @change="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
+                <select x-model="filters.role" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm">
                   <option value="">All</option>
                   <option value="main">main</option>
                   <option value="qc">qc</option>
@@ -152,7 +152,7 @@
               </div>
             </template>
 
-            <div class="divide-y divide-stone-200 dark:divide-stone-800" x-show="!programLoading && programs.length > 0">
+            <div class="divide-y divide-stone-200 dark:divide-stone-800 max-h-[min(60vh,32rem)] overflow-y-auto" x-show="!programLoading && programs.length > 0">
               <template x-for="program in programs" :key="program.display_name">
                 <div>
                   <button type="button"
@@ -296,17 +296,23 @@
                   <p x-show="preview.truncated" class="mt-3 text-[11px] font-medium text-amber-500">文件较大，当前只显示截断后的预览内容。</p>
                 </div>
 
-                <div class="flex-1 min-h-0 overflow-auto bg-white dark:bg-stone-950">
+                <div x-ref="previewScrollContainer" @scroll="onPreviewScroll($event)" class="flex-1 min-h-0 overflow-auto bg-white dark:bg-stone-950">
                   <table class="w-full border-collapse">
                     <tbody>
-                      <template x-for="(line, idx) in previewLines()" :key="idx">
+                      <tr x-show="previewTopSpacer() > 0" :style="'height:' + previewTopSpacer() + 'px'">
+                        <td colspan="2" class="p-0 border-0"></td>
+                      </tr>
+                      <template x-for="row in visiblePreviewRows()" :key="'pv-' + row.n">
                         <tr class="align-top border-b border-stone-100 dark:border-stone-900">
-                          <td class="w-16 text-right pr-3 py-0.5 text-[11px] font-mono text-stone-500 bg-stone-50 dark:bg-stone-950/60 sticky left-0" x-text="idx + 1"></td>
+                          <td class="w-16 text-right pr-3 py-0.5 text-[11px] font-mono text-stone-500 bg-stone-50 dark:bg-stone-950/60 sticky left-0" x-text="row.n"></td>
                           <td class="py-0.5 pr-3">
-                            <pre class="text-[12px] leading-5 font-mono text-stone-800 dark:text-stone-200 whitespace-pre-wrap break-words" x-text="line || ' '"></pre>
+                            <pre class="text-[12px] leading-5 font-mono text-stone-800 dark:text-stone-200 whitespace-pre-wrap break-words" x-text="row.text || ' '"></pre>
                           </td>
                         </tr>
                       </template>
+                      <tr x-show="previewBottomSpacer() > 0" :style="'height:' + previewBottomSpacer() + 'px'">
+                        <td colspan="2" class="p-0 border-0"></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -400,7 +406,7 @@
                   <span class="text-[11px] font-semibold text-emerald-500" x-text="diffResult.b_label"></span>
                 </div>
 
-                <div class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'side-by-side'">
+                <div x-ref="diffSideScrollContainer" @scroll="onDiffSideScroll($event)" class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'side-by-side'">
                   <table class="w-full border-collapse text-[12px]">
                     <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
                       <tr class="text-[11px]">
@@ -411,19 +417,25 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <template x-for="(line, idx) in diffResult.lines" :key="idx">
+                      <tr x-show="diffTopSpacer() > 0" :style="'height:' + diffTopSpacer() + 'px'">
+                        <td colspan="4" class="p-0 border-0"></td>
+                      </tr>
+                      <template x-for="wrap in visibleDiffLines()" :key="'ds-' + wrap.idx">
                         <tr class="align-top border-b border-stone-100 dark:border-stone-900">
-                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="line.a_lineno || ''"></td>
-                          <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(line.op, 'p')" x-text="line.a_text || ' '"></pre></td>
-                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="line.b_lineno || ''"></td>
-                          <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(line.op, 'q')" x-text="line.b_text || ' '"></pre></td>
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.a_lineno || ''"></td>
+                          <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(wrap.line.op, 'p')" x-text="wrap.line.a_text || ' '"></pre></td>
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.b_lineno || ''"></td>
+                          <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(wrap.line.op, 'q')" x-text="wrap.line.b_text || ' '"></pre></td>
                         </tr>
                       </template>
+                      <tr x-show="diffBottomSpacer() > 0" :style="'height:' + diffBottomSpacer() + 'px'">
+                        <td colspan="4" class="p-0 border-0"></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
 
-                <div class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'unified'">
+                <div x-ref="diffUnifiedScrollContainer" @scroll="onDiffUnifiedScroll($event)" class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'unified'">
                   <table class="w-full border-collapse text-[12px]">
                     <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
                       <tr class="text-[11px]">
@@ -433,15 +445,21 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <template x-for="(line, idx) in diffResult.unified_lines || []" :key="idx">
+                      <tr x-show="diffUnifiedTopSpacer() > 0" :style="'height:' + diffUnifiedTopSpacer() + 'px'">
+                        <td colspan="3" class="p-0 border-0"></td>
+                      </tr>
+                      <template x-for="wrap in visibleUnifiedLines()" :key="'du-' + wrap.idx">
                         <tr class="align-top border-b border-stone-100 dark:border-stone-900">
-                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="line.kind === 'hunk' ? '' : (line.a_lineno || '')"></td>
-                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="line.kind === 'hunk' ? '' : (line.b_lineno || '')"></td>
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.kind === 'hunk' ? '' : (wrap.line.a_lineno || '')"></td>
+                          <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.kind === 'hunk' ? '' : (wrap.line.b_lineno || '')"></td>
                           <td class="py-1 pr-2">
-                            <pre class="font-mono whitespace-pre-wrap break-words" :class="unifiedLineClass(line)" x-text="line.text || ' '"></pre>
+                            <pre class="font-mono whitespace-pre-wrap break-words" :class="unifiedLineClass(wrap.line)" x-text="wrap.line.text || ' '"></pre>
                           </td>
                         </tr>
                       </template>
+                      <tr x-show="diffUnifiedBottomSpacer() > 0" :style="'height:' + diffUnifiedBottomSpacer() + 'px'">
+                        <td colspan="3" class="p-0 border-0"></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>

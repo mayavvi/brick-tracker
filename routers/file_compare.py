@@ -185,7 +185,7 @@ async def file_diff(
             b_text,
             ignore_whitespace=ignore_whitespace,
             ignore_case=ignore_case,
-            want_unified=(mode == "unified"),
+            want_unified=True,
         )
         return {
             "mode": mode,
@@ -392,7 +392,7 @@ async def code_index_diff(
             b_text,
             ignore_whitespace=ignore_whitespace,
             ignore_case=ignore_case,
-            want_unified=(mode == "unified"),
+            want_unified=True,
         )
         return {
             "mode": mode,
