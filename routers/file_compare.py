@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from auth import User, get_current_user
 from models import FileEntry, FileSnapshot, QcTimingRow
-from services.file_diff import diff_texts, summarize, unified_diff_texts
+from services.file_diff import diff_both, summarize
 from services.file_index import get_tree, search
 from services.file_reader import read_text, read_text_full, resolve_safe_path, to_rel_path
 from services.qc_timing import check_study
@@ -29,10 +29,9 @@ class SnapshotCreatePayload(BaseModel):
 @router.get("/tree")
 def file_tree(
     study_id: str = Query(..., min_length=1),
-    user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
 ) -> dict:
     """Return task/folder/file tree for one study."""
-    _ = user
     try:
         return get_tree(study_id)
     except FileNotFoundError:
@@ -49,10 +48,9 @@ def file_search(
     kind: Literal["sas", "log", "lst", "other"] | None = Query(None),
     role: Literal["main", "qc", "unknown"] | None = Query(None),
     limit: int = Query(100, ge=1, le=500),
-    user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
 ) -> list[FileEntry]:
     """Search files by name/path with optional filters."""
-    _ = user
     try:
         return search(q, study_id=study_id, kind=kind, role=role, limit=limit)
     except ValueError as exc:
@@ -71,10 +69,9 @@ def file_search(
 def file_preview(
     path: str = Query(..., min_length=1),
     max_bytes: int = Query(2_000_000, ge=1024, le=10_000_000),
-    user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
 ) -> dict:
     """Preview file content in read-only mode using Path.read_bytes()."""
-    _ = user
     try:
         p = resolve_safe_path(path)
         text, encoding, truncated, size_bytes = read_text(p, max_bytes=max_bytes)
@@ -166,18 +163,13 @@ async def file_diff(
             path=b_path,
         )
 
-        lines = diff_texts(
+        lines, unified_lines = diff_both(
             a_text,
             b_text,
             ignore_whitespace=ignore_whitespace,
             ignore_case=ignore_case,
+            want_unified=(mode == "unified"),
         )
-        unified_lines = unified_diff_texts(
-            a_text,
-            b_text,
-            ignore_whitespace=ignore_whitespace,
-            ignore_case=ignore_case,
-        ) if mode == "unified" else []
         return {
             "mode": mode,
             "summary": summarize(lines),
@@ -205,10 +197,9 @@ async def file_diff(
 @router.get("/qc-timing", response_model=list[QcTimingRow])
 def qc_timing(
     study_id: str = Query(..., min_length=1),
-    user: User = Depends(get_current_user),
+    _: User = Depends(get_current_user),
 ) -> list[QcTimingRow]:
     """Main vs QC log recency check for one study."""
-    _ = user
     try:
         return check_study(study_id)
     except FileNotFoundError:

@@ -2,9 +2,23 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from difflib import SequenceMatcher
 
 from models import DiffLine
+
+
+def _prepare_diff(
+    a: str,
+    b: str,
+    ignore_whitespace: bool,
+    ignore_case: bool,
+) -> tuple[list[str], list[str], SequenceMatcher]:
+    a_lines = a.splitlines()
+    b_lines = b.splitlines()
+    a_norm = [_normalize(line, ignore_whitespace, ignore_case) for line in a_lines]
+    b_norm = [_normalize(line, ignore_whitespace, ignore_case) for line in b_lines]
+    return a_lines, b_lines, SequenceMatcher(None, a_norm, b_norm, autojunk=False)
 
 
 def diff_texts(
@@ -14,13 +28,66 @@ def diff_texts(
     ignore_case: bool = False,
 ) -> list[DiffLine]:
     """Build structured diff rows with line numbers on both sides."""
-    a_lines = a.splitlines()
-    b_lines = b.splitlines()
+    a_lines, b_lines, matcher = _prepare_diff(a, b, ignore_whitespace, ignore_case)
+    return _diff_from_matcher(matcher, a_lines, b_lines)
 
-    a_norm = [_normalize(line, ignore_whitespace, ignore_case) for line in a_lines]
-    b_norm = [_normalize(line, ignore_whitespace, ignore_case) for line in b_lines]
+def diff_both(
+    a: str,
+    b: str,
+    ignore_whitespace: bool = False,
+    ignore_case: bool = False,
+    context_lines: int = 3,
+    want_unified: bool = False,
+) -> tuple[list[DiffLine], list[str]]:
+    """Build side-by-side rows and, optionally, unified lines from one matcher."""
+    a_lines, b_lines, matcher = _prepare_diff(a, b, ignore_whitespace, ignore_case)
+    side_lines = _diff_from_matcher(matcher, a_lines, b_lines)
+    unified_lines = _unified_from_matcher(
+        matcher,
+        a_lines,
+        b_lines,
+        context_lines=context_lines,
+    ) if want_unified else []
+    return side_lines, unified_lines
 
-    matcher = SequenceMatcher(None, a_norm, b_norm, autojunk=False)
+
+def summarize(lines: list[DiffLine]) -> dict[str, int]:
+    """Count diff rows by operation."""
+    counts = Counter(line.op for line in lines)
+    return {
+        "inserted": counts["insert"],
+        "deleted": counts["delete"],
+        "replaced": counts["replace"],
+        "equal": counts["equal"],
+        "total": len(lines),
+    }
+
+
+def unified_diff_texts(
+    a: str,
+    b: str,
+    ignore_whitespace: bool = False,
+    ignore_case: bool = False,
+    context_lines: int = 3,
+) -> list[str]:
+    """Build unified-style diff lines.
+
+    The matcher uses normalized text (for ignore options), but emits original lines.
+    """
+    a_lines, b_lines, matcher = _prepare_diff(a, b, ignore_whitespace, ignore_case)
+    return _unified_from_matcher(
+        matcher,
+        a_lines,
+        b_lines,
+        context_lines=context_lines,
+    )
+
+
+def _diff_from_matcher(
+    matcher: SequenceMatcher,
+    a_lines: list[str],
+    b_lines: list[str],
+) -> list[DiffLine]:
     out: list[DiffLine] = []
 
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
@@ -63,10 +130,8 @@ def diff_texts(
                 )
             continue
 
-        # replace
         a_chunk = a_lines[i1:i2]
         b_chunk = b_lines[j1:j2]
-        max_len = max(len(a_chunk), len(b_chunk))
         overlap = min(len(a_chunk), len(b_chunk))
 
         for k in range(overlap):
@@ -103,38 +168,12 @@ def diff_texts(
     return out
 
 
-def summarize(lines: list[DiffLine]) -> dict[str, int]:
-    """Count diff rows by operation."""
-    inserted = sum(1 for line in lines if line.op == "insert")
-    deleted = sum(1 for line in lines if line.op == "delete")
-    replaced = sum(1 for line in lines if line.op == "replace")
-    equal = sum(1 for line in lines if line.op == "equal")
-    return {
-        "inserted": inserted,
-        "deleted": deleted,
-        "replaced": replaced,
-        "equal": equal,
-        "total": len(lines),
-    }
-
-
-def unified_diff_texts(
-    a: str,
-    b: str,
-    ignore_whitespace: bool = False,
-    ignore_case: bool = False,
-    context_lines: int = 3,
+def _unified_from_matcher(
+    matcher: SequenceMatcher,
+    a_lines: list[str],
+    b_lines: list[str],
+    context_lines: int,
 ) -> list[str]:
-    """Build unified-style diff lines.
-
-    The matcher uses normalized text (for ignore options), but emits original lines.
-    """
-    a_lines = a.splitlines()
-    b_lines = b.splitlines()
-    a_norm = [_normalize(line, ignore_whitespace, ignore_case) for line in a_lines]
-    b_norm = [_normalize(line, ignore_whitespace, ignore_case) for line in b_lines]
-
-    matcher = SequenceMatcher(None, a_norm, b_norm, autojunk=False)
     grouped = list(matcher.get_grouped_opcodes(max(0, context_lines)))
     if not grouped:
         return []

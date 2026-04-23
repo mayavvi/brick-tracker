@@ -44,9 +44,14 @@ class _FileIndexCache:
     def invalidate(self) -> None:
         with self._lock:
             self._store.clear()
+        with _dir_lock:
+            _dir_cache.clear()
 
 
 file_index_cache = _FileIndexCache()
+
+_dir_cache: dict[str, Path] = {}
+_dir_lock = threading.Lock()
 
 
 def build_index(study_id: str) -> list[FileEntry]:
@@ -169,9 +174,15 @@ def get_tree(study_id: str) -> dict:
 
 
 def _resolve_study_dir(study_id: str) -> Path:
+    with _dir_lock:
+        if study_id in _dir_cache:
+            return _dir_cache[study_id]
     for s in discover_studies(PROJECTS_BASE_PATH):
         if s.study_id == study_id:
-            return (PROJECTS_BASE_PATH / s.compound / s.study_id).resolve()
+            path = (PROJECTS_BASE_PATH / s.compound / s.study_id).resolve()
+            with _dir_lock:
+                _dir_cache[study_id] = path
+            return path
     raise FileNotFoundError(f"Study not found: {study_id}")
 
 

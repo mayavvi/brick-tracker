@@ -16,15 +16,24 @@
               <option :value="sid" x-text="sid"></option>
             </template>
           </select>
-          <input type="text"
-                 id="file-compare-search"
-                 x-model="searchQuery"
-                 @input.debounce.300ms="runSearch()"
-                 :disabled="!selectedStudyId"
-                 placeholder="// 搜索文件名；正则可用 re:... 或 /.../i"
-                 class="h-10 flex-1 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 text-sm
-                        text-stone-800 dark:text-stone-200 placeholder:text-stone-400
-                        focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none disabled:opacity-50 disabled:cursor-not-allowed" />
+          <div class="flex-1 flex flex-col gap-0.5">
+            <input type="text"
+                   id="file-compare-search"
+                   x-model="searchQuery"
+                   @input.debounce.300ms="runSearch()"
+                   :disabled="!selectedStudyId"
+                   placeholder="// 搜索文件名；正则：re:pattern 或 /pattern/i"
+                   :class="searchError ? 'border-rose-400 focus:border-rose-400 focus:ring-rose-400/40' : 'border-stone-300 dark:border-stone-700 focus:ring-warm-400/40 focus:border-warm-400'"
+                   class="h-10 w-full rounded-md border bg-white dark:bg-stone-950 px-3 text-sm
+                          text-stone-800 dark:text-stone-200 placeholder:text-stone-400
+                          focus:ring-2 outline-none disabled:opacity-50 disabled:cursor-not-allowed" />
+            <div x-show="searchQuery.trim()" class="flex items-center gap-2 h-4 px-1">
+              <span x-show="searchQuery.startsWith('re:') || (searchQuery.startsWith('/') && searchQuery.slice(1).includes('/'))"
+                    class="text-[10px] font-semibold text-amber-500 font-mono">● 正则模式</span>
+              <span x-show="searchError" x-text="searchError"
+                    class="text-[10px] text-rose-500 font-mono truncate"></span>
+            </div>
+          </div>
         </div>
         <div class="text-xs font-mono text-stone-500 dark:text-stone-400">
           <span x-show="selectedStudyId && !loadingTree" x-text="'FILES: ' + totalFiles"></span>
@@ -33,16 +42,33 @@
         </div>
       </div>
 
-      <div class="mt-3 flex items-center gap-2">
+      <div class="mt-3 flex flex-wrap items-center gap-2">
         <button type="button" @click="switchTab('browse')"
                 :class="activeTab==='browse' ? 'bg-warm-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
                 class="px-3 py-1.5 rounded-md text-xs font-semibold transition">浏览预览</button>
         <button type="button" @click="switchTab('compare')"
-                :class="activeTab==='compare' ? 'bg-neon-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
+                :class="activeTab==='compare' ? 'bg-sky-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
                 class="px-3 py-1.5 rounded-md text-xs font-semibold transition">程序对比</button>
         <button type="button" @click="switchTab('qc')"
-                :class="activeTab==='qc' ? 'bg-neon-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
+                :class="activeTab==='qc' ? 'bg-amber-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
                 class="px-3 py-1.5 rounded-md text-xs font-semibold transition">QC 时间检查</button>
+        <div class="ml-auto flex flex-wrap items-center gap-1.5">
+          <template x-for="k in ['all','sas','log','lst']" :key="k">
+            <button type="button"
+                    @click="toggleKindFilter(k)"
+                    :class="kindFilter===k ? 'bg-warm-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400'"
+                    class="px-2 py-0.5 rounded-full text-[11px] font-medium transition"
+                    x-text="k === 'all' ? '全部' : '.' + k"></button>
+          </template>
+          <span class="text-stone-300 dark:text-stone-600 text-[11px] select-none">|</span>
+          <template x-for="r in ['all','main','qc']" :key="r">
+            <button type="button"
+                    @click="toggleRoleFilter(r)"
+                    :class="roleFilter===r ? 'bg-sky-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400'"
+                    class="px-2 py-0.5 rounded-full text-[11px] font-medium transition"
+                    x-text="r"></button>
+          </template>
+        </div>
       </div>
     </div>
 
@@ -68,22 +94,6 @@
               </div>
             </div>
 
-            <div class="flex flex-wrap gap-1.5">
-              <template x-for="k in ['all','sas','log','lst']" :key="k">
-                <button type="button"
-                        @click="toggleKindFilter(k)"
-                        :class="kindFilter===k ? 'bg-warm-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
-                        class="px-2 py-1 rounded-full text-[11px] font-medium transition"
-                        x-text="k === 'all' ? '全部类型' : '.' + k"></button>
-              </template>
-              <template x-for="r in ['all','main','qc']" :key="r">
-                <button type="button"
-                        @click="toggleRoleFilter(r)"
-                        :class="roleFilter===r ? 'bg-neon-500 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'"
-                        class="px-2 py-1 rounded-full text-[11px] font-medium transition"
-                        x-text="r"></button>
-              </template>
-            </div>
           </div>
 
           <div class="flex-1 min-h-0 overflow-auto p-3">
@@ -102,20 +112,32 @@
             <template x-if="selectedStudyId && searchQuery.trim().length > 0 && searchResults.length > 0">
               <div class="space-y-1">
                 <template x-for="item in searchResults" :key="item.abs_path">
-                  <button type="button"
-                          @click="previewFile(item.abs_path)"
-                          class="w-full text-left p-2 rounded-md border border-stone-200 dark:border-stone-800 hover:border-warm-400/60 hover:bg-warm-500/5 transition">
-                    <div class="flex items-center gap-2">
-                      <span class="text-[10px] px-1.5 py-0.5 rounded"
-                            :class="kindBadgeClass(item.kind)"
-                            x-text="item.kind"></span>
-                      <span class="text-xs font-medium text-stone-800 dark:text-stone-200 truncate" x-text="basename(item.abs_path)"></span>
+                  <div class="flex items-stretch gap-1">
+                    <button type="button"
+                            @click="previewFile(item.abs_path)"
+                            class="flex-1 min-w-0 text-left p-2 rounded-md border border-stone-200 dark:border-stone-800 hover:border-warm-400/60 hover:bg-warm-500/5 transition">
+                      <div class="flex items-center gap-2">
+                        <span class="text-[10px] px-1.5 py-0.5 rounded"
+                              :class="kindBadgeClass(item.kind)"
+                              x-text="item.kind"></span>
+                        <span class="text-xs font-medium text-stone-800 dark:text-stone-200 truncate" x-text="basename(item.abs_path)"></span>
+                      </div>
+                      <div class="text-[10px] font-mono text-stone-500 truncate mt-1" x-text="item.rel_path"></div>
+                      <div class="text-[10px] text-stone-500 mt-1">
+                        <span x-text="item.role"></span> · <span x-text="fmtTime(item.mtime)"></span>
+                      </div>
+                    </button>
+                    <div class="shrink-0 flex flex-col gap-1 py-1">
+                      <button type="button"
+                              @click="setCurrentAsCompare('a', item.abs_path)"
+                              title="设为 A 侧"
+                              class="flex-1 w-7 rounded text-[10px] font-bold bg-sky-500 text-white hover:bg-sky-600 transition">A</button>
+                      <button type="button"
+                              @click="setCurrentAsCompare('b', item.abs_path)"
+                              title="设为 B 侧"
+                              class="flex-1 w-7 rounded text-[10px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition">B</button>
                     </div>
-                    <div class="text-[10px] font-mono text-stone-500 truncate mt-1" x-text="item.rel_path"></div>
-                    <div class="text-[10px] text-stone-500 mt-1">
-                      <span x-text="item.role"></span> · <span x-text="fmtTime(item.mtime)"></span>
-                    </div>
-                  </button>
+                  </div>
                 </template>
               </div>
             </template>
@@ -139,16 +161,28 @@
                           </button>
                           <div x-show="folderOpen[folder.path]" class="py-1">
                             <template x-for="file in folder.files" :key="file.abs_path">
-                              <button type="button" @click="previewFile(file.abs_path)"
-                                      class="w-full text-left px-2 py-1.5 text-[11px] hover:bg-stone-100 dark:hover:bg-stone-800 transition">
-                                <div class="flex items-center gap-2">
-                                  <span class="text-[10px] px-1.5 py-0.5 rounded"
-                                        :class="kindBadgeClass(file.kind)"
-                                        x-text="file.kind"></span>
-                                  <span class="truncate text-stone-700 dark:text-stone-300" x-text="basename(file.abs_path)"></span>
+                              <div class="group/file flex items-center gap-1 px-2 py-1.5 hover:bg-stone-100 dark:hover:bg-stone-800 transition">
+                                <button type="button" @click="previewFile(file.abs_path)"
+                                        class="flex-1 min-w-0 text-left text-[11px]">
+                                  <div class="flex items-center gap-2">
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded"
+                                          :class="kindBadgeClass(file.kind)"
+                                          x-text="file.kind"></span>
+                                    <span class="truncate text-stone-700 dark:text-stone-300" x-text="basename(file.abs_path)"></span>
+                                  </div>
+                                  <div class="text-[10px] text-stone-500 mt-0.5" x-text="fmtTime(file.mtime)"></div>
+                                </button>
+                                <div class="shrink-0 flex gap-1 opacity-0 group-hover/file:opacity-100 transition-opacity">
+                                  <button type="button"
+                                          @click.stop="setCurrentAsCompare('a', file.abs_path)"
+                                          title="设为 A"
+                                          class="w-5 h-5 rounded text-[9px] font-bold bg-sky-500 text-white hover:bg-sky-600 flex items-center justify-center">A</button>
+                                  <button type="button"
+                                          @click.stop="setCurrentAsCompare('b', file.abs_path)"
+                                          title="设为 B"
+                                          class="w-5 h-5 rounded text-[9px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 flex items-center justify-center">B</button>
                                 </div>
-                                <div class="text-[10px] text-stone-500 mt-0.5" x-text="fmtTime(file.mtime)"></div>
-                              </button>
+                              </div>
                             </template>
                           </div>
                         </div>
@@ -290,29 +324,55 @@
 
       <section x-show="activeTab === 'compare'" class="h-full min-h-0 flex flex-col">
         <div class="px-4 py-3 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/50 space-y-2">
-          <div class="grid grid-cols-1 xl:grid-cols-[1fr_auto_1fr_auto] gap-2 items-center">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="shrink-0 text-[11px] font-semibold text-sky-600 dark:text-sky-300">A侧</span>
-              <input type="text" x-model="compareAPath"
-                     placeholder="// 先在浏览区打开文件，再点 A 按钮"
-                     class="w-full h-8 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-2 text-[11px] font-mono text-stone-700 dark:text-stone-300" />
+          <!-- A/B card row -->
+          <div class="flex flex-col xl:flex-row gap-2 items-stretch xl:items-center">
+            <!-- A card -->
+            <div class="flex-1 min-w-0 border-l-4 border-sky-500 bg-white dark:bg-stone-950 rounded-md px-3 py-2 flex items-center justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <span class="text-[10px] font-bold text-sky-500 uppercase tracking-wider">A 侧</span>
+                <template x-if="compareAPath">
+                  <div>
+                    <p class="text-xs font-semibold text-sky-600 dark:text-sky-300 truncate" x-text="basename(compareAPath)"></p>
+                    <p class="text-[10px] font-mono text-stone-400 truncate" x-text="compareAPath"></p>
+                  </div>
+                </template>
+                <template x-if="!compareAPath">
+                  <p class="text-[11px] font-mono text-stone-400 mt-0.5">// 未选择</p>
+                </template>
+              </div>
+              <button x-show="compareAPath" type="button" @click="compareAPath=''; diffResult=null;"
+                      class="shrink-0 text-[13px] leading-none text-stone-400 hover:text-rose-500 transition font-semibold">×</button>
             </div>
-            <button type="button" @click="swapCompareSides()"
-                    class="h-8 px-3 rounded-md text-[11px] font-semibold bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-700 transition">
-              交换
-            </button>
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="shrink-0 text-[11px] font-semibold text-emerald-600 dark:text-emerald-300">B侧</span>
-              <input type="text" x-model="compareBPath"
-                     placeholder="// 再打开另一个文件，点 B 按钮"
-                     class="w-full h-8 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-2 text-[11px] font-mono text-stone-700 dark:text-stone-300" />
+            <!-- swap + run -->
+            <div class="flex xl:flex-col gap-2 justify-center items-center">
+              <button type="button" @click="swapCompareSides()"
+                      class="h-8 w-8 rounded-md text-base font-bold bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-700 transition"
+                      title="交换 A/B">⇄</button>
+              <button type="button" @click="compareFiles()"
+                      :disabled="!compareAPath || !compareBPath || diffLoading"
+                      class="h-8 px-4 rounded-md text-[11px] font-semibold bg-neon-500 text-white hover:bg-neon-600 disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap">
+                ▶ 比较
+              </button>
             </div>
-            <button type="button" @click="compareFiles()"
-                    :disabled="!compareAPath || !compareBPath || diffLoading"
-                    class="h-8 px-3 rounded-md text-[11px] font-semibold bg-neon-500 text-white hover:bg-neon-600 disabled:opacity-50 disabled:cursor-not-allowed transition">
-              开始比较
-            </button>
+            <!-- B card -->
+            <div class="flex-1 min-w-0 border-l-4 border-emerald-500 bg-white dark:bg-stone-950 rounded-md px-3 py-2 flex items-center justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <span class="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">B 侧</span>
+                <template x-if="compareBPath">
+                  <div>
+                    <p class="text-xs font-semibold text-emerald-600 dark:text-emerald-300 truncate" x-text="basename(compareBPath)"></p>
+                    <p class="text-[10px] font-mono text-stone-400 truncate" x-text="compareBPath"></p>
+                  </div>
+                </template>
+                <template x-if="!compareBPath">
+                  <p class="text-[11px] font-mono text-stone-400 mt-0.5">// 未选择</p>
+                </template>
+              </div>
+              <button x-show="compareBPath" type="button" @click="compareBPath=''; diffResult=null;"
+                      class="shrink-0 text-[13px] leading-none text-stone-400 hover:text-rose-500 transition font-semibold">×</button>
+            </div>
           </div>
+          <!-- options row -->
           <div class="flex flex-wrap items-center gap-3">
             <div class="inline-flex rounded-md border border-stone-300 dark:border-stone-700 overflow-hidden">
               <button type="button"
@@ -336,14 +396,21 @@
               <input type="checkbox" x-model="diffIgnoreCase" @change="rerunDiffWithOptions()" />
               忽略大小写
             </label>
-            <span x-show="diffResult" class="text-xs font-semibold text-stone-700 dark:text-stone-200"
-                  x-text="'+' + diffResult.summary.inserted + ' / -' + diffResult.summary.deleted + ' / ~' + diffResult.summary.replaced"></span>
+            <span x-show="diffResult" class="text-xs font-semibold text-stone-600 dark:text-stone-300"
+                  x-text="diffResult ? `+${diffResult.summary.inserted} / -${diffResult.summary.deleted} / ~${diffResult.summary.replaced}  (${diffResult.summary.total} lines)` : ''"></span>
           </div>
         </div>
 
-        <template x-if="!diffResult && !diffLoading">
-          <div class="h-full flex items-center justify-center">
-            <p class="text-xs font-mono text-stone-500">// 先准备 A/B 两个文件，再点“开始比较”</p>
+        <template x-if=”!diffResult && !diffLoading”>
+          <div class=”h-full flex flex-col items-center justify-center gap-6”>
+            <div class=”flex items-center gap-6”>
+              <div :class=”compareAPath ? 'border-sky-500 text-sky-500' : 'border-stone-300 dark:border-stone-600 text-stone-400'”
+                   class=”w-16 h-16 rounded-xl border-2 flex items-center justify-center text-2xl font-black transition-colors”>A</div>
+              <span class=”text-stone-300 dark:text-stone-600 text-3xl select-none”>→</span>
+              <div :class=”compareBPath ? 'border-emerald-500 text-emerald-500' : 'border-stone-300 dark:border-stone-600 text-stone-400'”
+                   class=”w-16 h-16 rounded-xl border-2 flex items-center justify-center text-2xl font-black transition-colors”>B</div>
+            </div>
+            <p class=”text-xs font-mono text-stone-500” x-text=”emptyStateHint()”></p>
           </div>
         </template>
 
@@ -355,19 +422,23 @@
 
         <template x-if="diffResult">
           <div class="h-full min-h-0 flex flex-col">
-            <div class="px-4 py-2 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/30 flex flex-wrap items-center gap-3">
-              <span class="text-[11px] font-mono text-stone-500 truncate" x-text="diffResult.a_label"></span>
-              <span class="text-[11px] text-stone-400">→</span>
-              <span class="text-[11px] font-mono text-stone-500 truncate" x-text="diffResult.b_label"></span>
+            <div class="px-4 py-2 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/30 flex flex-wrap items-center gap-2">
+              <span class="text-[11px] font-bold text-sky-500">A</span>
+              <span class="text-[11px] font-mono text-stone-500 truncate max-w-[28%]" x-text="diffResult.a_label"></span>
+              <span class="text-stone-400 text-[11px]">→</span>
+              <span class="text-[11px] font-bold text-emerald-500">B</span>
+              <span class="text-[11px] font-mono text-stone-500 truncate max-w-[28%]" x-text="diffResult.b_label"></span>
+              <span class="ml-auto text-[11px] font-semibold text-stone-600 dark:text-stone-300 whitespace-nowrap"
+                    x-text="`+${diffResult.summary.inserted} -${diffResult.summary.deleted} ~${diffResult.summary.replaced}  (${diffResult.summary.total} lines)`"></span>
             </div>
             <div class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'side-by-side'">
               <table class="w-full border-collapse text-[12px]">
                 <thead class="sticky top-0 z-10 bg-stone-100 dark:bg-stone-900">
-                  <tr class="text-[11px] text-stone-500">
-                    <th class="w-14 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800">A</th>
-                    <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800">A侧内容</th>
-                    <th class="w-14 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800">B</th>
-                    <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800">B侧内容</th>
+                  <tr class="text-[11px]">
+                    <th class="w-14 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-sky-500">A#</th>
+                    <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800 text-sky-500">A 侧</th>
+                    <th class="w-14 text-right pr-2 py-1 border-b border-stone-200 dark:border-stone-800 text-emerald-500">B#</th>
+                    <th class="text-left py-1 border-b border-stone-200 dark:border-stone-800 text-emerald-500">B 侧</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -465,7 +536,7 @@
               <tbody>
                 <template x-for="(row, idx) in qcRows" :key="row.task + '::' + row.program + '::' + idx">
                   <tr class="border-b border-stone-100 dark:border-stone-900"
-                      :class="row.stale ? 'bg-fuchsia-50/60 dark:bg-fuchsia-900/15' : ''">
+                      :class="row.stale ? 'bg-violet-50/60 dark:bg-violet-900/15' : ''">
                     <td class="px-2 py-2 font-mono text-[11px] text-stone-600 dark:text-stone-300" x-text="row.task"></td>
                     <td class="px-2 py-2">
                       <button type="button"
@@ -513,6 +584,7 @@ function fileCompareApp() {
     loadingTree: false,
     searching: false,
     searchQuery: '',
+    searchError: '',
     searchResults: [],
     kindFilter: 'all',
     roleFilter: 'all',
@@ -561,6 +633,9 @@ function fileCompareApp() {
         if (this.qcLoadedStudyId !== this.selectedStudyId || this.qcRows.length === 0) {
           await this.loadQcTiming();
         }
+      }
+      if (tab === 'compare' && this.compareAPath && this.compareBPath && !this.diffResult && !this.diffLoading) {
+        await this.compareFiles();
       }
     },
 
@@ -611,6 +686,7 @@ function fileCompareApp() {
     async runSearch() {
       if (!this.selectedStudyId) return;
       const q = this.searchQuery.trim();
+      this.searchError = '';
       if (!q) {
         this.searchResults = [];
         return;
@@ -625,7 +701,9 @@ function fileCompareApp() {
         if (this.roleFilter !== 'all') params.set('role', this.roleFilter);
         this.searchResults = await this.api('/api/files/search?' + params.toString());
       } catch (err) {
-        this.toast((err && err.message) ? err.message : '文件搜索失败', 'error');
+        const msg = (err && err.message) ? err.message : '文件搜索失败';
+        this.searchError = msg;
+        this.searchResults = [];
       } finally {
         this.searching = false;
       }
@@ -721,17 +799,21 @@ function fileCompareApp() {
       });
     },
 
-    setCurrentAsCompare(side) {
-      if (!this.currentPreview || !this.currentPreview.abs_path) {
+    setCurrentAsCompare(side, path) {
+      const p = path || (this.currentPreview && this.currentPreview.abs_path);
+      if (!p) {
         this.toast('请先在浏览页打开一个文件', 'warning');
         return;
       }
       if (side === 'a') {
-        this.compareAPath = this.currentPreview.abs_path;
-        this.toast('已设置为 A 侧文件', 'info');
+        this.compareAPath = p;
+        this.toast('已设置为 A 侧', 'info');
       } else {
-        this.compareBPath = this.currentPreview.abs_path;
-        this.toast('已设置为 B 侧文件', 'info');
+        this.compareBPath = p;
+        this.toast('已设置为 B 侧', 'info');
+      }
+      if (this.compareAPath && this.compareBPath) {
+        this.switchTab('compare');
       }
     },
 
@@ -739,6 +821,13 @@ function fileCompareApp() {
       const t = this.compareAPath;
       this.compareAPath = this.compareBPath;
       this.compareBPath = t;
+    },
+
+    emptyStateHint() {
+      if (!this.compareAPath && !this.compareBPath) return '// 在搜索结果或文件树中点 [A][B] 来选文件';
+      if (!this.compareAPath) return '// B 已就绪，再选一个文件设为 A';
+      if (!this.compareBPath) return '// A 已就绪，再选一个文件设为 B';
+      return '// 点"▶ 比较"开始';
     },
 
     async compareFiles() {
@@ -940,7 +1029,7 @@ function fileCompareApp() {
     },
 
     diffCellClass(op, side) {
-      if (op === 'replace') return 'bg-fuchsia-50 dark:bg-fuchsia-900/20 text-stone-800 dark:text-stone-200';
+      if (op === 'replace') return 'bg-violet-50 dark:bg-violet-900/20 text-stone-800 dark:text-stone-200';
       if (op === 'delete' && side === 'a') return 'bg-rose-50 dark:bg-rose-900/20 text-stone-800 dark:text-stone-200';
       if (op === 'insert' && side === 'b') return 'bg-emerald-50 dark:bg-emerald-900/20 text-stone-800 dark:text-stone-200';
       return 'text-stone-700 dark:text-stone-300';
@@ -953,8 +1042,8 @@ function fileCompareApp() {
     },
 
     qcReasonBadgeClass(reason) {
-      if (reason === 'qc-older') return 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/40 dark:text-fuchsia-300';
-      if (reason === 'qc-missing') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+      if (reason === 'qc-older') return 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300';
+      if (reason === 'qc-missing') return 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300';
       return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300';
     },
 

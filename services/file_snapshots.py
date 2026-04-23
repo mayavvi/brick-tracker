@@ -59,7 +59,7 @@ async def create_snapshot(
         return row
 
     now = datetime.now().isoformat(timespec="seconds")
-    await db.execute(
+    cur = await db.execute(
         """
         INSERT INTO file_snapshots
             (username, abs_path, study_id, content_hash, content, encoding, size_bytes, note, snapshot_ts)
@@ -78,19 +78,16 @@ async def create_snapshot(
         ),
     )
     await db.commit()
-
-    inserted = await db.execute_fetchall(
-        """
-        SELECT id, username, abs_path, content_hash, size_bytes, note, snapshot_ts
-        FROM file_snapshots
-        WHERE username = ? AND abs_path = ?
-        ORDER BY id DESC
-        LIMIT 1
-        """,
-        (username, abs_path),
-    )
-    row = dict(inserted[0]) if inserted else {}
-    row["deduplicated"] = False
+    row = {
+        "id": cur.lastrowid,
+        "username": username,
+        "abs_path": abs_path,
+        "content_hash": content_hash,
+        "size_bytes": size_bytes,
+        "note": note.strip(),
+        "snapshot_ts": now,
+        "deduplicated": False,
+    }
     return row
 
 
