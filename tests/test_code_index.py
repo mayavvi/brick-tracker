@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -35,6 +36,7 @@ class CodeIndexServiceTests(unittest.IsolatedAsyncioTestCase):
 
         await database.close_db()
         await database.init_db()
+        code_index._INDEX_BOOTSTRAPPED = False
 
     async def asyncTearDown(self) -> None:
         await database.close_db()
@@ -200,12 +202,57 @@ class CodeIndexServiceTests(unittest.IsolatedAsyncioTestCase):
         self._write("CMPD2/PROJ2/TASK2/analysis/B1.sas", "proc print;\nrun;\n")
 
         await database.close_db()
+        code_index._INDEX_BOOTSTRAPPED = False
 
         result = await code_index.rebuild_index()
 
         self.assertEqual(result["indexed_files"], 1)
         status = await code_index.get_status()
         self.assertEqual(status.indexed_files, 1)
+
+    async def test_get_filter_options_scopes_projects_and_tasks(self) -> None:
+        self._write("CMPD1/PROJ1/CSR/analysis/A1.sas", "a\n")
+        self._write("CMPD1/PROJ2/CSR/analysis/A1.sas", "b\n")
+        self._write("CMPD1/PROJ1/MDR/analysis/A1.sas", "c\n")
+
+        await code_index.rebuild_index()
+
+        opt1 = await code_index.get_filter_options(compound="CMPD1")
+        self.assertEqual(set(opt1.projects), {"PROJ1", "PROJ2"})
+        self.assertEqual(set(opt1.tasks), {"CSR", "MDR"})
+
+        opt2 = await code_index.get_filter_options(compound="CMPD1", project="PROJ1")
+        self.assertEqual(set(opt2.projects), {"PROJ1", "PROJ2"})
+        self.assertEqual(set(opt2.tasks), {"CSR", "MDR"})
+
+    async def test_get_qc_timing_rows_pairs_main_and_qc_logs(self) -> None:
+        self._write(
+            "CMPD1/PROJ1/CSR/prog/sdtm/ae.sas",
+            "data ae;\nrun;\n",
+        )
+        self._write(
+            "CMPD1/PROJ1/CSR/qcprog/sdtm/qc_ae.sas",
+            "qc sas\n",
+        )
+        self._write(
+            "CMPD1/PROJ1/CSR/qcprog/sdtm/qc_ae.log",
+            "qc log older\n",
+        )
+        time.sleep(0.15)
+        self._write(
+            "CMPD1/PROJ1/CSR/outputs/ae.log",
+            "main log newer\n",
+        )
+
+        await code_index.rebuild_index()
+
+        rows = await code_index.get_qc_timing_rows(project="PROJ1", task="CSR")
+        self.assertTrue(len(rows) >= 1)
+        row = next((r for r in rows if r.program == "AE"), None)
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertTrue(row.stale)
+        self.assertEqual(row.reason, "qc-older")
 
     def _write(self, relative_path: str, content: str) -> Path:
         path = self.base_path / relative_path

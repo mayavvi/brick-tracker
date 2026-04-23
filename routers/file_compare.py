@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from auth import User, get_current_user
 from models import (
     CodeIndexContext,
+    CodeIndexFilterOptions,
     CodeIndexStatus,
     FileEntry,
     FileSnapshot,
@@ -185,7 +186,7 @@ async def file_diff(
             b_text,
             ignore_whitespace=ignore_whitespace,
             ignore_case=ignore_case,
-            want_unified=(mode == "unified"),
+            want_unified=True,
         )
         return {
             "mode": mode,
@@ -264,6 +265,26 @@ async def code_index_contexts(_: User = Depends(get_current_user)) -> CodeIndexC
     except Exception:
         logger.exception("Failed to load code index contexts")
         raise HTTPException(status_code=500, detail="Code index contexts failed")
+
+
+@router.get("/filter-options", response_model=CodeIndexFilterOptions)
+async def code_index_filter_options(
+    compound: str | None = Query(None),
+    project: str | None = Query(None),
+    _: User = Depends(get_current_user),
+) -> CodeIndexFilterOptions:
+    """Return project/task lists scoped by compound (and optionally project)."""
+    try:
+        return await code_index.get_filter_options(compound=compound, project=project)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception:
+        logger.exception(
+            "Failed to load filter options compound=%r project=%r",
+            compound,
+            project,
+        )
+        raise HTTPException(status_code=500, detail="Code index filter options failed")
 
 
 @router.get("/programs", response_model=list[ProgramGroup])
@@ -392,7 +413,7 @@ async def code_index_diff(
             b_text,
             ignore_whitespace=ignore_whitespace,
             ignore_case=ignore_case,
-            want_unified=(mode == "unified"),
+            want_unified=True,
         )
         return {
             "mode": mode,

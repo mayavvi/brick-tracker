@@ -2,21 +2,47 @@
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import logging
 import re
 from datetime import datetime
-from hashlib import sha256
 from pathlib import Path
 
 from config import DATABASE_PATH, PROJECTS_BASE_PATH
 from database import get_db, init_db
-from models import CodeIndexContext, CodeIndexStatus, IndexedFile, ProgramGroup, ProgramVersion, QcTimingRow
+from models import (
+    CodeIndexContext,
+    CodeIndexFilterOptions,
+    CodeIndexStatus,
+    IndexedFile,
+    ProgramGroup,
+    ProgramVersion,
+    QcTimingRow,
+)
 from services.file_reader import read_text, read_text_full
 
 logger = logging.getLogger(__name__)
 
 TARGET_EXTENSIONS = {".sas", ".log", ".lst"}
 ROLE_ROOTS = {"prog", "qcprog", "data", "qcdata", "outputs"}
+
+_INDEX_BOOTSTRAPPED = False
+_REBUILD_LOCK = asyncio.Lock()
+_INSERT_BATCH_SIZE = 500
+_HASH_CHUNK_BYTES = 65_536
+
+
+def _file_sha256_hex(path: Path) -> str:
+    """Stream a file through SHA-256 without loading it fully into memory."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(_HASH_CHUNK_BYTES)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def parse_index_entry(path: Path, base_path: Path | None = None) -> dict | None:
@@ -38,7 +64,6 @@ def parse_index_entry(path: Path, base_path: Path | None = None) -> dict | None:
         return None
 
     stat = resolved.stat()
-    raw = resolved.read_bytes()
     compound = rel_parts[0] if len(rel_parts) > 0 else ""
     project = rel_parts[1] if len(rel_parts) > 1 else ""
     context = _extract_task_context(base, relative, compound, project)
@@ -61,7 +86,7 @@ def parse_index_entry(path: Path, base_path: Path | None = None) -> dict | None:
         "role": _infer_role(relative.as_posix()),
         "modified_time": stat.st_mtime,
         "size": stat.st_size,
-        "content_hash": sha256(raw).hexdigest(),
+        "content_hash": _file_sha256_hex(resolved),
     }
 
 
@@ -107,31 +132,9 @@ def _extract_task_context(
     return {"task": "/".join(task_parts)}
 
 
-async def ensure_index() -> CodeIndexStatus:
-    """Ensure the global index exists before serving queries."""
-    db = await _get_index_db()
-    row = await _fetchone(
-        db,
-        """
-        SELECT COUNT(*) AS indexed_files
-        FROM indexed_files
-        """,
-    )
-    if row and row["indexed_files"] > 0:
-        return await get_status()
-    await rebuild_index()
-    return await get_status()
-
-
-async def rebuild_index() -> dict[str, int | str]:
-    """Rebuild the global file index from disk."""
-    base = PROJECTS_BASE_PATH.resolve()
-    if not base.is_dir():
-        raise FileNotFoundError(f"Projects base path does not exist: {base}")
-
-    db = await _get_index_db()
+def _collect_index_rows(base: Path) -> list[tuple]:
+    """Scan *base* on disk and return rows ready for ``indexed_files`` insert."""
     rows: list[tuple] = []
-
     for path in base.rglob("*"):
         if not path.is_file():
             continue
@@ -158,34 +161,83 @@ async def rebuild_index() -> dict[str, int | str]:
                 entry["content_hash"],
             )
         )
+    return rows
 
-    await db.execute("DELETE FROM indexed_files")
-    if rows:
-        await db.executemany(
+
+async def ensure_index() -> CodeIndexStatus:
+    """Ensure the global index exists before serving queries."""
+    global _INDEX_BOOTSTRAPPED
+    if _INDEX_BOOTSTRAPPED:
+        return await get_status()
+
+    async with _REBUILD_LOCK:
+        if _INDEX_BOOTSTRAPPED:
+            return await get_status()
+        db = await _get_index_db()
+        row = await _fetchone(
+            db,
             """
+            SELECT COUNT(*) AS indexed_files
+            FROM indexed_files
+            """,
+        )
+        if row and row["indexed_files"] > 0:
+            _INDEX_BOOTSTRAPPED = True
+            return await get_status()
+        await _rebuild_index_locked()
+        return await get_status()
+
+
+async def rebuild_index() -> dict[str, int | str]:
+    """Rebuild the global file index from disk."""
+    async with _REBUILD_LOCK:
+        return await _rebuild_index_locked()
+
+
+async def _rebuild_index_locked() -> dict[str, int | str]:
+    global _INDEX_BOOTSTRAPPED
+    _INDEX_BOOTSTRAPPED = False
+
+    base = PROJECTS_BASE_PATH.resolve()
+    if not base.is_dir():
+        raise FileNotFoundError(f"Projects base path does not exist: {base}")
+
+    rows = await asyncio.to_thread(_collect_index_rows, base)
+    db = await _get_index_db()
+
+    insert_sql = """
             INSERT INTO indexed_files (
                 full_path, rel_path, compound, project, task,
                 file_name, program_key, extension, role,
                 modified_time, size, content_hash
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
+
+    await db.execute("BEGIN IMMEDIATE")
+    try:
+        await db.execute("DELETE FROM indexed_files")
+        for start in range(0, len(rows), _INSERT_BATCH_SIZE):
+            chunk = rows[start : start + _INSERT_BATCH_SIZE]
+            await db.executemany(insert_sql, chunk)
+
+        now = datetime.now().isoformat(timespec="seconds")
+        await db.execute(
+            """
+            INSERT INTO code_index_runs (id, last_indexed_at, indexed_files)
+            VALUES (1, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                last_indexed_at = excluded.last_indexed_at,
+                indexed_files = excluded.indexed_files
             """,
-            rows,
+            (now, len(rows)),
         )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
 
-    now = datetime.now().isoformat(timespec="seconds")
-    await db.execute(
-        """
-        INSERT INTO code_index_runs (id, last_indexed_at, indexed_files)
-        VALUES (1, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-            last_indexed_at = excluded.last_indexed_at,
-            indexed_files = excluded.indexed_files
-        """,
-        (now, len(rows)),
-    )
-    await db.commit()
-
+    _INDEX_BOOTSTRAPPED = True
     logger.info("Rebuilt code index with %d files from %s", len(rows), base)
     return {"indexed_files": len(rows), "last_indexed_at": now}
 
@@ -239,6 +291,49 @@ async def get_contexts() -> CodeIndexContext:
         tasks=await _distinct_values(db, "task"),
         extensions=await _distinct_values(db, "extension"),
     )
+
+
+async def get_filter_options(
+    compound: str | None = None,
+    project: str | None = None,
+) -> CodeIndexFilterOptions:
+    """Return distinct projects (and tasks) scoped by compound / project."""
+    await ensure_index()
+    if not compound:
+        return CodeIndexFilterOptions()
+    db = await _get_index_db()
+    rows_p = await db.execute_fetchall(
+        """
+        SELECT DISTINCT project AS value
+        FROM indexed_files
+        WHERE compound = ? AND project <> ''
+        ORDER BY project ASC
+        """,
+        (compound,),
+    )
+    projects = [r["value"] for r in rows_p if r["value"]]
+    if project:
+        rows_t = await db.execute_fetchall(
+            """
+            SELECT DISTINCT task AS value
+            FROM indexed_files
+            WHERE compound = ? AND project = ? AND task <> ''
+            ORDER BY task ASC
+            """,
+            (compound, project),
+        )
+    else:
+        rows_t = await db.execute_fetchall(
+            """
+            SELECT DISTINCT task AS value
+            FROM indexed_files
+            WHERE compound = ? AND task <> ''
+            ORDER BY task ASC
+            """,
+            (compound,),
+        )
+    tasks = [r["value"] for r in rows_t if r["value"]]
+    return CodeIndexFilterOptions(projects=projects, tasks=tasks)
 
 
 async def query_program_groups(
@@ -388,72 +483,160 @@ async def get_qc_timing_rows(
     project: str | None = None,
     task: str | None = None,
 ) -> list[QcTimingRow]:
-    """Compare main vs QC log mtimes using indexed data."""
+    """Compare main vs QC log mtimes using indexed data (SQL window aggregation)."""
     await ensure_index()
     db = await _get_index_db()
     where_sql, params = _build_filters(compound=compound, project=project, task=task)
-    rows = await db.execute_fetchall(
-        f"""
+
+    sql = f"""
+        WITH base AS (
+            SELECT
+                id,
+                full_path,
+                rel_path,
+                compound,
+                project,
+                task,
+                file_name,
+                program_key,
+                extension,
+                role,
+                modified_time,
+                size,
+                content_hash,
+                CASE
+                    WHEN role = 'qc' AND UPPER(program_key) LIKE 'QC_%'
+                        THEN SUBSTR(UPPER(program_key), 4)
+                    ELSE UPPER(program_key)
+                END AS pair_key
+            FROM indexed_files
+            {where_sql}
+        ),
+        main_log AS (
+            SELECT * FROM (
+                SELECT
+                    id,
+                    full_path,
+                    project,
+                    task,
+                    pair_key,
+                    modified_time,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY project, task, pair_key
+                        ORDER BY modified_time DESC, id DESC
+                    ) AS rn
+                FROM base
+                WHERE extension = '.log' AND role <> 'qc'
+            ) WHERE rn = 1
+        ),
+        qc_log AS (
+            SELECT * FROM (
+                SELECT
+                    id,
+                    full_path,
+                    project,
+                    task,
+                    pair_key,
+                    modified_time,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY project, task, pair_key
+                        ORDER BY modified_time DESC, id DESC
+                    ) AS rn
+                FROM base
+                WHERE extension = '.log' AND role = 'qc'
+            ) WHERE rn = 1
+        ),
+        main_sas AS (
+            SELECT * FROM (
+                SELECT
+                    id,
+                    full_path,
+                    project,
+                    task,
+                    pair_key,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY project, task, pair_key
+                        ORDER BY modified_time DESC, id DESC
+                    ) AS rn
+                FROM base
+                WHERE extension = '.sas' AND role <> 'qc'
+            ) WHERE rn = 1
+        ),
+        qc_sas AS (
+            SELECT * FROM (
+                SELECT
+                    id,
+                    full_path,
+                    project,
+                    task,
+                    pair_key,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY project, task, pair_key
+                        ORDER BY modified_time DESC, id DESC
+                    ) AS rn
+                FROM base
+                WHERE extension = '.sas' AND role = 'qc'
+            ) WHERE rn = 1
+        )
         SELECT
-            id, full_path, rel_path, compound, project, task,
-            file_name, program_key, extension, role,
-            modified_time, size, content_hash
-        FROM indexed_files
-        {where_sql}
-        ORDER BY modified_time DESC
-        """,
-        params,
-    )
+            ml.task AS task,
+            ml.pair_key AS program,
+            ml.modified_time AS main_log_mtime,
+            ql.modified_time AS qc_log_mtime,
+            CASE
+                WHEN ql.id IS NULL THEN 1
+                WHEN ql.modified_time < ml.modified_time THEN 1
+                ELSE 0
+            END AS stale,
+            CASE
+                WHEN ql.id IS NULL THEN 'qc-missing'
+                WHEN ql.modified_time < ml.modified_time THEN 'qc-older'
+                ELSE 'ok'
+            END AS reason,
+            ml.full_path AS main_log_path,
+            ql.full_path AS qc_log_path,
+            ms.full_path AS main_sas_path,
+            qs.full_path AS qc_sas_path
+        FROM main_log ml
+        LEFT JOIN qc_log ql
+            ON ql.project = ml.project
+            AND ql.task = ml.task
+            AND ql.pair_key = ml.pair_key
+        LEFT JOIN main_sas ms
+            ON ms.project = ml.project
+            AND ms.task = ml.task
+            AND ms.pair_key = ml.pair_key
+        LEFT JOIN qc_sas qs
+            ON qs.project = ml.project
+            AND qs.task = ml.task
+            AND qs.pair_key = ml.pair_key
+        ORDER BY
+            CASE
+                WHEN ql.id IS NULL OR ql.modified_time < ml.modified_time THEN 0
+                ELSE 1
+            END ASC,
+            ml.task COLLATE NOCASE ASC,
+            ml.pair_key COLLATE NOCASE ASC
+        """
 
-    main_logs: dict[tuple[str, str, str], IndexedFile] = {}
-    qc_logs: dict[tuple[str, str, str], IndexedFile] = {}
-    main_sas: dict[tuple[str, str, str], IndexedFile] = {}
-    qc_sas: dict[tuple[str, str, str], IndexedFile] = {}
-
-    for row in rows:
-        item = _row_to_indexed_file(row)
-        key = (item.project, item.task, _pairing_program_key(item.program_key, item.role))
-        if item.extension == ".log":
-            if item.role == "qc":
-                _pick_latest(qc_logs, key, item)
-            else:
-                _pick_latest(main_logs, key, item)
-        elif item.extension == ".sas":
-            if item.role == "qc":
-                _pick_latest(qc_sas, key, item)
-            else:
-                _pick_latest(main_sas, key, item)
-
+    rows = await db.execute_fetchall(sql, params)
     out: list[QcTimingRow] = []
-    for key in sorted(main_logs.keys()):
-        project_name, task_name, program = key
-        main_item = main_logs[key]
-        qc_item = qc_logs.get(key)
-        if qc_item is None:
-            stale = True
-            reason = "qc-missing"
-        elif qc_item.modified_time < main_item.modified_time:
-            stale = True
-            reason = "qc-older"
-        else:
-            stale = False
-            reason = "ok"
-
+    for row in rows:
+        qc_mtime = row["qc_log_mtime"]
         out.append(
             QcTimingRow(
-                task=task_name,
-                program=program,
-                main_log_mtime=main_item.modified_time,
-                qc_log_mtime=qc_item.modified_time if qc_item else None,
-                stale=stale,
-                reason=reason,
-                main_log_path=main_item.full_path,
-                qc_log_path=qc_item.full_path if qc_item else None,
-                main_sas_path=main_sas.get(key).full_path if key in main_sas else None,
-                qc_sas_path=qc_sas.get(key).full_path if key in qc_sas else None,
+                task=row["task"],
+                program=row["program"],
+                main_log_mtime=datetime.fromtimestamp(row["main_log_mtime"]),
+                qc_log_mtime=datetime.fromtimestamp(qc_mtime) if qc_mtime is not None else None,
+                stale=bool(row["stale"]),
+                reason=row["reason"],
+                main_log_path=row["main_log_path"],
+                qc_log_path=row["qc_log_path"],
+                main_sas_path=row["main_sas_path"],
+                qc_sas_path=row["qc_sas_path"],
             )
         )
-    out.sort(key=lambda row: (not row.stale, row.task.lower(), row.program.lower()))
     return out
 
 
@@ -594,16 +777,3 @@ def _row_to_indexed_file(row) -> IndexedFile:
 
 def _row_to_program_version(row) -> ProgramVersion:
     return ProgramVersion(**_row_to_indexed_file(row).model_dump())
-
-
-def _pairing_program_key(program_key: str, role: str) -> str:
-    normalized = program_key.upper()
-    if role == "qc" and normalized.startswith("QC_"):
-        return normalized[3:]
-    return normalized
-
-
-def _pick_latest(mapping: dict, key: tuple[str, str, str], item: IndexedFile) -> None:
-    current = mapping.get(key)
-    if current is None or item.modified_time >= current.modified_time:
-        mapping[key] = item

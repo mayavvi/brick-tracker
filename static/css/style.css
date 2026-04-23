@@ -21,6 +21,16 @@
 [x-cloak] { display: none !important; }
 [x-collapse] { overflow: hidden; }
 
+/* ── PEAK CLI terminal colors (TokyoNight-inspired) ── */
+.cli-color-prompt  { color: #7dcfff; }
+.cli-color-error   { color: #f7768e; }
+.cli-color-success { color: #9ece6a; }
+.cli-color-header  { color: #e0af68; }
+.cli-color-add     { color: #9ece6a; }
+.cli-color-del     { color: #f7768e; }
+.cli-color-hunk    { color: #bb9af7; }
+.cli-color-muted   { color: #a9b1d6; }
+
 /* ================================================================
    Base typography
    ================================================================ */
