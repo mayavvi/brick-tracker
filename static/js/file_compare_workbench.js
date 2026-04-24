@@ -738,22 +738,22 @@ function codeIndexWorkbench() {
     },
 
     diffCellClass(op, side) {
-      if (op === 'insert' && side === 'q') return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
-      if (op === 'delete' && side === 'p') return 'bg-rose-500/10 text-rose-700 dark:text-rose-300';
+      if (op === 'insert' && side === 'q') return 'bg-emerald-500/10 text-emerald-700';
+      if (op === 'delete' && side === 'p') return 'bg-rose-500/10 text-rose-700';
       if (op === 'replace') {
         return side === 'p'
-          ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
-          : 'bg-sky-500/10 text-sky-700 dark:text-sky-300';
+          ? 'bg-amber-500/10 text-amber-700'
+          : 'bg-sky-500/10 text-sky-700';
       }
-      return 'text-stone-800 dark:text-stone-200';
+      return 'text-stone-800';
     },
 
     unifiedLineClass(line) {
-      if (!line) return 'text-stone-800 dark:text-stone-200';
-      if (line.kind === 'hunk') return 'text-neon-600 dark:text-neon-300 font-semibold';
-      if (line.kind === 'insert') return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
-      if (line.kind === 'delete') return 'bg-rose-500/10 text-rose-700 dark:text-rose-300';
-      return 'text-stone-800 dark:text-stone-200';
+      if (!line) return 'text-stone-800';
+      if (line.kind === 'hunk') return 'text-neon-600 font-semibold';
+      if (line.kind === 'insert') return 'bg-emerald-500/10 text-emerald-700';
+      if (line.kind === 'delete') return 'bg-rose-500/10 text-rose-700';
+      return 'text-stone-800';
     },
 
     joinCompact(items) {
@@ -785,9 +785,9 @@ function codeIndexWorkbench() {
     },
 
     qcBadgeClass(reason) {
-      if (reason === 'qc-older') return 'bg-amber-500/15 text-amber-700 dark:text-amber-300';
-      if (reason === 'qc-missing') return 'bg-rose-500/15 text-rose-700 dark:text-rose-300';
-      return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300';
+      if (reason === 'qc-older') return 'bg-amber-500/15 text-amber-700';
+      if (reason === 'qc-missing') return 'bg-rose-500/15 text-rose-700';
+      return 'bg-emerald-500/15 text-emerald-700';
     },
 
     // ── SAS syntax highlight ───────────────────────────────────

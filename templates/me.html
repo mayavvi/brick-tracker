@@ -3,50 +3,21 @@
 {% block app_scripts %}{% endblock %}
 {% block body %}
 <div x-data="meApp()" x-init="init()" class="min-h-full flex flex-col">
-
-  <header class="header-warm px-6 py-4 shadow-sm flex-shrink-0 relative">
-    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
-      <div class="flex items-center gap-3 min-w-0">
-        <a :href="homeUrl()" class="text-warm-300 hover:text-warm-200 transition p-1.5 rounded-lg hover:bg-warm-500/10">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-          </svg>
-        </a>
-        <div class="min-w-0">
-          <h1 class="text-xl font-bold tracking-tight flex items-center gap-2 min-w-0">
-            <span data-cfx-glitch class="bg-gradient-to-r from-warm-300 via-white to-neon-300 bg-clip-text text-transparent truncate">◈ COMMAND DECK</span>
-            <span class="text-stone-500 font-mono text-xs hidden sm:inline">//</span>
-            <span class="text-stone-100 hidden sm:inline">个人工作台</span>
-          </h1>
-          <p class="text-[11px] text-stone-400 font-mono mt-1">Action first. Noise later.</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2 flex-shrink-0">
-        <button @click="showSettings = true"
-                class="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-mono text-stone-200 hover:border-warm-400/50 hover:bg-warm-400/10 transition">
-          <span>⟐</span>
-          <span class="hidden sm:inline">别名 / Study</span>
-          <span class="sm:hidden">设置</span>
-        </button>
-        <button @click="$store.theme.toggle()" aria-label="切换明暗模式"
-                class="p-2 rounded-lg hover:bg-white/10 text-warm-300 transition">
-          <svg x-show="!$store.theme.dark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
-          </svg>
-          <svg x-show="$store.theme.dark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-    <div class="neon-rail absolute bottom-0 left-0 right-0"></div>
-  </header>
-
   <main class="flex-1 overflow-y-auto px-6 py-8">
     <div class="max-w-6xl mx-auto space-y-8">
+      <section class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-warm-700">Workspace</p>
+          <h1 class="mt-2 font-serif text-4xl leading-tight tracking-normal text-stone-950">个人工作台</h1>
+        </div>
+        <button @click="showSettings = true"
+                class="rounded-xl border border-warm-300 bg-white/80 px-4 py-2 text-sm font-semibold text-warm-700 shadow-sm transition hover:bg-warm-50">
+          打开设置
+        </button>
+      </section>
 
-      <section class="relative overflow-hidden rounded-[28px] border border-stone-200 bg-white shadow-card dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(6,182,212,0.18),transparent_34%),radial-gradient(circle_at_80%_20%,rgba(208,31,246,0.14),transparent_24%),linear-gradient(135deg,rgba(10,14,26,0.96),rgba(15,21,36,0.92))] dark:shadow-pop">
-        <div class="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent_0px,transparent_5px,rgba(8,145,178,0.04)_5px,rgba(8,145,178,0.04)_6px)] pointer-events-none opacity-60 dark:opacity-70"></div>
+      <section class="relative overflow-hidden rounded-[28px] border border-stone-200 bg-white shadow-card">
+        <div class="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent_0px,transparent_5px,rgba(8,145,178,0.04)_5px,rgba(8,145,178,0.04)_6px)] pointer-events-none opacity-60"></div>
         <div class="relative grid gap-6 px-6 py-6 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)] md:px-8 md:py-8">
           <div class="space-y-6">
             <div class="flex items-start gap-4">
@@ -54,84 +25,84 @@
                 {{ (user.display_name or user.username or '?')[0] | upper }}
               </div>
               <div class="min-w-0">
-                <p class="text-[11px] font-mono uppercase tracking-[0.24em] text-warm-600 dark:text-warm-300/90">Operator Feed</p>
-                <h2 class="mt-2 text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100 md:text-3xl">{{ user.display_name or user.username }}</h2>
-                <p class="mt-2 max-w-xl text-sm leading-6 text-stone-600 dark:text-stone-300">
+                <p class="text-[11px] font-mono uppercase tracking-[0.24em] text-warm-600">Operator Feed</p>
+                <h2 class="mt-2 text-2xl font-bold tracking-tight text-stone-900 md:text-3xl">{{ user.display_name or user.username }}</h2>
+                <p class="mt-2 max-w-xl text-sm leading-6 text-stone-600">
                   当前主屏只追踪最值得你先动手的事：过期未完成、今天要做，以及下一批待进入视线的任务。
                 </p>
               </div>
             </div>
 
             <div class="grid gap-3 sm:grid-cols-3">
-              <div class="rounded-2xl border border-stone-200 bg-white/75 px-4 py-4 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
-                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400">Open Queue</p>
-                <p class="mt-3 text-3xl font-bold text-stone-900 dark:text-stone-100" x-text="stats.total"></p>
-                <p class="mt-1 text-xs text-stone-500 dark:text-stone-400">当前仍在主视图的待办</p>
+              <div class="rounded-2xl border border-stone-200 bg-white/75 px-4 py-4 shadow-sm backdrop-blur-sm">
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Open Queue</p>
+                <p class="mt-3 text-3xl font-bold text-stone-900" x-text="stats.total"></p>
+                <p class="mt-1 text-xs text-stone-500">当前仍在主视图的待办</p>
               </div>
-              <div class="rounded-2xl border border-rose-200 bg-rose-50/85 px-4 py-4 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
-                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-rose-500 dark:text-neon-400">Critical</p>
-                <p class="mt-3 text-3xl font-bold text-rose-700 dark:text-neon-300" x-text="stats.overdue"></p>
-                <p class="mt-1 text-xs text-rose-500 dark:text-stone-400">过期且未完成，需要先灭火</p>
+              <div class="rounded-2xl border border-rose-200 bg-rose-50/85 px-4 py-4 shadow-sm backdrop-blur-sm">
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-rose-500">Critical</p>
+                <p class="mt-3 text-3xl font-bold text-rose-700" x-text="stats.overdue"></p>
+                <p class="mt-1 text-xs text-rose-500">过期且未完成，需要先灭火</p>
               </div>
-              <div class="rounded-2xl border border-warm-200 bg-warm-50/80 px-4 py-4 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
-                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600 dark:text-warm-400">Today</p>
-                <p class="mt-3 text-3xl font-bold text-warm-700 dark:text-warm-300" x-text="stats.today"></p>
-                <p class="mt-1 text-xs text-warm-600 dark:text-stone-400">今天应推进的事项</p>
+              <div class="rounded-2xl border border-warm-200 bg-warm-50/80 px-4 py-4 shadow-sm backdrop-blur-sm">
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600">Today</p>
+                <p class="mt-3 text-3xl font-bold text-warm-700" x-text="stats.today"></p>
+                <p class="mt-1 text-xs text-warm-600">今天应推进的事项</p>
               </div>
             </div>
 
-            <div class="rounded-2xl border border-stone-200 bg-white/80 px-4 py-4 shadow-sm dark:border-white/10 dark:bg-black/20 dark:shadow-none">
+            <div class="rounded-2xl border border-stone-200 bg-white/80 px-4 py-4 shadow-sm">
               <div class="flex items-center gap-3">
-                <span class="text-sm font-mono text-warm-600 dark:text-warm-300">&gt;</span>
+                <span class="text-sm font-mono text-warm-600">&gt;</span>
                 <input x-model="quickInput"
                        @keydown.enter.prevent="addQuick()"
                        placeholder="快速新增：任务内容 #STUDY @周五"
-                       class="w-full bg-transparent text-sm text-stone-800 placeholder:text-stone-400 outline-none dark:text-stone-100 dark:placeholder:text-stone-500" />
+                       class="w-full bg-transparent text-sm text-stone-800 placeholder:text-stone-400 outline-none" />
                 <button @click="addQuick()"
-                        class="shrink-0 rounded-lg border border-warm-300 bg-warm-50 px-3 py-1.5 text-xs font-mono text-warm-700 transition hover:bg-warm-100 dark:border-warm-400/30 dark:bg-warm-400/10 dark:text-warm-200 dark:hover:bg-warm-400/20">
+                        class="shrink-0 rounded-lg border border-warm-300 bg-warm-50 px-3 py-1.5 text-xs font-mono text-warm-700 transition hover:bg-warm-100">
                   录入
                 </button>
               </div>
-              <p class="mt-3 text-[11px] font-mono text-stone-500 dark:text-stone-500">支持 `#STUDY` 和 `@今天/@明天/@周五/@4-30`，作为你的低干扰命令行入口。</p>
+              <p class="mt-3 text-[11px] font-mono text-stone-500">支持 `#STUDY` 和 `@今天/@明天/@周五/@4-30`，作为你的低干扰命令行入口。</p>
             </div>
           </div>
 
           <div class="grid gap-4 self-stretch sm:grid-cols-2 md:grid-cols-1">
-            <div class="rounded-2xl border border-stone-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
+            <div class="rounded-2xl border border-stone-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm">
               <div class="flex items-center justify-between gap-3">
                 <div>
-                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400">Today Load</p>
-                  <p class="mt-2 text-lg font-semibold text-stone-900 dark:text-stone-100" x-text="pressureLabel"></p>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Today Load</p>
+                  <p class="mt-2 text-lg font-semibold text-stone-900" x-text="pressureLabel"></p>
                 </div>
                 <span class="inline-flex h-3 w-3 rounded-full shadow-[0_0_14px_currentColor]"
                       :class="pressureDotClass"></span>
               </div>
-              <div class="mt-4 h-2 overflow-hidden rounded-full bg-stone-200 dark:bg-white/10">
+              <div class="mt-4 h-2 overflow-hidden rounded-full bg-stone-200">
                 <div class="h-full rounded-full bg-gradient-to-r from-warm-400 via-neon-400 to-neon-300 transition-all duration-300"
                      :style="'width:' + pressurePercent + '%'"></div>
               </div>
-              <p class="mt-3 text-xs leading-5 text-stone-500 dark:text-stone-400">
+              <p class="mt-3 text-xs leading-5 text-stone-500">
                 用过期和今日任务数量估算当前负载，帮助你快速判断今天是清火还是平推。
               </p>
             </div>
 
-            <div class="rounded-2xl border border-stone-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
-              <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400">Secondary Queue</p>
+            <div class="rounded-2xl border border-stone-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm">
+              <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Secondary Queue</p>
               <div class="mt-4 space-y-3">
                 <div class="flex items-center justify-between text-sm">
-                  <span class="text-stone-600 dark:text-stone-300">本周稍后</span>
-                  <span class="font-mono text-stone-900 dark:text-stone-100" x-text="secondary.thisweek.length"></span>
+                  <span class="text-stone-600">本周稍后</span>
+                  <span class="font-mono text-stone-900" x-text="secondary.thisweek.length"></span>
                 </div>
                 <div class="flex items-center justify-between text-sm">
-                  <span class="text-stone-600 dark:text-stone-300">更晚安排</span>
-                  <span class="font-mono text-stone-900 dark:text-stone-100" x-text="secondary.later.length"></span>
+                  <span class="text-stone-600">更晚安排</span>
+                  <span class="font-mono text-stone-900" x-text="secondary.later.length"></span>
                 </div>
                 <div class="flex items-center justify-between text-sm">
-                  <span class="text-stone-600 dark:text-stone-300">未排期</span>
-                  <span class="font-mono text-stone-900 dark:text-stone-100" x-text="secondary.unscheduled.length"></span>
+                  <span class="text-stone-600">未排期</span>
+                  <span class="font-mono text-stone-900" x-text="secondary.unscheduled.length"></span>
                 </div>
               </div>
-              <div class="mt-5 flex items-center gap-2 text-[11px] font-mono text-stone-500 dark:text-stone-500">
+              <div class="mt-5 flex items-center gap-2 text-[11px] font-mono text-stone-500">
                 <span class="inline-block h-1.5 w-1.5 rounded-full bg-warm-400"></span>
                 <span x-text="trackerReady ? 'Tracker 映射已接入' : '尚未配置 Tracker 映射'"></span>
               </div>
@@ -141,8 +112,8 @@
       </section>
 
       <template x-if="!loading && !trackerReady">
-        <section class="rounded-2xl border border-dashed border-stone-300 bg-white/80 px-5 py-4 shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
-          <p class="text-sm text-stone-600 dark:text-stone-300">
+        <section class="rounded-2xl border border-dashed border-stone-300 bg-white/80 px-5 py-4 shadow-sm">
+          <p class="text-sm text-stone-600">
             还没有把 Tracker 任务接进来。打开右上角设置，补充别名和关注的 Study 后，这里会自动汇总你的只读任务。
           </p>
         </section>
@@ -167,109 +138,109 @@
         <div class="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
           <div class="space-y-6">
             <section x-show="overdueTodos.length > 0"
-                     class="overflow-hidden rounded-[26px] border border-rose-200 bg-[linear-gradient(180deg,rgba(255,245,247,0.98),rgba(255,250,251,0.98))] shadow-sm dark:border-neon-500/25 dark:bg-[linear-gradient(180deg,rgba(208,31,246,0.10),rgba(15,21,36,0.9))] dark:shadow-[0_12px_40px_-20px_rgba(208,31,246,0.45)]">
-              <div class="flex items-center justify-between gap-4 border-b border-rose-200 px-5 py-3 dark:border-neon-500/15">
+                     class="overflow-hidden rounded-[26px] border border-rose-200 bg-[linear-gradient(180deg,rgba(255,245,247,0.98),rgba(255,250,251,0.98))] shadow-sm">
+              <div class="flex items-center justify-between gap-4 border-b border-rose-200 px-5 py-3">
                 <div>
-                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-rose-500 dark:text-neon-300">Critical Queue</p>
-                  <h3 class="mt-1 text-lg font-semibold text-stone-900 dark:text-stone-100">过期未完成</h3>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-rose-500">Critical Queue</p>
+                  <h3 class="mt-1 text-lg font-semibold text-stone-900">过期未完成</h3>
                 </div>
-                <span class="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-mono text-rose-600 dark:border-neon-400/20 dark:bg-neon-400/10 dark:text-neon-200"
+                <span class="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-mono text-rose-600"
                       x-text="overdueTodos.length + ' 条'"></span>
               </div>
-              <div class="divide-y divide-rose-100 dark:divide-white/5">
+              <div class="divide-y divide-rose-100">
                 <template x-for="todo in overdueTodos" :key="todo.key">
-                  <div class="group flex items-center gap-2 border-l-2 border-rose-400 bg-rose-50/60 px-4 py-2 dark:border-neon-400/70 dark:bg-neon-500/5">
-                    <span class="shrink-0 text-[10px] font-mono text-rose-400 dark:text-neon-400/70 w-12 truncate" x-text="todo.role === 'qc' ? 'QC' : 'MAIN'"></span>
-                    <p class="flex-1 min-w-0 truncate text-sm font-semibold text-stone-900 dark:text-stone-100" x-text="todo.title"></p>
-                    <span class="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2 py-0.5 text-[11px] font-mono text-stone-500 dark:border-white/10 dark:bg-white/5 dark:text-stone-400">
+                  <div class="group flex items-center gap-2 border-l-2 border-rose-400 bg-rose-50/60 px-4 py-2">
+                    <span class="shrink-0 text-[10px] font-mono text-rose-400 w-12 truncate" x-text="todo.role === 'qc' ? 'QC' : 'MAIN'"></span>
+                    <p class="flex-1 min-w-0 truncate text-sm font-semibold text-stone-900" x-text="todo.title"></p>
+                    <span class="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2 py-0.5 text-[11px] font-mono text-stone-500">
                       <span class="inline-block h-1.5 w-1.5 rounded-full" :class="studyDot(todo.study_id)"></span>
                       <span x-text="todo.study_id || 'MISC'"></span>
                     </span>
-                    <span class="shrink-0 w-12 text-right text-[11px] font-mono text-rose-600 dark:text-neon-300" x-text="ddlLabel(todo.ddl)"></span>
+                    <span class="shrink-0 w-12 text-right text-[11px] font-mono text-rose-600" x-text="ddlLabel(todo.ddl)"></span>
                     <button x-show="todo.editable" @click="completeTodo(todo)"
-                            class="shrink-0 rounded border border-warm-300 px-2 py-0.5 text-[11px] font-mono text-warm-700 hover:bg-warm-50 transition dark:border-warm-400/30 dark:text-warm-300 dark:hover:bg-warm-400/10">完成</button>
+                            class="shrink-0 rounded border border-warm-300 px-2 py-0.5 text-[11px] font-mono text-warm-700 hover:bg-warm-50 transition">完成</button>
                     <button x-show="todo.editable" @click.stop="deleteTodo(todo)"
-                            class="shrink-0 opacity-0 group-hover:opacity-100 rounded border border-rose-200 px-2 py-0.5 text-[11px] font-mono text-rose-500 hover:bg-rose-50 transition dark:border-neon-400/20 dark:text-neon-300/70 dark:hover:bg-neon-400/10">×</button>
-                    <span x-show="!todo.editable" class="shrink-0 text-[10px] font-mono text-stone-400 dark:text-stone-500">只读</span>
+                            class="shrink-0 opacity-0 group-hover:opacity-100 rounded border border-rose-200 px-2 py-0.5 text-[11px] font-mono text-rose-500 hover:bg-rose-50 transition">×</button>
+                    <span x-show="!todo.editable" class="shrink-0 text-[10px] font-mono text-stone-400">只读</span>
                   </div>
                 </template>
               </div>
             </section>
 
-            <section class="overflow-hidden rounded-[26px] border border-stone-200 bg-white shadow-sm dark:bg-stone-900 dark:shadow-none">
-              <div class="flex items-center justify-between gap-4 border-b border-stone-200 px-5 py-3 dark:border-white/10">
+            <section class="overflow-hidden rounded-[26px] border border-stone-200 bg-white shadow-sm">
+              <div class="flex items-center justify-between gap-4 border-b border-stone-200 px-5 py-3">
                 <div>
-                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-warm-600 dark:text-warm-300">Action Queue</p>
-                  <h3 class="mt-1 text-lg font-semibold text-stone-900 dark:text-stone-100">今天要做</h3>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-warm-600">Action Queue</p>
+                  <h3 class="mt-1 text-lg font-semibold text-stone-900">今天要做</h3>
                 </div>
-                <span class="rounded-full border border-warm-200 bg-warm-50 px-3 py-1 text-xs font-mono text-warm-700 dark:border-warm-400/20 dark:bg-warm-400/10 dark:text-warm-100"
+                <span class="rounded-full border border-warm-200 bg-warm-50 px-3 py-1 text-xs font-mono text-warm-700"
                       x-text="todayTodos.length + ' 条'"></span>
               </div>
 
               <template x-if="todayTodos.length === 0">
                 <div class="px-5 py-10 text-center">
-                  <p class="text-sm text-stone-600 dark:text-stone-300">今天没有明确压在当天的任务。</p>
+                  <p class="text-sm text-stone-600">今天没有明确压在当天的任务。</p>
                   <p class="mt-2 text-xs font-mono text-stone-500">可以往下看次级队列，或者直接在上方快速录入新事项。</p>
                 </div>
               </template>
 
-              <div x-show="todayTodos.length > 0" class="divide-y divide-stone-100 dark:divide-white/5">
+              <div x-show="todayTodos.length > 0" class="divide-y divide-stone-100">
                 <template x-for="todo in todayTodos" :key="todo.key">
                   <div class="group flex items-center gap-2 px-4 py-2">
-                    <span class="shrink-0 text-[10px] font-mono text-stone-400 dark:text-stone-500 w-12 truncate" x-text="todo.role === 'qc' ? 'QC' : 'MAIN'"></span>
-                    <p class="flex-1 min-w-0 truncate text-sm font-medium text-stone-900 dark:text-stone-100" x-text="todo.title"></p>
-                    <span class="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-mono text-stone-500 dark:border-white/10 dark:bg-white/5 dark:text-stone-400">
+                    <span class="shrink-0 text-[10px] font-mono text-stone-400 w-12 truncate" x-text="todo.role === 'qc' ? 'QC' : 'MAIN'"></span>
+                    <p class="flex-1 min-w-0 truncate text-sm font-medium text-stone-900" x-text="todo.title"></p>
+                    <span class="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-mono text-stone-500">
                       <span class="inline-block h-1.5 w-1.5 rounded-full" :class="studyDot(todo.study_id)"></span>
                       <span x-text="todo.study_id || 'MISC'"></span>
                     </span>
-                    <span class="shrink-0 w-10 text-right text-[11px] font-mono text-warm-600 dark:text-warm-300" x-text="ddlLabel(todo.ddl)"></span>
+                    <span class="shrink-0 w-10 text-right text-[11px] font-mono text-warm-600" x-text="ddlLabel(todo.ddl)"></span>
                     <button x-show="todo.editable" @click="completeTodo(todo)"
-                            class="shrink-0 rounded border border-warm-300 px-2 py-0.5 text-[11px] font-mono text-warm-700 hover:bg-warm-50 transition dark:border-warm-400/30 dark:text-warm-300 dark:hover:bg-warm-400/10">完成</button>
+                            class="shrink-0 rounded border border-warm-300 px-2 py-0.5 text-[11px] font-mono text-warm-700 hover:bg-warm-50 transition">完成</button>
                     <button x-show="todo.editable" @click.stop="deleteTodo(todo)"
-                            class="shrink-0 opacity-0 group-hover:opacity-100 rounded border border-stone-200 px-2 py-0.5 text-[11px] font-mono text-stone-400 hover:text-rose-500 hover:border-rose-200 transition dark:border-white/10 dark:text-stone-500 dark:hover:text-neon-300 dark:hover:border-neon-400/20">×</button>
-                    <span x-show="!todo.editable" class="shrink-0 text-[10px] font-mono text-stone-400 dark:text-stone-500">只读</span>
+                            class="shrink-0 opacity-0 group-hover:opacity-100 rounded border border-stone-200 px-2 py-0.5 text-[11px] font-mono text-stone-400 hover:text-rose-500 hover:border-rose-200 transition">×</button>
+                    <span x-show="!todo.editable" class="shrink-0 text-[10px] font-mono text-stone-400">只读</span>
                   </div>
                 </template>
               </div>
             </section>
 
             <template x-if="stats.total === 0">
-              <section class="rounded-[26px] border border-dashed border-stone-300 bg-white/80 px-6 py-14 text-center shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none">
-                <p class="text-base text-stone-700 dark:text-stone-200">主视图已经清空。</p>
+              <section class="rounded-[26px] border border-dashed border-stone-300 bg-white/80 px-6 py-14 text-center shadow-sm">
+                <p class="text-base text-stone-700">主视图已经清空。</p>
                 <p class="mt-2 text-xs font-mono text-stone-500">要么今天真的顺了，要么下一条任务还没进系统。</p>
               </section>
             </template>
           </div>
 
           <aside class="space-y-6">
-            <section class="overflow-hidden rounded-[24px] border border-stone-200 bg-white shadow-sm dark:bg-stone-900 dark:shadow-none">
+            <section class="overflow-hidden rounded-[24px] border border-stone-200 bg-white shadow-sm">
               <button @click="secondaryOpen = !secondaryOpen"
                       class="flex w-full items-center justify-between gap-3 px-5 py-4 text-left">
                 <div>
                   <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-stone-500">Secondary Queue</p>
-                  <h3 class="mt-1 text-base font-semibold text-stone-900 dark:text-stone-100">本周稍后 / 更晚 / 未安排</h3>
+                  <h3 class="mt-1 text-base font-semibold text-stone-900">本周稍后 / 更晚 / 未安排</h3>
                 </div>
                 <svg class="h-4 w-4 text-stone-500 transition-transform" :class="secondaryOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
               </button>
-              <div x-show="secondaryOpen" x-collapse class="space-y-4 border-t border-stone-200 px-5 py-4 dark:border-white/10">
+              <div x-show="secondaryOpen" x-collapse class="space-y-4 border-t border-stone-200 px-5 py-4">
                 <template x-for="section in secondarySections" :key="section.key">
                   <div>
                     <div class="mb-2 flex items-center justify-between">
                       <p class="text-xs font-mono uppercase tracking-[0.16em] text-stone-400" x-text="section.label"></p>
                       <span class="text-[11px] font-mono text-stone-500" x-text="section.items.length + ' 条'"></span>
                     </div>
-                    <div class="divide-y divide-stone-100 dark:divide-white/5">
+                    <div class="divide-y divide-stone-100">
                       <template x-if="section.items.length === 0">
-                        <p class="py-2 text-[11px] font-mono text-stone-400 dark:text-stone-500">// 空</p>
+                        <p class="py-2 text-[11px] font-mono text-stone-400">// 空</p>
                       </template>
                       <template x-for="todo in section.items" :key="todo.key">
                         <div class="flex items-center gap-2 py-1.5">
                           <span class="shrink-0 inline-block h-1.5 w-1.5 rounded-full" :class="studyDot(todo.study_id)"></span>
-                          <p class="flex-1 min-w-0 truncate text-[13px] text-stone-700 dark:text-stone-300" x-text="todo.title"></p>
-                          <span class="shrink-0 text-[11px] font-mono text-stone-400 dark:text-stone-500" x-text="todo.study_id || 'MISC'"></span>
-                          <span class="shrink-0 w-10 text-right text-[11px] font-mono text-stone-400 dark:text-stone-500" x-text="ddlLabel(todo.ddl)"></span>
+                          <p class="flex-1 min-w-0 truncate text-[13px] text-stone-700" x-text="todo.title"></p>
+                          <span class="shrink-0 text-[11px] font-mono text-stone-400" x-text="todo.study_id || 'MISC'"></span>
+                          <span class="shrink-0 w-10 text-right text-[11px] font-mono text-stone-400" x-text="ddlLabel(todo.ddl)"></span>
                         </div>
                       </template>
                     </div>
@@ -278,23 +249,23 @@
               </div>
             </section>
 
-            <section class="rounded-[24px] border border-stone-200 bg-white px-5 py-5 shadow-sm dark:bg-stone-900 dark:shadow-none">
+            <section class="rounded-[24px] border border-stone-200 bg-white px-5 py-5 shadow-sm">
               <div class="flex items-start justify-between gap-4">
                 <div>
                   <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-stone-500">Workspace</p>
-                  <p class="mt-2 text-sm text-stone-700 dark:text-stone-300">
-                    已关注 <span class="font-mono text-stone-900 dark:text-stone-100" x-text="prefs.watched_studies.length"></span> 个 Study，
+                  <p class="mt-2 text-sm text-stone-700">
+                    已关注 <span class="font-mono text-stone-900" x-text="prefs.watched_studies.length"></span> 个 Study，
                     最近活跃 {{ last_active[:10] if last_active != '-' else '-' }}。
                   </p>
                 </div>
               </div>
               <div class="mt-4 flex gap-2">
                 <button @click="exportCsv()"
-                        class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-mono text-stone-600 hover:bg-stone-100 transition dark:border-white/10 dark:bg-white/5 dark:text-stone-300 dark:hover:text-stone-100 dark:hover:bg-white/10">
+                        class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-mono text-stone-600 hover:bg-stone-100 transition">
                   导出 CSV
                 </button>
                 <button @click="showSettings = true"
-                        class="flex-1 rounded-xl border border-warm-300 bg-warm-50 px-3 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition dark:border-warm-400/20 dark:bg-warm-400/10 dark:text-warm-200 dark:hover:bg-warm-400/20">
+                        class="flex-1 rounded-xl border border-warm-300 bg-warm-50 px-3 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition">
                   打开设置
                 </button>
               </div>
@@ -324,15 +295,15 @@
              x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="translate-x-0 opacity-100"
              x-transition:leave-end="translate-x-full opacity-0"
-             class="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto border-l border-stone-200 bg-white shadow-2xl dark:bg-stone-900 dark:shadow-pop">
-        <div class="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-5 py-4 backdrop-blur dark:bg-ink-950/90">
+             class="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto border-l border-stone-200 bg-white shadow-2xl">
+        <div class="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-5 py-4 backdrop-blur">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600 dark:text-warm-300">Configuration</p>
-              <h3 class="mt-1 text-lg font-semibold text-stone-900 dark:text-stone-100">别名与 Study 设置</h3>
+              <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600">Configuration</p>
+              <h3 class="mt-1 text-lg font-semibold text-stone-900">别名与 Study 设置</h3>
             </div>
             <button @click="showSettings = false"
-                    class="rounded-lg border border-stone-200 bg-stone-50 p-2 text-stone-500 hover:text-stone-900 transition dark:border-white/10 dark:bg-white/5 dark:text-stone-400 dark:hover:text-stone-100">
+                    class="rounded-lg border border-stone-200 bg-stone-50 p-2 text-stone-500 hover:text-stone-900 transition">
               <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
@@ -341,12 +312,12 @@
         </div>
 
         <div class="space-y-6 px-5 py-5">
-          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm dark:bg-stone-900 dark:shadow-none">
-            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400">Tracker aliases</p>
-            <p class="mt-2 text-sm text-stone-600 dark:text-stone-300">这些名字会用于匹配 Tracker 表里属于你的任务。</p>
+          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500">Tracker aliases</p>
+            <p class="mt-2 text-sm text-stone-600">这些名字会用于匹配 Tracker 表里属于你的任务。</p>
             <div class="mt-4 flex min-h-[2rem] flex-wrap gap-2">
               <template x-for="(a, i) in prefs.tracker_aliases" :key="i">
-                <span class="inline-flex items-center gap-1 rounded-full border border-warm-300 bg-warm-50 px-3 py-1 text-xs font-mono text-warm-700 dark:border-warm-400/20 dark:bg-warm-400/10 dark:text-warm-200">
+                <span class="inline-flex items-center gap-1 rounded-full border border-warm-300 bg-warm-50 px-3 py-1 text-xs font-mono text-warm-700">
                   <span x-text="a"></span>
                   <button @click="prefs.tracker_aliases.splice(i,1)" class="opacity-70 hover:opacity-100">✕</button>
                 </span>
@@ -358,20 +329,20 @@
                      @keydown.enter.prevent="addAlias()"
                      @keydown.comma.prevent="addAlias()"
                      placeholder="输入别名，回车确认"
-                     class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 outline-none placeholder:text-stone-400 focus:border-warm-400/40 dark:border-white/10 dark:bg-black/20 dark:text-stone-200 dark:placeholder:text-stone-500" />
+                     class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 outline-none placeholder:text-stone-400 focus:border-warm-400/40" />
               <button @click="addAlias()"
-                      class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition dark:border-warm-400/20 dark:bg-warm-400/10 dark:text-warm-200 dark:hover:bg-warm-400/20">
+                      class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition">
                 添加
               </button>
             </div>
           </section>
 
-          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm dark:bg-stone-900 dark:shadow-none">
-            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400">Watched studies</p>
-            <p class="mt-2 text-sm text-stone-600 dark:text-stone-300">只汇总这些 Study 中匹配到你别名的待办。</p>
+          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500">Watched studies</p>
+            <p class="mt-2 text-sm text-stone-600">只汇总这些 Study 中匹配到你别名的待办。</p>
             <div class="mt-4 flex min-h-[2rem] flex-wrap gap-2">
               <template x-for="(s, i) in prefs.watched_studies" :key="i">
-                <span class="inline-flex items-center gap-1 rounded-full border border-neon-300/50 bg-neon-50 px-3 py-1 text-xs font-mono text-neon-700 dark:border-neon-400/20 dark:bg-neon-400/10 dark:text-neon-200">
+                <span class="inline-flex items-center gap-1 rounded-full border border-neon-300/50 bg-neon-50 px-3 py-1 text-xs font-mono text-neon-700">
                   <span x-text="s"></span>
                   <button @click="prefs.watched_studies.splice(i,1)" class="opacity-70 hover:opacity-100">✕</button>
                 </span>
@@ -383,27 +354,27 @@
                      @keydown.enter.prevent="addStudy()"
                      @keydown.comma.prevent="addStudy()"
                      placeholder="输入 Study ID，回车确认"
-                     class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 outline-none placeholder:text-stone-400 focus:border-neon-400/40 dark:border-white/10 dark:bg-black/20 dark:text-stone-200 dark:placeholder:text-stone-500" />
+                     class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 outline-none placeholder:text-stone-400 focus:border-neon-400/40" />
               <button @click="addStudy()"
-                      class="rounded-xl border border-neon-300/50 bg-neon-50 px-4 py-2 text-xs font-mono text-neon-700 hover:bg-neon-100/50 transition dark:border-neon-400/20 dark:bg-neon-400/10 dark:text-neon-200 dark:hover:bg-neon-400/20">
+                      class="rounded-xl border border-neon-300/50 bg-neon-50 px-4 py-2 text-xs font-mono text-neon-700 hover:bg-neon-100/50 transition">
                 添加
               </button>
             </div>
           </section>
 
-          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm dark:bg-stone-900 dark:shadow-none">
-            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400">Actions</p>
+          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500">Actions</p>
             <div class="mt-4 flex flex-wrap gap-2">
               <button @click="savePrefs()"
-                      class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition dark:border-warm-400/20 dark:bg-warm-400/10 dark:text-warm-200 dark:hover:bg-warm-400/20">
+                      class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition">
                 保存设置
               </button>
               <button @click="exportCsv()"
-                      class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-2 text-xs font-mono text-stone-600 hover:bg-stone-100 transition dark:border-white/10 dark:bg-white/5 dark:text-stone-300 dark:hover:text-stone-100 dark:hover:bg-white/10">
+                      class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-2 text-xs font-mono text-stone-600 hover:bg-stone-100 transition">
                 导出 CSV
               </button>
               <button @click="confirmResetPrefs()"
-                      class="ml-auto rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-mono text-rose-700 hover:bg-rose-100 transition dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-200 dark:hover:bg-red-500/20">
+                      class="ml-auto rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-mono text-rose-700 hover:bg-rose-100 transition">
                 重置偏好
               </button>
             </div>
@@ -548,15 +519,6 @@ function meApp() {
     },
 
     async init() {
-      try {
-        const r = await fetch(ab() + '/api/user/preferences');
-        const raw = await r.json();
-        if (raw.theme === 'dark') {
-          document.documentElement.classList.add('dark');
-          localStorage.setItem('brick-theme','dark');
-          Alpine.store('theme').dark = true;
-        }
-      } catch(_) {}
       await Promise.all([this.loadPrefs(), this.loadTodos(), this.loadCustomTasks()]);
     },
 
@@ -690,7 +652,7 @@ function meApp() {
     },
 
     async confirmResetPrefs() {
-      const ok = await Alpine.store('confirm').ask('重置偏好会清空筛选条件和主题设置，确定吗？');
+      const ok = await Alpine.store('confirm').ask('重置偏好会清空筛选条件，确定吗？');
       if (!ok) return;
       try {
         await fetch(ab() + '/api/user/preferences', {
@@ -698,7 +660,7 @@ function meApp() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             selected_studies: [], selected_tracker_files: {}, person_filter: '',
-            role_filter: 'all', time_range: '', search_query: '', theme: 'light', show_charts: true,
+            role_filter: 'all', time_range: '', search_query: '', show_charts: true,
           }),
         });
         await fetch(ab() + '/api/user/workstation', {
@@ -707,9 +669,6 @@ function meApp() {
           body: JSON.stringify({ tracker_aliases: [], watched_studies: [] }),
         });
         this.prefs = { tracker_aliases: [], watched_studies: [] };
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('brick-theme','light');
-        Alpine.store('theme').dark = false;
         Alpine.store('toast').push('偏好已重置', 'success');
         await Promise.all([this.loadTodos(), this.loadCustomTasks()]);
         this.showSettings = false;

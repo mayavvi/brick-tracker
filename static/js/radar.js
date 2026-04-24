@@ -99,8 +99,8 @@ const TrackerRadar = (() => {
     _ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  function isDark() {
-    return document.documentElement.classList.contains('dark');
+  function useLightPalette() {
+    return true;
   }
 
   function draw() {
@@ -113,10 +113,10 @@ const TrackerRadar = (() => {
     if (R <= 20) { _rafId = requestAnimationFrame(draw); return; }
 
     _ctx.clearRect(0, 0, w, h);
-    const dark = isDark();
+    const light = useLightPalette();
 
     if (_blips.length === 0) {
-      _ctx.fillStyle = dark ? 'rgba(180,192,220,0.55)' : 'rgba(71,85,105,0.75)';
+      _ctx.fillStyle = !light ? 'rgba(180,192,220,0.55)' : 'rgba(71,85,105,0.75)';
       _ctx.font = 'bold 12px "JetBrains Mono", Menlo, monospace';
       _ctx.textAlign = 'center';
       _ctx.textBaseline = 'middle';
@@ -127,8 +127,8 @@ const TrackerRadar = (() => {
 
     // Concentric rings
     _ctx.lineWidth = 1;
-    const ringColor = dark ? 'rgba(6,182,212,0.16)' : 'rgba(8,145,178,0.18)';
-    const ringHot   = dark ? 'rgba(255,46,99,0.35)' : 'rgba(244,63,94,0.35)';
+    const ringColor = !light ? 'rgba(6,182,212,0.16)' : 'rgba(8,145,178,0.18)';
+    const ringHot   = !light ? 'rgba(255,46,99,0.35)' : 'rgba(244,63,94,0.35)';
     [0.33, 0.66, 1.0].forEach((r, i) => {
       _ctx.strokeStyle = i === 0 ? ringHot : ringColor;
       _ctx.setLineDash(i === 0 ? [2, 3] : []);
@@ -141,7 +141,7 @@ const TrackerRadar = (() => {
     // Sector dividers (one per person)
     if (_sectors.length > 1) {
       const step = (Math.PI * 2) / _sectors.length;
-      _ctx.strokeStyle = dark ? 'rgba(148,163,184,0.08)' : 'rgba(100,116,139,0.12)';
+      _ctx.strokeStyle = !light ? 'rgba(148,163,184,0.08)' : 'rgba(100,116,139,0.12)';
       for (let i = 0; i < _sectors.length; i++) {
         const a = _sectors[i].angle - step / 2;
         _ctx.beginPath();
@@ -153,7 +153,7 @@ const TrackerRadar = (() => {
 
     // Person labels around the rim
     _ctx.font = '10px "JetBrains Mono", Menlo, monospace';
-    _ctx.fillStyle = dark ? 'rgba(180,192,220,0.7)' : 'rgba(71,85,105,0.8)';
+    _ctx.fillStyle = !light ? 'rgba(180,192,220,0.7)' : 'rgba(71,85,105,0.8)';
     _ctx.textAlign = 'center';
     _ctx.textBaseline = 'middle';
     for (const s of _sectors) {
@@ -197,7 +197,7 @@ const TrackerRadar = (() => {
 
     // Ring labels
     _ctx.font = 'bold 9px "JetBrains Mono", Menlo, monospace';
-    _ctx.fillStyle = dark ? 'rgba(127,243,255,0.55)' : 'rgba(14,116,144,0.7)';
+    _ctx.fillStyle = !light ? 'rgba(127,243,255,0.55)' : 'rgba(14,116,144,0.7)';
     _ctx.textAlign = 'left';
     _ctx.fillText('NOW', cx + 5, cy - 2);
     _ctx.fillText('+7d', cx + R * 0.66 + 3, cy - 2);

@@ -1,144 +1,75 @@
-<!-- Summary cards · role-aware dynamic layout
-     搬砖(main): 5 cards — ALL | RUN | 待QC | ERR | HOLD
-     找茬(qc):   5 cards — ALL(=可找茬) | WAIT | ERR | HOLD | DONE
-     全部(all):  7 cards — ALL | RUN | 待QC | WAIT | ERR | HOLD | DONE
--->
+<!-- Summary cards · role-aware dynamic layout -->
 <div class="grid gap-3"
      :class="{
        'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5': roleFilter !== 'all',
        'grid-cols-2 sm:grid-cols-4 xl:grid-cols-7': roleFilter === 'all'
-     }"
-     x-init="$watch('summary', s => {
-       $nextTick(() => {
-         ['in_progress','completed_ready_qc','waiting','has_issues','pending','closed'].forEach(k => {
-           const el = $root.querySelector('[data-stat=\"' + k + '\"]');
-           if (el && window.CyberFX) CyberFX.countUp(el, s[k] || 0);
-         });
-       });
-     })">
+     }">
 
-  <!-- ① ALL — always visible; 找茬 shows completed_ready_qc as the QC pool -->
   <button @click="setStatusFilter(roleFilter === 'qc' ? 'completed_ready_qc' : 'total')"
-          data-cfx-tilt="5" data-cfx-spot
-          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible min-w-0"
-          :class="(statusFilter === 'total' && roleFilter !== 'qc') || (statusFilter === 'completed_ready_qc' && roleFilter === 'qc')
-            ? 'neon-card-active border-transparent'
-            : 'border-stone-700/40 hover:border-warm-400/40 hover:shadow-[0_0_16px_rgba(6,182,212,0.18)]'">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="w-1.5 h-1.5 rounded-full bg-gradient-to-br from-warm-300 to-neon-300 shadow-[0_0_8px_#06B6D4]"></span>
-      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400 min-w-0 break-words leading-tight">
-        ALL · <span x-text="roleFilter === 'qc' ? '可找茬' : '总量'"></span>
-      </span>
-    </div>
-    <p class="stat-num stat-num-glow text-3xl font-bold leading-none"
-       x-text="roleFilter === 'qc' ? summary.completed_ready_qc : summary.total">0</p>
+          class="summary-card"
+          :class="(statusFilter === 'total' && roleFilter !== 'qc') || (statusFilter === 'completed_ready_qc' && roleFilter === 'qc') ? 'summary-card-active' : ''">
+    <span class="summary-dot bg-warm-500"></span>
+    <span class="summary-label">ALL · <span x-text="roleFilter === 'qc' ? '可找茬' : '总量'"></span></span>
+    <strong class="summary-value" x-text="roleFilter === 'qc' ? summary.completed_ready_qc : summary.total">0</strong>
   </button>
 
-  <!-- ② RUN · 搬砖进行中 — 仅在 main/all 模式显示 -->
-  <button x-show="roleFilter !== 'qc'"
-          @click="setStatusFilter('in_progress')" data-cfx-tilt="5" data-cfx-spot
-          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible min-w-0"
-          :class="statusFilter === 'in_progress'
-            ? 'border-amber-400 ring-1 ring-amber-400/40 shadow-[0_0_22px_rgba(251,191,36,0.3)] bg-amber-500/10'
-            : 'border-stone-700/40 hover:border-amber-400/50 hover:shadow-[0_0_14px_rgba(251,191,36,0.18)]'">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#FBBF24]"></span>
-      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400 min-w-0 break-words leading-tight">RUN · 进行</span>
-    </div>
-    <p class="stat-num text-3xl font-bold leading-none text-amber-300 [text-shadow:0_0_16px_rgba(251,191,36,0.5)]"
-       data-stat="in_progress" x-text="summary.in_progress">0</p>
+  <button x-show="roleFilter !== 'qc'" @click="setStatusFilter('in_progress')"
+          class="summary-card" :class="statusFilter === 'in_progress' ? 'summary-card-active amber' : ''">
+    <span class="summary-dot bg-amber-500"></span>
+    <span class="summary-label">RUN · 进行</span>
+    <strong class="summary-value text-amber-700" data-stat="in_progress" x-text="summary.in_progress">0</strong>
   </button>
 
-  <!-- ③ 待QC · 已完成待检 — 仅在 main/all 模式显示 -->
-  <button x-show="roleFilter !== 'qc'"
-          @click="setStatusFilter('completed_ready_qc')" data-cfx-tilt="5" data-cfx-spot
-          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible min-w-0"
-          :class="statusFilter === 'completed_ready_qc' && roleFilter !== 'qc'
-            ? 'border-sky-400 ring-1 ring-sky-400/40 shadow-[0_0_22px_rgba(56,189,248,0.35)] bg-sky-500/10'
-            : 'border-stone-700/40 hover:border-sky-400/50 hover:shadow-[0_0_14px_rgba(56,189,248,0.2)]'">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38BDF8]"></span>
-      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400 min-w-0 break-words leading-tight">QC · 待检</span>
-    </div>
-    <p class="stat-num text-3xl font-bold leading-none text-sky-300 [text-shadow:0_0_16px_rgba(56,189,248,0.55)]"
-       data-stat="completed_ready_qc" x-text="summary.completed_ready_qc">0</p>
+  <button x-show="roleFilter !== 'qc'" @click="setStatusFilter('completed_ready_qc')"
+          class="summary-card" :class="statusFilter === 'completed_ready_qc' && roleFilter !== 'qc' ? 'summary-card-active sky' : ''">
+    <span class="summary-dot bg-sky-500"></span>
+    <span class="summary-label">QC · 待检</span>
+    <strong class="summary-value text-sky-700" data-stat="completed_ready_qc" x-text="summary.completed_ready_qc">0</strong>
   </button>
 
-  <!-- ④ WAIT · 等待搬砖完成 — 仅在 qc/all 模式显示（新增）
-       代表：搬砖还在进行中、找茬暂时无法开工的任务 -->
-  <button x-show="roleFilter !== 'main'"
-          @click="setStatusFilter('waiting')" data-cfx-tilt="5" data-cfx-spot
-          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible min-w-0"
-          :class="statusFilter === 'waiting'
-            ? 'border-fuchsia-400 ring-1 ring-fuchsia-400/40 shadow-[0_0_22px_rgba(232,121,249,0.35)] bg-fuchsia-500/10'
-            : 'border-stone-700/40 hover:border-fuchsia-400/50 hover:shadow-[0_0_14px_rgba(232,121,249,0.2)]'">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="w-1.5 h-1.5 rounded-full bg-fuchsia-400 shadow-[0_0_8px_#E879F9]"></span>
-      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400 min-w-0 break-words leading-tight">WAIT · 等砖</span>
-    </div>
-    <p class="stat-num text-3xl font-bold leading-none text-fuchsia-300 [text-shadow:0_0_16px_rgba(232,121,249,0.55)]"
-       data-stat="waiting" x-text="summary.waiting || 0">0</p>
+  <button x-show="roleFilter !== 'main'" @click="setStatusFilter('waiting')"
+          class="summary-card" :class="statusFilter === 'waiting' ? 'summary-card-active fuchsia' : ''">
+    <span class="summary-dot bg-fuchsia-500"></span>
+    <span class="summary-label">WAIT · 等待</span>
+    <strong class="summary-value text-fuchsia-700" data-stat="waiting" x-text="summary.waiting || 0">0</strong>
   </button>
 
-  <!-- ⑤ ERR · 有异常 — 全部三种模式都显示（搬砖需要看 QC 反馈） -->
-  <button @click="setStatusFilter('has_issues')" data-cfx-tilt="5" data-cfx-spot
-          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible min-w-0"
-          :class="statusFilter === 'has_issues'
-            ? 'border-rose-400 ring-1 ring-rose-400/40 shadow-[0_0_22px_rgba(244,63,94,0.4)] bg-rose-500/10'
-            : 'border-stone-700/40 hover:border-rose-400/50 hover:shadow-[0_0_14px_rgba(244,63,94,0.22)]'">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="w-1.5 h-1.5 rounded-full bg-rose-400 shadow-[0_0_10px_#FB7185] animate-pulse"></span>
-      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400 min-w-0 break-words leading-tight">ERR · 异常</span>
-    </div>
-    <p class="stat-num text-3xl font-bold leading-none text-rose-300 [text-shadow:0_0_16px_rgba(244,63,94,0.6)]"
-       data-stat="has_issues" x-text="summary.has_issues">0</p>
+  <button @click="setStatusFilter('has_issues')"
+          class="summary-card" :class="statusFilter === 'has_issues' ? 'summary-card-active rose' : ''">
+    <span class="summary-dot bg-rose-500"></span>
+    <span class="summary-label">ERR · 异常</span>
+    <strong class="summary-value text-rose-700" data-stat="has_issues" x-text="summary.has_issues">0</strong>
   </button>
 
-  <!-- ⑥ HOLD · 暂缓 — 全部三种模式都显示（搬砖需要看 QC 反馈） -->
-  <button @click="setStatusFilter('pending')" data-cfx-tilt="5" data-cfx-spot
-          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible min-w-0"
-          :class="statusFilter === 'pending'
-            ? 'border-stone-400 ring-1 ring-stone-400/30 shadow-[0_0_18px_rgba(148,163,184,0.25)] bg-stone-500/10'
-            : 'border-stone-700/40 hover:border-stone-400/40'">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="w-1.5 h-1.5 rounded-full bg-stone-400 shadow-[0_0_6px_#A8A29E]"></span>
-      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400 min-w-0 break-words leading-tight">HOLD · 暂缓</span>
-    </div>
-    <p class="stat-num text-3xl font-bold leading-none text-stone-300"
-       data-stat="pending" x-text="summary.pending">0</p>
+  <button @click="setStatusFilter('pending')"
+          class="summary-card" :class="statusFilter === 'pending' ? 'summary-card-active stone' : ''">
+    <span class="summary-dot bg-stone-500"></span>
+    <span class="summary-label">HOLD · 暂缓</span>
+    <strong class="summary-value text-stone-700" data-stat="pending" x-text="summary.pending">0</strong>
   </button>
 
-  <!-- ⑦ DONE · 归档 — 仅在 qc/all 模式显示 -->
-  <button x-show="roleFilter !== 'main'"
-          @click="setStatusFilter('closed')" data-cfx-tilt="5" data-cfx-spot
-          class="cfx-corners cfx-spotlight group relative text-left rounded-lg border bg-ink-900/50 px-4 py-3.5 transition overflow-visible min-w-0"
-          :class="statusFilter === 'closed'
-            ? 'border-emerald-400 ring-1 ring-emerald-400/40 shadow-[0_0_22px_rgba(52,211,153,0.35)] bg-emerald-500/10'
-            : 'border-stone-700/40 hover:border-emerald-400/50 hover:shadow-[0_0_14px_rgba(52,211,153,0.2)]'">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34D399]"></span>
-      <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-stone-400 min-w-0 break-words leading-tight">DONE · 归档</span>
-    </div>
-    <p class="stat-num text-3xl font-bold leading-none text-emerald-300 [text-shadow:0_0_16px_rgba(52,211,153,0.55)]"
-       data-stat="closed" x-text="summary.closed">0</p>
+  <button x-show="roleFilter !== 'main'" @click="setStatusFilter('closed')"
+          class="summary-card" :class="statusFilter === 'closed' ? 'summary-card-active emerald' : ''">
+    <span class="summary-dot bg-emerald-500"></span>
+    <span class="summary-label">DONE · 归档</span>
+    <strong class="summary-value text-emerald-700" data-stat="closed" x-text="summary.closed">0</strong>
   </button>
 </div>
 
-<!-- Active filter indicator -->
 <div x-show="statusFilter" x-transition
-     class="flex items-center gap-2 text-xs text-stone-300 bg-ink-900/60 backdrop-blur rounded-md px-3 py-1.5 border border-warm-400/30 shadow-[0_0_12px_rgba(6,182,212,0.15)] font-mono">
-  <span class="cfx-filter-caret text-warm-300">FILTER:</span>
-  <strong class="text-warm-200 font-semibold" x-text="({
+     class="mt-3 flex items-center gap-2 rounded-xl border border-warm-200 bg-white/78 px-3 py-2 text-xs text-stone-600 shadow-sm">
+  <span class="font-semibold uppercase tracking-[0.16em] text-warm-700">Filter</span>
+  <strong class="font-semibold text-stone-900" x-text="({
     total: '全部',
     in_progress: '搬砖进行中',
     waiting: '等待搬砖',
-    completed_ready_qc: roleFilter === 'qc' ? '可找茬 (ALL)' : '待 QC',
+    completed_ready_qc: roleFilter === 'qc' ? '可找茬' : '待 QC',
     has_issues: '有异常',
     pending: '暂缓',
     closed: '已归档',
   })[statusFilter]"></strong>
-  <span class="text-stone-500 tabular-nums" x-text="'[ ' + tasks.length + ' / ' + allTasks.length + ' ]'"></span>
-  <button @click="setStatusFilter(statusFilter)" class="ml-auto text-stone-500 hover:text-neon-300 transition">
+  <span class="font-mono text-stone-500 tabular-nums" x-text="'[ ' + tasks.length + ' / ' + allTasks.length + ' ]'"></span>
+  <button @click="setStatusFilter(statusFilter)" class="ml-auto rounded-md p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700">
     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
     </svg>

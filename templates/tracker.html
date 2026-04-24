@@ -7,12 +7,12 @@
   <div class="flex flex-1 overflow-hidden max-w-[1920px] mx-auto w-full">
 
     <!-- ==================== Sidebar ==================== -->
-    <div class="sidebar-wrapper flex-shrink-0 bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 relative"
+    <div class="sidebar-wrapper flex-shrink-0 bg-white border-r border-stone-200 relative"
          :class="sidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'">
 
       <button x-show="!sidebarOpen" @click="toggleSidebar()"
               class="absolute inset-0 w-full h-full flex items-start pt-6 justify-center
-                     text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+                     text-stone-400 hover:text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer"
               title="展开面板">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
@@ -36,13 +36,13 @@
         <!-- Search -->
         <div>
           <div class="flex items-center justify-between mb-1.5">
-            <label class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 dark:text-warm-300 flex items-center gap-1.5">
+            <label class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 flex items-center gap-1.5">
               <span class="inline-block w-1 h-1 rounded-full bg-warm-400 shadow-[0_0_6px_#06B6D4]"></span>
               ∎ 项目目标
             </label>
             <button @click="refreshProjectList()"
                     :disabled="refreshingCache"
-                    class="text-[11px] text-stone-400 hover:text-warm-300 dark:hover:text-warm-300 flex items-center gap-1 transition disabled:opacity-40 font-mono"
+                    class="text-[11px] text-stone-400 hover:text-warm-300 flex items-center gap-1 transition disabled:opacity-40 font-mono"
                     title="刷新项目列表">
               <svg class="w-3 h-3" :class="refreshingCache ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -54,8 +54,8 @@
           <input id="study-search-input" type="text" x-model="searchQuery"
                  @input.debounce.300ms="searchStudies()"
                  placeholder="// 检索项目代号，例如 QLC5508"
-                 class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 h-9 text-sm
-                        text-stone-900 dark:text-stone-100 placeholder:text-stone-400
+                 class="w-full rounded-md border border-stone-300 bg-white px-3 h-9 text-sm
+                        text-stone-900 placeholder:text-stone-400
                         focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none transition" />
         </div>
 
@@ -64,7 +64,7 @@
           <button type="button"
                   @click="shelfOpen = !shelfOpen"
                   class="flex items-center justify-between w-full mb-1.5 group">
-            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 dark:text-warm-300 flex items-center gap-1.5">
+            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 flex items-center gap-1.5">
               <span class="inline-block w-1 h-1 rounded-full bg-warm-400 shadow-[0_0_6px_#06B6D4]"></span>
               ∎ 货架
             </span>
@@ -81,7 +81,7 @@
                x-transition:leave="transition ease-in duration-100"
                x-transition:leave-start="opacity-100 translate-y-0"
                x-transition:leave-end="opacity-0 -translate-y-1"
-               class="rounded-md border border-stone-200 dark:border-stone-800 max-h-60 overflow-y-auto bg-white dark:bg-stone-950">
+               class="rounded-md border border-stone-200 max-h-60 overflow-y-auto bg-white">
             <template x-if="loadingStudies">
               <p class="text-xs text-warm-300 px-3 py-6 text-center font-mono animate-pulse">▰▰▰ 扫描中…</p>
             </template>
@@ -92,12 +92,12 @@
               <p class="text-xs text-stone-500 px-3 py-6 text-center font-mono">// 未扫到匹配项目</p>
             </template>
             <template x-for="study in studyList" :key="study.study_id">
-              <div class="px-3 py-2 border-b border-stone-100 dark:border-stone-800 last:border-0">
-                <label class="flex items-center gap-2 cursor-pointer text-sm text-stone-800 dark:text-stone-200">
+              <div class="px-3 py-2 border-b border-stone-100 last:border-0">
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-stone-800">
                   <input type="checkbox"
                          :checked="selectedStudies.includes(study.study_id)"
                          @change="onShelfSelect(study, $event)"
-                         class="rounded border-stone-300 dark:border-stone-600" />
+                         class="rounded border-stone-300" />
                   <span class="font-medium" x-text="study.study_id"></span>
                 </label>
               </div>
@@ -110,7 +110,7 @@
           <button type="button"
                   @click="lockedOpen = !lockedOpen"
                   class="flex items-center justify-between w-full mb-1.5 group">
-            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 dark:text-warm-300 flex items-center gap-1.5">
+            <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 flex items-center gap-1.5">
               <span class="inline-block w-1 h-1 rounded-full bg-warm-400 shadow-[0_0_6px_#06B6D4]"></span>
               ▸ 已锁定
             </span>
@@ -131,17 +131,17 @@
                x-transition:leave="transition ease-in duration-100"
                x-transition:leave-start="opacity-100 translate-y-0"
                x-transition:leave-end="opacity-0 -translate-y-1"
-               class="rounded-md border border-stone-200 dark:border-stone-800 max-h-60 overflow-y-auto bg-white dark:bg-stone-950">
+               class="rounded-md border border-stone-200 max-h-60 overflow-y-auto bg-white">
             <template x-if="selectedStudies.length === 0">
               <p class="text-xs text-stone-500 px-3 py-6 text-center font-mono">// 空空如也，去货架挑一个？</p>
             </template>
             <template x-for="sid in selectedStudies" :key="sid">
-              <div class="px-3 py-2 border-b border-stone-100 dark:border-stone-800 last:border-0">
+              <div class="px-3 py-2 border-b border-stone-100 last:border-0">
                 <div class="flex items-center justify-between gap-2">
-                  <span class="text-sm font-medium text-stone-800 dark:text-stone-200" x-text="sid"></span>
+                  <span class="text-sm font-medium text-stone-800" x-text="sid"></span>
                   <button type="button"
                           @click="unlockStudy(sid)"
-                          class="shrink-0 p-1 rounded text-stone-400 hover:text-red-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                          class="shrink-0 p-1 rounded text-stone-400 hover:text-red-400 hover:bg-stone-100 transition"
                           title="移出已锁定">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
@@ -155,7 +155,7 @@
                             @click="toggleTrackerFile(sid, tf.file_path)"
                             :class="isTrackerSelected(sid, tf.file_path)
                               ? 'bg-warm-500 text-white'
-                              : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'"
+                              : 'bg-stone-100 text-stone-600 hover:bg-stone-200'"
                             class="text-[11px] px-2 py-0.5 rounded-full font-medium transition"
                             x-text="tf.task_purpose"></button>
                   </template>
@@ -167,14 +167,13 @@
 
         <!-- Person -->
         <div>
-          <label class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 dark:text-warm-300 mb-1.5 flex items-center gap-1.5">
+          <label class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 mb-1.5 flex items-center gap-1.5">
             <span class="inline-block w-1 h-1 rounded-full bg-warm-400 shadow-[0_0_6px_#06B6D4]"></span>
             ▸ 操作员
           </label>
           <select x-model="personFilter"
-                  class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 px-3 h-9 text-sm
-                         text-stone-900 dark:text-stone-100
-                         focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none transition">
+                  class="w-full rounded-md border border-stone-300 bg-white px-3 h-9 text-sm
+                         text-stone-900                         focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none transition">
             <option value="">// 全员</option>
             <template x-for="p in personList" :key="p">
               <option :value="p" x-text="p"></option>
@@ -184,7 +183,7 @@
 
         <!-- Role -->
         <div>
-          <label class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 dark:text-warm-300 mb-1.5 flex items-center gap-1.5">
+          <label class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 mb-1.5 flex items-center gap-1.5">
             <span class="inline-block w-1 h-1 rounded-full bg-warm-400 shadow-[0_0_6px_#06B6D4]"></span>
             ▸ 职能
           </label>
@@ -202,7 +201,7 @@
 
         <!-- Time range -->
         <div>
-          <label class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 dark:text-warm-300 mb-1.5 flex items-center gap-1.5">
+          <label class="text-[10px] font-bold uppercase tracking-[0.18em] text-warm-400 mb-1.5 flex items-center gap-1.5">
             <span class="inline-block w-1 h-1 rounded-full bg-warm-400 shadow-[0_0_6px_#06B6D4]"></span>
             ▸ 倒计时
           </label>
@@ -235,7 +234,7 @@
     </div>
 
     <!-- ==================== Main Content ==================== -->
-    <main class="flex-1 overflow-y-auto p-6 space-y-4 bg-stone-50 dark:bg-stone-950">
+    <main class="flex-1 overflow-y-auto p-6 space-y-4 bg-stone-50">
 
       <!-- Empty state -->
       <template x-if="!dashboardLoaded && !loadingDashboard">
@@ -268,11 +267,11 @@
           <template x-if="customProjectGroups.length > 0">
             <div class="w-full space-y-3 mt-2">
               <template x-for="cg in customProjectGroups" :key="cg.studyId">
-                <div class="bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-800 overflow-hidden">
+                <div class="bg-white rounded-lg border border-stone-200 overflow-hidden">
                   <div class="flex items-center justify-between px-4 py-3 border-l-2 border-l-warm-500">
                     <span class="flex items-center gap-2.5">
-                      <span class="font-semibold text-stone-900 dark:text-stone-100 text-sm" x-text="cg.studyId"></span>
-                      <span class="text-[11px] bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 rounded-full px-2 py-0.5 font-medium"
+                      <span class="font-semibold text-stone-900 text-sm" x-text="cg.studyId"></span>
+                      <span class="text-[11px] bg-stone-100 text-stone-600 rounded-full px-2 py-0.5 font-medium"
                             x-text="cg.tasks.length + ' 项'"></span>
                     </span>
                     <button @click="openAddCustomTask(cg.studyId)"
@@ -283,10 +282,10 @@
                       新增
                     </button>
                   </div>
-                  <div class="overflow-x-auto border-t border-stone-100 dark:border-stone-800">
+                  <div class="overflow-x-auto border-t border-stone-100">
                     <table class="min-w-full text-sm">
                       <thead>
-                        <tr class="bg-stone-50 dark:bg-stone-950/60 text-stone-500 dark:text-stone-400 text-[11px] uppercase tracking-wider">
+                        <tr class="bg-stone-50 text-stone-500 text-[11px] uppercase tracking-wider">
                           <th class="px-3 py-2 text-left font-medium">任务</th>
                           <th class="px-3 py-2 text-left font-medium">主做</th>
                           <th class="px-3 py-2 text-left font-medium">状态</th>
@@ -296,16 +295,16 @@
                           <th class="px-3 py-2 text-left font-medium w-16"></th>
                         </tr>
                       </thead>
-                      <tbody class="divide-y divide-stone-100 dark:divide-stone-800">
+                      <tbody class="divide-y divide-stone-100">
                         <template x-for="ct in cg.tasks" :key="ct.id">
-                          <tr class="cfx-row-sweep hover:bg-stone-50 dark:hover:bg-stone-800/40 transition-colors group">
-                            <td class="px-3 py-2 text-stone-800 dark:text-stone-200 font-medium" x-text="ct.task_name"></td>
-                            <td class="px-3 py-2 whitespace-nowrap text-xs text-stone-600 dark:text-stone-400" x-text="ct.main_person || '—'"></td>
+                          <tr class="cfx-row-sweep hover:bg-stone-50 transition-colors group">
+                            <td class="px-3 py-2 text-stone-800 font-medium" x-text="ct.task_name"></td>
+                            <td class="px-3 py-2 whitespace-nowrap text-xs text-stone-600" x-text="ct.main_person || '—'"></td>
                             <td class="px-3 py-2 whitespace-nowrap">
                               <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
                                     :class="statusBadge(ct.main_status)" x-text="ct.main_status || '—'"></span>
                             </td>
-                            <td class="px-3 py-2 whitespace-nowrap text-xs text-stone-600 dark:text-stone-400" x-text="ct.qc_person || '—'"></td>
+                            <td class="px-3 py-2 whitespace-nowrap text-xs text-stone-600" x-text="ct.qc_person || '—'"></td>
                             <td class="px-3 py-2 whitespace-nowrap">
                               <span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium"
                                     :class="statusBadge(ct.qc_status)" x-text="ct.qc_status || '—'"></span>
@@ -346,16 +345,16 @@
                  'grid-cols-2 sm:grid-cols-4 xl:grid-cols-7': roleFilter === 'all'
                }">
             <template x-for="i in (roleFilter === 'all' ? [1,2,3,4,5,6,7] : [1,2,3,4,5])" :key="i">
-              <div class="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 space-y-2">
+              <div class="rounded-lg border border-stone-200 bg-white p-4 space-y-2">
                 <div class="skeleton h-3 w-16 rounded"></div>
                 <div class="skeleton h-7 w-10 rounded"></div>
               </div>
             </template>
           </div>
-          <div class="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 overflow-hidden">
+          <div class="rounded-lg border border-stone-200 bg-white overflow-hidden">
             <div class="skeleton h-12 w-full rounded-none"></div>
             <template x-for="i in [1,2,3,4]" :key="i">
-              <div class="border-t border-stone-100 dark:border-stone-800 px-4 py-3 flex gap-4">
+              <div class="border-t border-stone-100 px-4 py-3 flex gap-4">
                 <div class="skeleton h-4 w-24 rounded"></div>
                 <div class="skeleton h-4 w-32 rounded"></div>
                 <div class="skeleton h-4 w-20 rounded"></div>
@@ -372,7 +371,7 @@
           {% include "components/summary_cards.html" %}
 
           <!-- Charts panel -->
-          <div class="rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 overflow-hidden">
+          <div class="rounded-lg border border-stone-200 bg-white overflow-hidden">
             <button @click="toggleCharts()"
                     class="w-full flex items-center justify-between px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em]
                            text-warm-300 hover:bg-warm-500/5 transition">
@@ -386,7 +385,7 @@
               </svg>
             </button>
             <div x-show="showCharts" x-collapse>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-t border-stone-100 dark:border-stone-800">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-t border-stone-100">
                 <!-- 状态矩阵 -->
                 <div>
                   <p class="text-[10px] text-warm-300 font-bold mb-2 text-center uppercase tracking-[0.2em] font-mono">◉ 状态矩阵</p>
@@ -403,7 +402,7 @@
                     <span class="inline-block w-1.5 h-1.5 rounded-full bg-rose-400 shadow-[0_0_6px_#FB7185] animate-pulse"></span>
                     ◎ DDL 压力雷达
                   </p>
-                  <div class="flex items-center justify-center gap-3 mb-1 text-[9px] font-mono text-stone-400 dark:text-stone-500">
+                  <div class="flex items-center justify-center gap-3 mb-1 text-[9px] font-mono text-stone-400">
                     <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>搬砖</span>
                     <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-sky-400 inline-block"></span>待QC</span>
                     <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-400 inline-block"></span>有坑</span>
@@ -436,10 +435,10 @@
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 scale-95 translate-y-4"
          x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-         class="bg-white dark:bg-stone-900 rounded-xl shadow-pop ring-1 ring-stone-200 dark:ring-stone-800 w-full max-w-lg mx-4 overflow-hidden max-h-[90vh] overflow-y-auto">
-      <div class="px-6 py-4 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between sticky top-0 bg-white dark:bg-stone-900 z-10">
-        <h3 class="text-base font-semibold text-stone-900 dark:text-stone-100" x-text="editingCustomTask ? '编辑任务' : '新增任务'"></h3>
-        <button @click="showCustomTaskModal = false" class="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition">
+         class="bg-white rounded-xl shadow-pop ring-1 ring-stone-200 w-full max-w-lg mx-4 overflow-hidden max-h-[90vh] overflow-y-auto">
+      <div class="px-6 py-4 border-b border-stone-200 flex items-center justify-between sticky top-0 bg-white z-10">
+        <h3 class="text-base font-semibold text-stone-900" x-text="editingCustomTask ? '编辑任务' : '新增任务'"></h3>
+        <button @click="showCustomTaskModal = false" class="text-stone-400 hover:text-stone-700 transition">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
           </svg>
@@ -464,22 +463,22 @@
 
       <div class="px-6 py-5 space-y-4">
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">项目 ID <span class="text-rose-500 normal-case tracking-normal">*</span></label>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">项目 ID <span class="text-rose-500 normal-case tracking-normal">*</span></label>
           <input type="text" x-model="customTaskForm.study_id" list="dl-study-ids"
-                 class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none"
+                 class="w-full rounded-md border border-stone-300 bg-white text-stone-900 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none"
                  placeholder="选择已有或输入新的" />
           <div class="flex flex-wrap gap-1.5 mt-1.5" x-show="selectedStudies.length > 0 && !customTaskForm.study_id">
             <template x-for="sid in selectedStudies" :key="sid">
               <button type="button" @click="customTaskForm.study_id = sid"
-                      class="text-[11px] px-2 py-0.5 rounded-full font-medium bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700 transition"
+                      class="text-[11px] px-2 py-0.5 rounded-full font-medium bg-stone-100 text-stone-600 hover:bg-stone-200 transition"
                       x-text="sid"></button>
             </template>
           </div>
         </div>
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">任务名称 <span class="text-rose-500 normal-case tracking-normal">*</span></label>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">任务名称 <span class="text-rose-500 normal-case tracking-normal">*</span></label>
           <input type="text" x-model="customTaskForm.task_name" list="dl-task-names"
-                 class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none"
+                 class="w-full rounded-md border border-stone-300 bg-white text-stone-900 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none"
                  placeholder="选择预设或自定义" />
           <div class="flex flex-wrap gap-1.5 mt-1.5">
             <template x-for="tn in _taskNamePresets" :key="tn">
@@ -487,31 +486,31 @@
                       class="text-[11px] px-2 py-0.5 rounded-full font-medium transition"
                       :class="customTaskForm.task_name === tn
                         ? 'bg-warm-500 text-white'
-                        : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'"
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'"
                       x-text="tn"></button>
             </template>
           </div>
         </div>
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">备注</label>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">备注</label>
           <textarea x-model="customTaskForm.description" rows="2"
-                    class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-3 py-2 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none resize-none"
+                    class="w-full rounded-md border border-stone-300 bg-white text-stone-900 px-3 py-2 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none resize-none"
                     placeholder="可选"></textarea>
         </div>
 
-        <div class="rounded-md border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/40 p-3 space-y-3">
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">主做</span>
+        <div class="rounded-md border border-stone-200 bg-stone-50 p-3 space-y-3">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-stone-500">主做</span>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-[11px] text-stone-500 dark:text-stone-400 mb-1">负责人</label>
+              <label class="block text-[11px] text-stone-500 mb-1">负责人</label>
               <input type="text" x-model="customTaskForm.main_person" list="dl-persons"
-                     class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none"
+                     class="w-full rounded-md border border-stone-300 bg-white text-stone-900 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none"
                      placeholder="选填" />
             </div>
             <div>
-              <label class="block text-[11px] text-stone-500 dark:text-stone-400 mb-1">状态</label>
+              <label class="block text-[11px] text-stone-500 mb-1">状态</label>
               <select x-model="customTaskForm.main_status"
-                      class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none">
+                      class="w-full rounded-md border border-stone-300 bg-white text-stone-900 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none">
                 <option value="">未开始</option>
                 <option value="进行中">进行中</option>
                 <option value="已完成，可以QC">已完成，可以QC</option>
@@ -523,19 +522,19 @@
           </div>
         </div>
 
-        <div class="rounded-md border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/40 p-3 space-y-3">
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">QC</span>
+        <div class="rounded-md border border-stone-200 bg-stone-50 p-3 space-y-3">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-stone-500">QC</span>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-[11px] text-stone-500 dark:text-stone-400 mb-1">负责人</label>
+              <label class="block text-[11px] text-stone-500 mb-1">负责人</label>
               <input type="text" x-model="customTaskForm.qc_person" list="dl-persons"
-                     class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none"
+                     class="w-full rounded-md border border-stone-300 bg-white text-stone-900 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none"
                      placeholder="选填" />
             </div>
             <div>
-              <label class="block text-[11px] text-stone-500 dark:text-stone-400 mb-1">状态</label>
+              <label class="block text-[11px] text-stone-500 mb-1">状态</label>
               <select x-model="customTaskForm.qc_status"
-                      class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none">
+                      class="w-full rounded-md border border-stone-300 bg-white text-stone-900 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none">
                 <option value="">未开始</option>
                 <option value="进行中">进行中</option>
                 <option value="已完成，可以QC">已完成，可以QC</option>
@@ -549,27 +548,27 @@
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">DDL <span class="text-rose-500 normal-case tracking-normal">*</span></label>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">DDL <span class="text-rose-500 normal-case tracking-normal">*</span></label>
             <input type="date" x-model="customTaskForm.ddl" required
-                   class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none" />
+                   class="w-full rounded-md border border-stone-300 bg-white text-stone-900 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none" />
           </div>
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">标签</label>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">标签</label>
             <input type="text" x-model="customTaskForm.tags"
-                   class="w-full rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none"
+                   class="w-full rounded-md border border-stone-300 bg-white text-stone-900 px-3 h-9 text-sm focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none"
                    placeholder="逗号分隔" />
           </div>
         </div>
       </div>
 
-      <div class="px-6 py-3 border-t border-stone-200 dark:border-stone-800 flex justify-end gap-2 sticky bottom-0 bg-white dark:bg-stone-900">
+      <div class="px-6 py-3 border-t border-stone-200 flex justify-end gap-2 sticky bottom-0 bg-white">
         <button @click="showCustomTaskModal = false"
-                class="px-3.5 h-9 text-sm font-medium text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 rounded-md hover:bg-stone-200 dark:hover:bg-stone-700 transition">
+                class="px-3.5 h-9 text-sm font-medium text-stone-700 bg-stone-100 rounded-md hover:bg-stone-200 transition">
           取消
         </button>
         <button @click="saveCustomTask()"
                 :disabled="!customTaskForm.task_name.trim() || !customTaskForm.study_id.trim() || !customTaskForm.ddl"
-                class="px-3.5 h-9 text-sm font-medium text-white bg-warm-600 hover:bg-warm-700 disabled:bg-stone-300 dark:disabled:bg-stone-700 disabled:cursor-not-allowed rounded-md transition shadow-soft">
+                class="px-3.5 h-9 text-sm font-medium text-white bg-warm-600 hover:bg-warm-700 disabled:bg-stone-300 disabled:cursor-not-allowed rounded-md transition shadow-soft">
           <span x-text="editingCustomTask ? '保存' : '新增'"></span>
         </button>
       </div>
@@ -595,7 +594,7 @@
        x-transition:enter-end="opacity-100 translate-y-0"
        class="cfx-recon-hud fixed z-[215] pointer-events-none"
        :style="'left:' + (reconPos.x + 20) + 'px;top:' + (reconPos.y + 20) + 'px;'">
-    <div class="cfx-corners relative w-[22rem] max-w-[calc(100vw-2rem)] rounded-lg border border-warm-400/50
+    <div class=" relative w-[22rem] max-w-[calc(100vw-2rem)] rounded-lg border border-warm-400/50
                 bg-ink-900/95 backdrop-blur-md shadow-[0_20px_60px_-10px_rgba(6,182,212,0.5)]
                 font-mono text-xs text-stone-200 overflow-hidden">
       <div class="flex items-center gap-2 px-3 py-2 border-b border-warm-400/20 bg-gradient-to-r from-warm-500/10 to-neon-500/10">

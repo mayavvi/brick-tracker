@@ -155,13 +155,17 @@ async def get_preferences(username: str) -> dict[str, Any]:
         (username,),
     )
     if row:
-        return json.loads(row[0][0])
+        prefs = json.loads(row[0][0])
+        prefs.pop("theme", None)
+        return prefs
     return {}
 
 
 async def save_preferences(username: str, prefs: dict[str, Any]) -> None:
     """Upsert user preferences as a JSON blob."""
     db = await get_db()
+    prefs = dict(prefs)
+    prefs.pop("theme", None)
     now = datetime.now().isoformat(timespec="seconds")
     await db.execute(
         """

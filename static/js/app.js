@@ -24,7 +24,7 @@ function trackerApp() {
   return {
     prefsLoaded: false,
 
-    // --- theme & charts ---
+    // --- charts ---
     showCharts: true,
     chartsReady: false,
 
@@ -127,9 +127,6 @@ function trackerApp() {
           if (el) el.focus();
         } else if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
           self.refreshProjectList();
-        } else if (e.key === 'd' && !e.ctrlKey && !e.metaKey) {
-          Alpine.store('theme').toggle();
-          self._scheduleSavePrefs();
         } else if (e.key === 'g') {
           gPressed = true;
           clearTimeout(gTimer);
@@ -227,13 +224,6 @@ function trackerApp() {
         if (prefs.time_range) this.timeRange = prefs.time_range;
         if (prefs.search_query) this.searchQuery = prefs.search_query;
         if (typeof prefs.show_charts === 'boolean') this.showCharts = prefs.show_charts;
-        // Apply saved theme (server-side prefs override localStorage as source-of-truth)
-        if (prefs.theme === 'dark' || prefs.theme === 'light') {
-          const wantDark = prefs.theme === 'dark';
-          document.documentElement.classList.toggle('dark', wantDark);
-          localStorage.setItem('brick-theme', prefs.theme);
-          Alpine.store('theme').dark = wantDark;
-        }
         this.prefsLoaded = true;
         await this._hydrateStudyCacheForSelection();
       } catch (e) {
@@ -255,7 +245,6 @@ function trackerApp() {
         role_filter: this.roleFilter,
         time_range: this.timeRange,
         search_query: this.searchQuery,
-        theme: Alpine.store('theme').dark ? 'dark' : 'light',
         show_charts: this.showCharts,
       };
       try {
@@ -404,15 +393,6 @@ function trackerApp() {
       this.loadingDashboard = true;
       const justLoggedIn = sessionStorage.getItem('brick-just-logged-in');
       if (justLoggedIn) sessionStorage.removeItem('brick-just-logged-in');
-      if (justLoggedIn && window.CyberFX) {
-        CyberFX.bootSequence([
-          '初始化控制台 · INIT_PEAK',
-          '连接数据节点 · CONNECT_NODE_' + this.selectedStudies.length + '_TARGETS',
-          '解析任务日志 · PARSE_TRACKER_LOGS',
-          '同步成员负载 · SYNC_OPERATORS',
-          '渲染数据透视 · RENDER_DASHBOARD',
-        ]);
-      }
       try {
         const pUrl = `/api/persons?${this.selectedStudies.map((s) => `study_ids=${encodeURIComponent(s)}`).join("&")}`;
         const pResp = await fetch(pUrl);
@@ -449,7 +429,6 @@ function trackerApp() {
         // Render charts after data is loaded
         this.$nextTick(() => {
           this._renderCharts();
-          if (window.CyberFX) { CyberFX.autoTilt(); CyberFX.bindGlitch(); }
         });
       } catch (e) {
         Alpine.store('toast').push("加载看板失败：" + e, "error");
@@ -680,13 +659,13 @@ function trackerApp() {
     // --- UI helpers ---
     statusBadge(status) {
       const m = {
-        关闭问题: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70 dark:bg-emerald-900/30 dark:text-emerald-300 dark:ring-emerald-800/60",
-        "已完成，可以QC": "bg-sky-50 text-sky-700 ring-1 ring-sky-200/70 dark:bg-sky-900/30 dark:text-sky-300 dark:ring-sky-800/60",
-        进行中: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70 dark:bg-amber-900/30 dark:text-amber-300 dark:ring-amber-800/60",
-        "有问题，请修改": "bg-rose-50 text-rose-700 ring-1 ring-rose-200/70 dark:bg-rose-900/30 dark:text-rose-300 dark:ring-rose-800/60",
-        "待定，请留意": "bg-stone-100 text-stone-600 ring-1 ring-stone-200/70 dark:bg-stone-800 dark:text-stone-300 dark:ring-stone-700",
+        关闭问题: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70",
+        "已完成，可以QC": "bg-sky-50 text-sky-700 ring-1 ring-sky-200/70",
+        进行中: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70",
+        "有问题，请修改": "bg-rose-50 text-rose-700 ring-1 ring-rose-200/70",
+        "待定，请留意": "bg-stone-100 text-stone-600 ring-1 ring-stone-200/70",
       };
-      const base = m[status] || "bg-stone-50 text-stone-400 ring-1 ring-stone-200/70 dark:bg-stone-800/60 dark:text-stone-500 dark:ring-stone-700";
+      const base = m[status] || "bg-stone-50 text-stone-400 ring-1 ring-stone-200/70";
       // Sheen only on actionable statuses
       if (status === "已完成，可以QC" || status === "有问题，请修改") {
         return base + " cfx-sheen";
@@ -713,12 +692,12 @@ function trackerApp() {
 
     ddlTextClass(task) {
       const days = this._ddlDaysLeft(task);
-      if (days === null) return "text-stone-400 dark:text-stone-600";
-      if (days < 0) return "text-rose-600 dark:text-rose-400 font-semibold";
-      if (days <= 3) return "text-rose-600 dark:text-rose-400 font-semibold";
-      if (days <= 5) return "text-amber-600 dark:text-amber-400 font-medium";
-      if (days <= 10) return "text-amber-700 dark:text-amber-500";
-      return "text-stone-500 dark:text-stone-400";
+      if (days === null) return "text-stone-400";
+      if (days < 0) return "text-rose-600 font-semibold";
+      if (days <= 3) return "text-rose-600 font-semibold";
+      if (days <= 5) return "text-amber-600 font-medium";
+      if (days <= 10) return "text-amber-700";
+      return "text-stone-500";
     },
   };
 }
