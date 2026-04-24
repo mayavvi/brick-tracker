@@ -41,6 +41,5 @@ async def workspace(request: Request, user: User = Depends(get_current_user)) ->
             "first_seen": user_row.get("first_seen", "-"),
             "last_active": user_row.get("last_active", "-"),
             "task_count": task_count,
-            "shell_header": False,
         },
     )

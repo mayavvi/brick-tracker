@@ -30,16 +30,16 @@ const TrackerCharts = (() => {
     return g;
   }
 
-  function isDark() {
-    return document.documentElement.classList.contains('dark');
+  function useLightPalette() {
+    return true;
   }
 
   function textColor() {
-    return isDark() ? '#B4C0DC' : '#334155';
+    return !useLightPalette() ? '#B4C0DC' : '#334155';
   }
 
   function gridColor() {
-    return isDark() ? 'rgba(6,182,212,0.12)' : 'rgba(100,116,139,0.18)';
+    return !useLightPalette() ? 'rgba(6,182,212,0.12)' : 'rgba(100,116,139,0.18)';
   }
 
   /* External HTML tooltip — escapes canvas bounds, cyberpunk neon card.
@@ -107,26 +107,26 @@ const TrackerCharts = (() => {
         const { ctx, chartArea: { left, right, top, bottom } } = chart;
         const cx = (left + right) / 2;
         const cy = (top + bottom) / 2;
-        const dark = isDark();
+        const light = useLightPalette();
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        // Big total — larger, high-contrast, theme-aware
-        ctx.shadowColor = dark ? 'rgba(6,182,212,0.75)' : 'rgba(8,145,178,0.35)';
-        ctx.shadowBlur = dark ? 14 : 6;
-        ctx.fillStyle = dark ? '#7FF3FF' : '#0E7490';
+        // Big total — larger, high-contrast, palette-aware
+        ctx.shadowColor = !light ? 'rgba(6,182,212,0.75)' : 'rgba(8,145,178,0.35)';
+        ctx.shadowBlur = !light ? 14 : 6;
+        ctx.fillStyle = !light ? '#7FF3FF' : '#0E7490';
         ctx.font = 'bold 32px "JetBrains Mono", Menlo, monospace';
         ctx.fillText(displayTotal || total, cx, cy - 8);
 
         // Subtitle — bigger, better contrast in light mode
         ctx.shadowBlur = 0;
-        ctx.fillStyle = dark ? '#94A3B8' : '#475569';
+        ctx.fillStyle = !light ? '#94A3B8' : '#475569';
         ctx.font = 'bold 10px "JetBrains Mono", Menlo, monospace';
         ctx.fillText('TOTAL', cx, cy + 12);
 
         // Closed percent — accent line
-        ctx.fillStyle = dark ? '#34D399' : '#059669';
+        ctx.fillStyle = !light ? '#34D399' : '#059669';
         ctx.font = 'bold 11px "JetBrains Mono", Menlo, monospace';
         ctx.fillText('◆ ' + closedPct + '% DONE', cx, cy + 26);
         ctx.restore();

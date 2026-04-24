@@ -159,7 +159,6 @@ class UserPreferences(BaseModel):
     role_filter: str = "all"
     time_range: str = ""
     search_query: str = ""
-    theme: str = "light"       # "light" | "dark"
     show_charts: bool = True   # whether the chart panel is expanded
 
 

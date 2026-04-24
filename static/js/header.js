@@ -1,5 +1,5 @@
 /**
- * Shared shell header: user identity, calendar, greeting, theme (merged prefs), module menu.
+ * Shared shell header: user identity, calendar, greeting, module menu.
  */
 function headerApp() {
   let _prefsTimer = null;
@@ -13,7 +13,6 @@ function headerApp() {
       role_filter: "all",
       time_range: "",
       search_query: "",
-      theme: "light",
       show_charts: true,
     };
   }
@@ -108,8 +107,8 @@ function headerApp() {
     moduleItemClass(id) {
       const on = this.activeModule === id;
       return on
-        ? "bg-warm-500/15 text-warm-200 ring-1 ring-warm-400/40"
-        : "text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800";
+        ? "shell-module-item-active"
+        : "text-stone-700 hover:bg-[#f4efe6]";
     },
 
     async init() {
@@ -122,14 +121,9 @@ function headerApp() {
     },
 
     _typeGreeting(text) {
-      const el = document.getElementById("cfx-greeting");
+      const el = document.getElementById("shell-greeting");
       if (!el) return;
-      const full = "> " + (text || "");
-      if (window.CyberFX && CyberFX.typewriter) {
-        CyberFX.typewriter(el, full, 28);
-      } else {
-        el.textContent = full;
-      }
+      el.textContent = text || "";
     },
 
     _startGreetingTimer() {
@@ -164,36 +158,9 @@ function headerApp() {
         if (!resp.ok) throw new Error("prefs");
         const prefs = await resp.json();
         this._prefsSnapshot = Object.assign(defaultPrefs(), prefs);
-        if (prefs.theme === "dark" || prefs.theme === "light") {
-          const wantDark = prefs.theme === "dark";
-          document.documentElement.classList.toggle("dark", wantDark);
-          try {
-            localStorage.setItem("brick-theme", prefs.theme);
-          } catch (err) {}
-          Alpine.store("theme").dark = wantDark;
-        }
       } catch (_) {
         this._prefsSnapshot = defaultPrefs();
       }
-    },
-
-    _scheduleSaveTheme() {
-      if (!this.prefsLoaded) return;
-      if (_prefsTimer) clearTimeout(_prefsTimer);
-      _prefsTimer = setTimeout(() => this._saveMergedPreferences(), 500);
-    },
-
-    async _saveMergedPreferences() {
-      const snap = Object.assign(defaultPrefs(), this._prefsSnapshot || {});
-      snap.theme = Alpine.store("theme").dark ? "dark" : "light";
-      try {
-        await fetch("/api/user/preferences", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(snap),
-        });
-        this._prefsSnapshot = snap;
-      } catch (_) {}
     },
   };
 }
