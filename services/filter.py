@@ -18,10 +18,10 @@ _TIME_RANGE_DAYS: dict[str, tuple[int, int | None]] = {
 def _matches_person(task: TaskItem, name: str, role: str) -> bool:
     """Check whether *task* involves *name* on the specified role side (exact, case-insensitive)."""
     lower = name.strip().lower()
-    if role in ("main", "all"):
+    if role == "main":
         if task.main_person and task.main_person.strip().lower() == lower:
             return True
-    if role in ("qc", "all"):
+    if role == "qc":
         if task.qc_person and task.qc_person.strip().lower() == lower:
             return True
     return False
@@ -80,7 +80,7 @@ _STATUS_MAP = {
 
 def build_summary(
     tasks: list[TaskItem],
-    role: str = "all",
+    role: str = "main",
 ) -> StatusSummary:
     """Compute aggregated status counts with role-aware logic.
 
@@ -94,12 +94,10 @@ def build_summary(
     summary = StatusSummary(total=len(tasks))
     for t in tasks:
         # --- in_progress: empty status OR explicitly "进行中" ---
-        if role == "main":
-            is_in_progress = _side_in_progress(t.main_status)
-        elif role == "qc":
+        if role == "qc":
             is_in_progress = _side_in_progress(t.qc_status)
         else:
-            is_in_progress = _side_in_progress(t.main_status) or _side_in_progress(t.qc_status)
+            is_in_progress = _side_in_progress(t.main_status)
 
         if is_in_progress:
             summary.in_progress += 1

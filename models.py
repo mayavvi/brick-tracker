@@ -95,7 +95,7 @@ class DashboardFilter(BaseModel):
     tracker_file_paths: list[str] = Field(default_factory=list)
     person_name: str | None = None
     time_range: Literal["3d", "5d", "10d", "15d", "15d+"] | None = None
-    role: Literal["main", "qc", "all"] = "all"
+    role: Literal["main", "qc"] = "main"
 
 
 class StatusSummary(BaseModel):
@@ -156,7 +156,7 @@ class UserPreferences(BaseModel):
     selected_studies: list[str] = Field(default_factory=list)
     selected_tracker_files: dict[str, list[str]] = Field(default_factory=dict)
     person_filter: str = ""
-    role_filter: str = "all"
+    role_filter: str = "main"
     time_range: str = ""
     search_query: str = ""
     show_charts: bool = True   # whether the chart panel is expanded
