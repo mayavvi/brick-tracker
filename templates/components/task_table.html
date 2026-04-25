@@ -12,11 +12,11 @@
 </style>
 <div class="space-y-3" x-ref="taskArea">
   <template x-for="study in taskGroups" :key="study.studyId">
-    <div class="bg-white rounded-lg border border-stone-200 overflow-hidden">
+    <div class="tracker-table-card bg-white rounded-lg border border-stone-200 overflow-hidden">
 
       <!-- Level 1: Study -->
       <button @click="study.open = !study.open"
-              class="w-full flex items-center justify-between px-4 py-3 border-l-[3px] border-l-transparent [border-image:linear-gradient(180deg,#06B6D4,#D01FF6)_1]
+              class="w-full flex items-center justify-between px-4 py-3 border-l-[3px] border-l-warm-500
                      hover:bg-stone-50 transition-colors">
         <span class="flex items-center gap-3">
           <svg :class="study.open ? 'rotate-90' : ''" class="w-3.5 h-3.5 text-stone-400 transition-transform"
@@ -67,7 +67,7 @@
                       <span class="tabular-nums" x-text="sheet.tasks.length"></span>
                     </button>
                     <div x-show="sheet.open" x-collapse>
-                      <div class="task-grid-wrap">
+                      <div class="task-grid-wrap tracker-table-scroll">
                         <div class="task-grid-row task-grid-head bg-stone-50 text-stone-500 text-[11px] uppercase tracking-wider border-t border-stone-100 font-medium">
                           <div class="px-3 py-2">分类</div>
                           <div class="px-3 py-2">名称</div>
@@ -120,8 +120,8 @@
 
   <!-- ==================== Custom Project Groups ==================== -->
   <template x-for="cg in customProjectGroups" :key="cg.studyId">
-    <div class="bg-white rounded-lg border border-stone-200 overflow-hidden">
-      <div class="flex items-center justify-between px-4 py-3 border-l-[3px] border-l-transparent [border-image:linear-gradient(180deg,#06B6D4,#D01FF6)_1]">
+    <div class="tracker-table-card bg-white rounded-lg border border-stone-200 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-l-[3px] border-l-warm-500">
         <span class="flex items-center gap-2.5">
           <span class="font-semibold text-stone-900 text-sm" x-text="cg.studyId"></span>
           <span class="text-[11px] bg-stone-100 text-stone-600 rounded-full px-2 py-0.5 font-medium"
@@ -203,8 +203,8 @@
   <template x-if="dashboardLoaded">
     <button @click="openAddCustomTask('')"
             class="w-full py-2.5 border border-dashed border-warm-400/30 rounded-lg text-sm
-                   text-warm-300 hover:border-warm-400/70 hover:text-warm-200 hover:bg-warm-500/5 hover:shadow-[0_0_18px_rgba(6,182,212,0.2)] transition
-                   flex items-center justify-center gap-2 font-semibold bg-ink-900/30">
+                   text-warm-700 hover:border-warm-500 hover:text-warm-800 hover:bg-warm-50 transition
+                   flex items-center justify-center gap-2 font-semibold bg-white/70">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
       </svg>
@@ -216,15 +216,15 @@
   <template x-if="dashboardLoaded && taskGroups.length === 0 && customProjectGroups.length === 0">
     <div class="text-center py-16">
       <div class="relative w-16 h-16 mx-auto mb-4">
-        <div class="absolute inset-0 rounded-full bg-gradient-to-br from-warm-500/20 to-neon-500/20 blur-xl"></div>
-        <div class="relative w-16 h-16 rounded-full border border-warm-400/30 bg-ink-900/60 flex items-center justify-center">
-          <svg class="w-6 h-6 text-warm-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+        <div class="absolute inset-0 rounded-full bg-warm-500/10 blur-xl"></div>
+        <div class="relative w-16 h-16 rounded-full border border-warm-200 bg-white/80 flex items-center justify-center">
+          <svg class="w-6 h-6 text-warm-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
         </div>
       </div>
       <p class="text-sm font-bold">
-        <span class="bg-gradient-to-r from-warm-300 to-neon-300 bg-clip-text text-transparent">// 无匹配结果</span>
+        <span class="text-stone-900">无匹配结果</span>
       </p>
       <p class="text-xs text-stone-500 font-mono mt-1">[ NO_MATCH · 调整左侧过滤条件试试 ]</p>
     </div>

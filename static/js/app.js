@@ -10,7 +10,7 @@ function trackerApp() {
       const ip = (s) => !s || s === "进行中";
       if (role === "main") return ip(t.main_status);
       if (role === "qc") return ip(t.qc_status);
-      return ip(t.main_status) || ip(t.qc_status);
+      return ip(t.main_status);
     },
     waiting: (t) => t.main_status !== "已完成，可以QC",
     completed_ready_qc: (t) => t.main_status === "已完成，可以QC",
@@ -36,7 +36,7 @@ function trackerApp() {
     _studyCache: {},
     personList: [],
     personFilter: "",
-    roleFilter: "all",
+    roleFilter: "main",
     timeRange: "",
     statusFilter: "",
     loadingStudies: false,
@@ -69,10 +69,13 @@ function trackerApp() {
     reconHeld: false,
     reconTask: null,
     reconPos: { x: 0, y: 0 },
+    _hudStartedAt: Date.now(),
+    _hudTimer: null,
 
     // --- lifecycle ---
     async init() {
       await this._restorePreferences();
+      this.initHudTicker();
       this._setupKeyboard();
 
       this.$watch("personFilter", () => {
@@ -199,13 +202,13 @@ function trackerApp() {
       return 'text-emerald-300';
     },
     reconDdlBorder(ddl) {
-      var d = new Date(ddl); if (isNaN(d)) return 'border-stone-700/50 bg-ink-900/60';
+      var d = new Date(ddl); if (isNaN(d)) return 'border-stone-200 bg-white/70';
       d.setHours(0,0,0,0);
       var today = new Date(); today.setHours(0,0,0,0);
       var diff = Math.round((d - today) / 86400000);
       if (diff < 0) return 'border-rose-500/50 bg-rose-500/10';
       if (diff <= 3) return 'border-amber-500/50 bg-amber-500/10';
-      return 'border-stone-700/50 bg-ink-900/60';
+      return 'border-stone-200 bg-white/70';
     },
 
     // --- preferences ---
@@ -220,7 +223,7 @@ function trackerApp() {
           this.selectedTrackerFiles = prefs.selected_tracker_files;
         }
         if (prefs.person_filter) this.personFilter = prefs.person_filter;
-        if (prefs.role_filter) this.roleFilter = prefs.role_filter;
+        if (prefs.role_filter) this.roleFilter = this._normalizeRoleFilter(prefs.role_filter);
         if (prefs.time_range) this.timeRange = prefs.time_range;
         if (prefs.search_query) this.searchQuery = prefs.search_query;
         if (typeof prefs.show_charts === 'boolean') this.showCharts = prefs.show_charts;
@@ -229,6 +232,28 @@ function trackerApp() {
       } catch (e) {
         this.prefsLoaded = true;
       }
+    },
+
+    _normalizeRoleFilter(role) {
+      return role === "qc" ? "qc" : "main";
+    },
+
+    initHudTicker() {
+      const el = document.getElementById("tracker-hud-ticker");
+      if (!el) return;
+      const pad = (n) => String(n).padStart(2, "0");
+      const render = () => {
+        const now = new Date();
+        const up = Math.max(0, Math.floor((Date.now() - this._hudStartedAt) / 1000));
+        const hh = pad(Math.floor(up / 3600));
+        const mm = pad(Math.floor((up % 3600) / 60));
+        const ss = pad(up % 60);
+        const clk = [pad(now.getHours()), pad(now.getMinutes()), pad(now.getSeconds())].join(":");
+        el.textContent = `ONLINE · ${clk} · UP ${hh}:${mm}:${ss}`;
+      };
+      render();
+      if (this._hudTimer) clearInterval(this._hudTimer);
+      this._hudTimer = setInterval(render, 1000);
     },
 
     _scheduleSavePrefs() {
@@ -242,7 +267,7 @@ function trackerApp() {
         selected_studies: this.selectedStudies,
         selected_tracker_files: this.selectedTrackerFiles,
         person_filter: this.personFilter,
-        role_filter: this.roleFilter,
+        role_filter: this._normalizeRoleFilter(this.roleFilter),
         time_range: this.timeRange,
         search_query: this.searchQuery,
         show_charts: this.showCharts,
@@ -404,7 +429,7 @@ function trackerApp() {
           tracker_file_paths: trackerPaths.length > 0 ? trackerPaths : null,
           person_name: this.personFilter || null,
           time_range: this.timeRange || null,
-          role: this.roleFilter,
+          role: this._normalizeRoleFilter(this.roleFilter),
         };
         const dResp = await fetch("/api/dashboard", {
           method: "POST",
@@ -536,9 +561,8 @@ function trackerApp() {
         if (ct.main_status !== "已完成，可以QC") s.waiting = (s.waiting || 0) + 1;
 
         let sideStatus;
-        if (this.roleFilter === "main") sideStatus = ct.main_status;
-        else if (this.roleFilter === "qc") sideStatus = ct.qc_status;
-        else sideStatus = ct.main_status || ct.qc_status;
+        if (this.roleFilter === "qc") sideStatus = ct.qc_status;
+        else sideStatus = ct.main_status;
 
         if (!sideStatus) {
           s.in_progress++;
@@ -659,13 +683,13 @@ function trackerApp() {
     // --- UI helpers ---
     statusBadge(status) {
       const m = {
-        关闭问题: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70",
-        "已完成，可以QC": "bg-sky-50 text-sky-700 ring-1 ring-sky-200/70",
-        进行中: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70",
-        "有问题，请修改": "bg-rose-50 text-rose-700 ring-1 ring-rose-200/70",
-        "待定，请留意": "bg-stone-100 text-stone-600 ring-1 ring-stone-200/70",
+        关闭问题: "tracker-status-badge tracker-status-done",
+        "已完成，可以QC": "tracker-status-badge tracker-status-qc-ready",
+        进行中: "tracker-status-badge tracker-status-active",
+        "有问题，请修改": "tracker-status-badge tracker-status-rework",
+        "待定，请留意": "tracker-status-badge tracker-status-paused",
       };
-      const base = m[status] || "bg-stone-50 text-stone-400 ring-1 ring-stone-200/70";
+      const base = m[status] || "tracker-status-badge tracker-status-empty";
       // Sheen only on actionable statuses
       if (status === "已完成，可以QC" || status === "有问题，请修改") {
         return base + " cfx-sheen";

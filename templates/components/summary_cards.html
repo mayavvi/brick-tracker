@@ -1,15 +1,11 @@
 <!-- Summary cards · role-aware dynamic layout -->
-<div class="grid gap-3"
-     :class="{
-       'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5': roleFilter !== 'all',
-       'grid-cols-2 sm:grid-cols-4 xl:grid-cols-7': roleFilter === 'all'
-     }">
+<div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
 
   <button @click="setStatusFilter(roleFilter === 'qc' ? 'completed_ready_qc' : 'total')"
           class="summary-card"
           :class="(statusFilter === 'total' && roleFilter !== 'qc') || (statusFilter === 'completed_ready_qc' && roleFilter === 'qc') ? 'summary-card-active' : ''">
     <span class="summary-dot bg-warm-500"></span>
-    <span class="summary-label">ALL · <span x-text="roleFilter === 'qc' ? '可找茬' : '总量'"></span></span>
+    <span class="summary-label">POOL · <span x-text="roleFilter === 'qc' ? '可找茬' : '总量'"></span></span>
     <strong class="summary-value" x-text="roleFilter === 'qc' ? summary.completed_ready_qc : summary.total">0</strong>
   </button>
 

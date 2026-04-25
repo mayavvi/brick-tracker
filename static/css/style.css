@@ -1805,6 +1805,261 @@ html.dark .welcome-editorial-main {
 }
 
 /* ================================================================
+   Tracker editorial refresh
+   ================================================================ */
+.tracker-page {
+  color: #292524;
+  background:
+    radial-gradient(760px 460px at 86% 4%, rgba(219, 93, 145, 0.10), transparent 62%),
+    radial-gradient(680px 420px at 10% 8%, rgba(46, 146, 121, 0.13), transparent 60%),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.72), rgba(248, 243, 234, 0.92));
+}
+
+.tracker-page .tracker-main {
+  background: transparent !important;
+  overscroll-behavior: contain;
+}
+
+.tracker-sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.92), rgba(255, 250, 241, 0.88)) !important;
+  border-right-color: rgba(87, 83, 78, 0.16) !important;
+  box-shadow: 18px 0 44px -42px rgba(44, 36, 24, 0.45);
+}
+
+.tracker-page .sidebar-content-visible {
+  scrollbar-color: rgba(46, 146, 121, 0.32) transparent;
+  overscroll-behavior: contain;
+}
+
+.tracker-page .hud-ticker {
+  color: #205f51;
+  text-shadow: none;
+}
+
+.tracker-page .hud-ticker::before {
+  content: "";
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.45rem;
+  border-radius: 999px;
+  background: #2e9279;
+  box-shadow: 0 0 0 3px rgba(46, 146, 121, 0.12);
+  vertical-align: 0.05em;
+}
+
+.tracker-page label,
+.tracker-page .tracker-panel button,
+.tracker-page .tracker-table-card button {
+  letter-spacing: 0;
+}
+
+.tracker-page .text-warm-300,
+.tracker-page .text-warm-400 {
+  color: #205f51 !important;
+}
+
+.tracker-page .bg-warm-400 {
+  background-color: #2e9279 !important;
+  box-shadow: none !important;
+}
+
+.tracker-page input,
+.tracker-page select,
+.tracker-page textarea {
+  background: rgba(255, 253, 248, 0.94) !important;
+  border-color: rgba(87, 83, 78, 0.18) !important;
+  color: #292524 !important;
+  box-shadow: none;
+}
+
+.tracker-page input:focus-visible,
+.tracker-page select:focus-visible,
+.tracker-page textarea:focus-visible {
+  border-color: rgba(46, 146, 121, 0.58) !important;
+  box-shadow: 0 0 0 3px rgba(46, 146, 121, 0.14) !important;
+}
+
+.tracker-segmented {
+  border-color: rgba(87, 83, 78, 0.16) !important;
+  background: rgba(255, 253, 248, 0.82) !important;
+}
+
+.tracker-segmented-active {
+  background: #2e9279;
+  color: #fffdf8;
+  box-shadow: 0 8px 18px -14px rgba(32, 95, 81, 0.75);
+}
+
+.tracker-page .btn-neon {
+  background: #2e9279;
+  color: #fffdf8;
+  border: 1px solid rgba(32, 95, 81, 0.12);
+  box-shadow: 0 12px 26px -18px rgba(32, 95, 81, 0.85);
+  letter-spacing: 0;
+}
+
+.tracker-page .btn-neon:hover:not(:disabled) {
+  background: #247662;
+  box-shadow: 0 16px 30px -18px rgba(32, 95, 81, 0.95);
+}
+
+.tracker-page .btn-neon:disabled {
+  background: #d8d2c8 !important;
+  color: #8b8174 !important;
+  border-color: transparent;
+}
+
+.tracker-panel,
+.tracker-table-card,
+.tracker-page .summary-card {
+  border-color: rgba(87, 83, 78, 0.15) !important;
+  background: rgba(255, 253, 248, 0.84) !important;
+  box-shadow: 0 16px 48px -38px rgba(44, 36, 24, 0.48);
+}
+
+.tracker-panel > button {
+  color: #205f51 !important;
+  background: rgba(255, 253, 248, 0.76);
+}
+
+.tracker-panel > button:hover {
+  background: rgba(230, 244, 238, 0.76) !important;
+}
+
+.tracker-page .summary-card-active {
+  border-color: rgba(46, 146, 121, 0.44) !important;
+  background: #fffdf8 !important;
+}
+
+.tracker-pivot-summary {
+  border-radius: 0.65rem;
+}
+
+.tracker-table-card > button,
+.tracker-table-card > div > div > button,
+.tracker-table-card .bg-white > button {
+  background: transparent;
+}
+
+.tracker-page .task-grid-head {
+  background: rgba(246, 241, 232, 0.86) !important;
+  color: #6f675c !important;
+}
+
+.tracker-page .task-grid-row {
+  color: #44403c;
+}
+
+.tracker-table-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-color: rgba(46, 146, 121, 0.34) transparent;
+}
+
+.tracker-status-badge {
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+
+.tracker-status-empty {
+  background: #f5f2ec;
+  border-color: rgba(120, 113, 108, 0.18);
+  color: #8b8174;
+}
+
+.tracker-status-active {
+  background: #eef7ff;
+  border-color: rgba(14, 116, 144, 0.18);
+  color: #0e7490;
+}
+
+.tracker-status-qc-ready {
+  background: #ecfdf7;
+  border-color: rgba(46, 146, 121, 0.22);
+  color: #205f51;
+}
+
+.tracker-status-rework {
+  background: #fff1f5;
+  border-color: rgba(219, 93, 145, 0.24);
+  color: #a73568;
+}
+
+.tracker-status-paused {
+  background: #f1f0fa;
+  border-color: rgba(99, 102, 241, 0.16);
+  color: #57534e;
+}
+
+.tracker-status-done {
+  background: #f0f8f3;
+  border-color: rgba(22, 101, 52, 0.14);
+  color: #3f6f4d;
+}
+
+.tracker-page .cfx-row-sweep:hover {
+  background: rgba(46, 146, 121, 0.06) !important;
+  box-shadow: inset 2px 0 0 rgba(46, 146, 121, 0.42);
+}
+
+.tracker-page .cfx-row-sweep::after,
+.tracker-page .cfx-row-sweep:hover::after,
+.tracker-page .cfx-sheen::after {
+  display: none !important;
+}
+
+.tracker-page .ddl-overdue::before,
+.tracker-page .ddl-urgent::before,
+.tracker-page .ddl-soon::before {
+  box-shadow: none;
+}
+
+.tracker-page .ddl-overdue,
+.tracker-page .ddl-urgent {
+  background: rgba(244, 63, 94, 0.07) !important;
+}
+
+.tracker-page .ddl-soon {
+  background: rgba(245, 158, 11, 0.07) !important;
+}
+
+.tracker-page .radar-container {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 253, 248, 0.98), rgba(255, 250, 241, 0.68));
+  border-color: rgba(87, 83, 78, 0.12);
+}
+
+.tracker-page .chart-container {
+  background: transparent;
+}
+
+.tracker-page .cfx-recon-hud > div {
+  background: rgba(255, 253, 248, 0.98) !important;
+  border-color: rgba(46, 146, 121, 0.28) !important;
+  color: #292524 !important;
+  box-shadow: 0 24px 70px -38px rgba(44, 36, 24, 0.58) !important;
+}
+
+.tracker-page .cfx-recon-hud .text-stone-100,
+.tracker-page .cfx-recon-hud .text-stone-200 {
+  color: #292524 !important;
+}
+
+.tracker-page .cfx-recon-hud .text-stone-400,
+.tracker-page .cfx-recon-hud .text-stone-500 {
+  color: #78716c !important;
+}
+
+.tracker-page .recon-active-badge {
+  background: rgba(255, 253, 248, 0.94) !important;
+  border-color: rgba(46, 146, 121, 0.3) !important;
+  color: #205f51 !important;
+  box-shadow: 0 16px 40px -28px rgba(32, 95, 81, 0.72) !important;
+}
+
+/* ================================================================
    Reduced motion
    ================================================================ */
 @media (prefers-reduced-motion: reduce) {
