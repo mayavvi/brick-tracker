@@ -8,6 +8,8 @@ function codeIndexWorkbench() {
     programLoading: false,
     reindexing: false,
     browserPanelOpen: true,
+    scopeCollapsed: false,
+    trayCollapsed: false,
     selectedProgram: null,
     timeline: [],
     timelineLoading: false,
@@ -19,7 +21,6 @@ function codeIndexWorkbench() {
     previewVisibleStart: 0,
     previewVisibleEnd: 0,
     snapshots: [],
-    snapshotPanelOpen: true,
     resultMode: 'preview',
     compareP: null,
     compareQ: null,
@@ -43,9 +44,6 @@ function codeIndexWorkbench() {
     projectOpen: false,
     taskSearch: '',
     taskOpen: false,
-    globalQcOpen: false,
-    globalQcRows: [],
-    globalQcLoading: false,
     indexedScopes: [],
     availableScopes: [],
     shelfSearch: '',
@@ -131,29 +129,6 @@ function codeIndexWorkbench() {
       this.taskOpen = false;
       this.taskSearch = val || '';
       await this.loadPrograms();
-    },
-
-    async toggleGlobalQc() {
-      this.globalQcOpen = !this.globalQcOpen;
-      if (this.globalQcOpen) {
-        await this.loadGlobalQcRows();
-      }
-    },
-
-    async loadGlobalQcRows() {
-      this.globalQcLoading = true;
-      try {
-        const params = new URLSearchParams();
-        if (this.filters.compound) params.set('compound', this.filters.compound);
-        if (this.filters.project) params.set('project', this.filters.project);
-        if (this.filters.task) params.set('task', this.filters.task);
-        this.globalQcRows = await this.api('/api/files/indexed-qc-timing?' + params.toString());
-      } catch (err) {
-        this.globalQcRows = [];
-        this.toast(err.message || '加载 QC 检查失败', 'error');
-      } finally {
-        this.globalQcLoading = false;
-      }
     },
 
     async init() {
@@ -289,8 +264,6 @@ function codeIndexWorkbench() {
         );
         if (stillSelected) {
           this.selectedProgram = stillSelected;
-        } else if (this.selectedProgram) {
-          this.clearSelection();
         }
       } catch (err) {
         this.toast(err.message || '加载程序列表失败', 'error');
@@ -321,7 +294,22 @@ function codeIndexWorkbench() {
       this.browserPanelOpen = !this.browserPanelOpen;
     },
 
-    clearSelection() {
+    toggleScopePanel() {
+      this.scopeCollapsed = !this.scopeCollapsed;
+    },
+
+    toggleTrayPanel() {
+      this.trayCollapsed = !this.trayCollapsed;
+    },
+
+    workbenchLayoutClass() {
+      return {
+        'is-scope-collapsed': this.scopeCollapsed,
+        'is-tray-collapsed': this.trayCollapsed,
+      };
+    },
+
+    clearBrowseSelection() {
       this.selectedProgram = null;
       this.timeline = [];
       this.selectedVersion = null;
@@ -331,16 +319,38 @@ function codeIndexWorkbench() {
       this.previewVisibleStart = 0;
       this.previewVisibleEnd = 0;
       this.snapshots = [];
-      this.snapshotPanelOpen = true;
       this.resultMode = 'preview';
+      this.qcRows = [];
+    },
+
+    clearSelection() {
+      this.clearBrowseSelection();
+      this.clearCompareTray();
+      this.qcRows = [];
+    },
+
+    clearCompareSlot(slot) {
+      if (slot === 'p') {
+        this.compareP = null;
+      } else if (slot === 'q') {
+        this.compareQ = null;
+      }
+      this.diffResult = null;
+      this.resetDiffScrollState();
+    },
+
+    clearCompareTray() {
       this.compareP = null;
       this.compareQ = null;
       this.diffResult = null;
+      this.resetDiffScrollState();
+    },
+
+    resetDiffScrollState() {
       this.diffVisibleStart = 0;
       this.diffVisibleEnd = 0;
       this.diffUnifiedVisibleStart = 0;
       this.diffUnifiedVisibleEnd = 0;
-      this.qcRows = [];
     },
 
     programIsSelected(program) {
@@ -349,7 +359,7 @@ function codeIndexWorkbench() {
 
     async selectProgram(program, forceReload) {
       if (!forceReload && this.programIsSelected(program)) {
-        this.clearSelection();
+        this.clearBrowseSelection();
         return;
       }
 
@@ -361,9 +371,6 @@ function codeIndexWorkbench() {
       this._previewHighlightCache = null;
       this.snapshots = [];
       this.resultMode = 'preview';
-      this.compareP = null;
-      this.compareQ = null;
-      this.diffResult = null;
       this.qcRows = [];
 
       try {
@@ -489,13 +496,11 @@ function codeIndexWorkbench() {
 
     setCompareVersion(slot, version) {
       if (!version) return;
-      const target = {
-        type: 'file',
-        file_id: version.id,
-        label: version.file_name + ' | ' + version.project + '/' + version.task,
-      };
+      const target = this.compareTargetFromVersion(version);
       if (slot === 'p') this.compareP = target;
       else this.compareQ = target;
+      this.diffResult = null;
+      this.resetDiffScrollState();
       this.resultMode = 'compare';
       if (this.compareP && this.compareQ) {
         this.runDiff();
@@ -504,6 +509,19 @@ function codeIndexWorkbench() {
 
     compareLabel(target) {
       return target ? target.label : '未设置';
+    },
+
+    compareContext(target) {
+      return target ? (target.context || target.label) : 'No target selected';
+    },
+
+    compareTargetFromVersion(version, suffix) {
+      return {
+        type: 'file',
+        file_id: version.id,
+        label: version.file_name + (suffix ? ' | ' + suffix : ''),
+        context: version.project + '/' + version.task + ' · ' + this.formatDateTime(version.modified_time),
+      };
     },
 
     swapCompareSides() {
@@ -517,16 +535,10 @@ function codeIndexWorkbench() {
 
     async compareLatestTwo() {
       if (this.timeline.length < 2) return;
-      this.compareP = {
-        type: 'file',
-        file_id: this.timeline[0].id,
-        label: this.timeline[0].file_name + ' | ' + this.timeline[0].project + '/' + this.timeline[0].task,
-      };
-      this.compareQ = {
-        type: 'file',
-        file_id: this.timeline[1].id,
-        label: this.timeline[1].file_name + ' | ' + this.timeline[1].project + '/' + this.timeline[1].task,
-      };
+      this.compareP = this.compareTargetFromVersion(this.timeline[0]);
+      this.compareQ = this.compareTargetFromVersion(this.timeline[1]);
+      this.diffResult = null;
+      this.resetDiffScrollState();
       this.resultMode = 'compare';
       await this.runDiff();
     },
@@ -537,12 +549,11 @@ function codeIndexWorkbench() {
         type: 'snapshot',
         snap_id: snapshot.id,
         label: 'Snapshot #' + snapshot.id,
+        context: this.formatDateTime(snapshot.snapshot_ts) + ' · ' + (snapshot.note || 'No note'),
       };
-      this.compareQ = {
-        type: 'file',
-        file_id: this.selectedVersion.id,
-        label: this.selectedVersion.file_name + ' | 当前版本',
-      };
+      this.compareQ = this.compareTargetFromVersion(this.selectedVersion, '当前版本');
+      this.diffResult = null;
+      this.resetDiffScrollState();
       this.resultMode = 'compare';
       await this.runDiff();
     },
@@ -553,12 +564,16 @@ function codeIndexWorkbench() {
         type: 'path',
         path: row.main_sas_path,
         label: row.program + ' | main',
+        context: row.task || 'QC timing',
       };
       this.compareQ = {
         type: 'path',
         path: row.qc_sas_path,
         label: row.program + ' | qc',
+        context: row.task || 'QC timing',
       };
+      this.diffResult = null;
+      this.resetDiffScrollState();
       this.resultMode = 'compare';
       await this.runDiff();
     },

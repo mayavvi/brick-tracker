@@ -59,6 +59,13 @@ class LightEditorialUiTests(unittest.TestCase):
 
         self.assertNotIn('"shell_header": False', me_route)
 
+    def test_me_page_does_not_show_dead_csv_export_action(self):
+        me = self.read("templates/me.html")
+
+        self.assertNotIn("导出 CSV", me)
+        self.assertNotIn('@click="exportCsv()"', me)
+        self.assertNotIn("exportCsv()", me)
+
     def test_login_page_is_light_only(self):
         login = self.read("templates/login.html")
 

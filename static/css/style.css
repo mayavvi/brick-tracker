@@ -2060,6 +2060,77 @@ html.dark .welcome-editorial-main {
 }
 
 /* ================================================================
+   File compare workbench — fixed horizontal grid with side rails
+   ================================================================ */
+.file-compare-workbench-grid {
+  display: grid;
+  grid-template-columns: 20rem minmax(22rem, 1fr) 21rem;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+  transition: grid-template-columns 180ms ease;
+}
+
+.file-compare-workbench-grid.is-scope-collapsed {
+  grid-template-columns: 2.75rem minmax(22rem, 1fr) 21rem;
+}
+
+.file-compare-workbench-grid.is-tray-collapsed {
+  grid-template-columns: 20rem minmax(22rem, 1fr) 2.75rem;
+}
+
+.file-compare-workbench-grid.is-scope-collapsed.is-tray-collapsed {
+  grid-template-columns: 2.75rem minmax(22rem, 1fr) 2.75rem;
+}
+
+.file-compare-scope-panel,
+.file-compare-reader-panel,
+.file-compare-tray-panel {
+  min-width: 0;
+}
+
+.file-compare-scope-panel.is-collapsed,
+.file-compare-tray-panel.is-collapsed {
+  min-width: 2.75rem;
+}
+
+.file-compare-panel-rail {
+  display: flex;
+  min-height: 100%;
+  width: 2.75rem;
+  align-items: stretch;
+  justify-content: center;
+  background: rgba(250, 250, 249, 0.86);
+}
+
+.file-compare-rail-button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  border: 0;
+  color: #57534e;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: color 150ms ease, background-color 150ms ease;
+  writing-mode: vertical-rl;
+}
+
+.file-compare-rail-button:hover {
+  background: rgba(245, 245, 244, 0.95);
+  color: #292524;
+}
+
+.file-compare-rail-icon {
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+/* ================================================================
    Reduced motion
    ================================================================ */
 @media (prefers-reduced-motion: reduce) {
