@@ -86,12 +86,12 @@ class CodeIndexServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_parse_index_entry_extracts_context_and_skips_archive(self) -> None:
         live_file = self._write(
-            "CMPD9/PROJ9/TASK9/code/t_prog.lst",
-            "listing output\n",
+            "CMPD9/PROJ9/TASK9/code/t_prog.sas",
+            "data step;\nrun;\n",
         )
         archive_file = self._write(
-            "CMPD9/PROJ9/TASK9/archive/t_prog.lst",
-            "archived output\n",
+            "CMPD9/PROJ9/TASK9/archive/t_prog.sas",
+            "archived code\n",
         )
 
         parsed = code_index.parse_index_entry(live_file)
@@ -103,7 +103,7 @@ class CodeIndexServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(parsed["project"], "PROJ9")
         self.assertEqual(parsed["task"], "TASK9")
         self.assertEqual(parsed["program_key"], "T_PROG")
-        self.assertEqual(parsed["extension"], ".lst")
+        self.assertEqual(parsed["extension"], ".sas")
         self.assertIsNone(skipped)
 
     async def test_parse_index_entry_skips_temp_files_by_name(self) -> None:

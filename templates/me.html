@@ -8,7 +8,7 @@
       <section class="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-warm-700">Workspace</p>
-          <h1 class="mt-2 font-serif text-4xl leading-tight tracking-normal text-stone-950">个人工作台</h1>
+          <h1 class="mt-2 text-4xl leading-tight tracking-normal text-stone-900">个人工作台</h1>
         </div>
         <button @click="showSettings = true"
                 class="rounded-xl border border-warm-300 bg-white/80 px-4 py-2 text-sm font-semibold text-warm-700 shadow-sm transition hover:bg-warm-50">
@@ -25,7 +25,7 @@
                 {{ (user.display_name or user.username or '?')[0] | upper }}
               </div>
               <div class="min-w-0">
-                <p class="text-[11px] font-mono uppercase tracking-[0.24em] text-warm-600">Operator Feed</p>
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600">Operator Feed</p>
                 <h2 class="mt-2 text-2xl font-bold tracking-tight text-stone-900 md:text-3xl">{{ user.display_name or user.username }}</h2>
                 <p class="mt-2 max-w-xl text-sm leading-6 text-stone-600">
                   当前主屏只追踪最值得你先动手的事：过期未完成、今天要做，以及下一批待进入视线的任务。
@@ -141,7 +141,7 @@
                      class="overflow-hidden rounded-[26px] border border-rose-200 bg-[linear-gradient(180deg,rgba(255,245,247,0.98),rgba(255,250,251,0.98))] shadow-sm">
               <div class="flex items-center justify-between gap-4 border-b border-rose-200 px-5 py-3">
                 <div>
-                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-rose-500">Critical Queue</p>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-rose-500">Critical Queue</p>
                   <h3 class="mt-1 text-lg font-semibold text-stone-900">过期未完成</h3>
                 </div>
                 <span class="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-mono text-rose-600"
@@ -170,7 +170,7 @@
             <section class="overflow-hidden rounded-[26px] border border-stone-200 bg-white shadow-sm">
               <div class="flex items-center justify-between gap-4 border-b border-stone-200 px-5 py-3">
                 <div>
-                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-warm-600">Action Queue</p>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600">Action Queue</p>
                   <h3 class="mt-1 text-lg font-semibold text-stone-900">今天要做</h3>
                 </div>
                 <span class="rounded-full border border-warm-200 bg-warm-50 px-3 py-1 text-xs font-mono text-warm-700"
@@ -217,7 +217,7 @@
               <button @click="secondaryOpen = !secondaryOpen"
                       class="flex w-full items-center justify-between gap-3 px-5 py-4 text-left">
                 <div>
-                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-stone-500">Secondary Queue</p>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Secondary Queue</p>
                   <h3 class="mt-1 text-base font-semibold text-stone-900">本周稍后 / 更晚 / 未安排</h3>
                 </div>
                 <svg class="h-4 w-4 text-stone-500 transition-transform" :class="secondaryOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -252,7 +252,7 @@
             <section class="rounded-[24px] border border-stone-200 bg-white px-5 py-5 shadow-sm">
               <div class="flex items-start justify-between gap-4">
                 <div>
-                  <p class="text-[11px] font-mono uppercase tracking-[0.22em] text-stone-500">Workspace</p>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Workspace</p>
                   <p class="mt-2 text-sm text-stone-700">
                     已关注 <span class="font-mono text-stone-900" x-text="prefs.watched_studies.length"></span> 个 Study，
                     最近活跃 {{ last_active[:10] if last_active != '-' else '-' }}。
@@ -309,7 +309,7 @@
 
         <div class="space-y-6 px-5 py-5">
           <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500">Tracker aliases</p>
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-warm-600">Tracker aliases</p>
             <p class="mt-2 text-sm text-stone-600">这些名字会用于匹配 Tracker 表里属于你的任务。</p>
             <div class="mt-4 flex min-h-[2rem] flex-wrap gap-2">
               <template x-for="(a, i) in prefs.tracker_aliases" :key="i">
@@ -334,7 +334,7 @@
           </section>
 
           <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500">Watched studies</p>
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-warm-600">Watched studies</p>
             <p class="mt-2 text-sm text-stone-600">只汇总这些 Study 中匹配到你别名的待办。</p>
             <div class="mt-4 flex min-h-[2rem] flex-wrap gap-2">
               <template x-for="(s, i) in prefs.watched_studies" :key="i">
@@ -359,7 +359,7 @@
           </section>
 
           <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-            <p class="text-xs font-mono uppercase tracking-[0.18em] text-stone-500">Actions</p>
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-warm-600">Actions</p>
             <div class="mt-4 flex flex-wrap gap-2">
               <button @click="savePrefs()"
                       class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition">
