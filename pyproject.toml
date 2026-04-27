@@ -1,0 +1,21 @@
+[project]
+name = "p-tracker-notice"
+version = "0.1.0"
+description = "统计编程追踪日志可视化平台"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "openpyxl>=3.1.0",
+    "jinja2>=3.1.0",
+    "python-multipart>=0.0.9",
+    "aiosqlite>=0.20.0",
+    "pyjwt>=2.8.0",
+]
+
+[project.optional-dependencies]
+deploy = ["rsconnect-python>=1.22.0"]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"

@@ -1,0 +1,722 @@
+{% extends "base.html" %}
+{% block title %}工作台 — PEAK{% endblock %}
+{% block app_scripts %}{% endblock %}
+{% block body %}
+<div x-data="meApp()" x-init="init()" class="min-h-full flex flex-col">
+  <main class="flex-1 overflow-y-auto px-6 py-8">
+    <div class="max-w-6xl mx-auto space-y-8">
+      <section class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-warm-700">Workspace</p>
+          <h1 class="mt-2 text-4xl leading-tight tracking-normal text-stone-900">个人工作台</h1>
+        </div>
+        <button @click="showSettings = true"
+                class="rounded-xl border border-warm-300 bg-white/80 px-4 py-2 text-sm font-semibold text-warm-700 shadow-sm transition hover:bg-warm-50">
+          打开设置
+        </button>
+      </section>
+
+      <section class="relative overflow-hidden rounded-[28px] border border-stone-200 bg-white shadow-card">
+        <div class="absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent_0px,transparent_5px,rgba(8,145,178,0.04)_5px,rgba(8,145,178,0.04)_6px)] pointer-events-none opacity-60"></div>
+        <div class="relative grid gap-6 px-6 py-6 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)] md:px-8 md:py-8">
+          <div class="space-y-6">
+            <div class="flex items-start gap-4">
+              <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-warm-400 via-warm-500 to-neon-500 text-lg font-bold text-white shadow-glow-lg">
+                {{ (user.display_name or user.username or '?')[0] | upper }}
+              </div>
+              <div class="min-w-0">
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600">Operator Feed</p>
+                <h2 class="mt-2 text-2xl font-bold tracking-tight text-stone-900 md:text-3xl">{{ user.display_name or user.username }}</h2>
+                <p class="mt-2 max-w-xl text-sm leading-6 text-stone-600">
+                  当前主屏只追踪最值得你先动手的事：过期未完成、今天要做，以及下一批待进入视线的任务。
+                </p>
+              </div>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-3">
+              <div class="rounded-2xl border border-stone-200 bg-white/75 px-4 py-4 shadow-sm backdrop-blur-sm">
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Open Queue</p>
+                <p class="mt-3 text-3xl font-bold text-stone-900" x-text="stats.total"></p>
+                <p class="mt-1 text-xs text-stone-500">当前仍在主视图的待办</p>
+              </div>
+              <div class="rounded-2xl border border-rose-200 bg-rose-50/85 px-4 py-4 shadow-sm backdrop-blur-sm">
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-rose-500">Critical</p>
+                <p class="mt-3 text-3xl font-bold text-rose-700" x-text="stats.overdue"></p>
+                <p class="mt-1 text-xs text-rose-500">过期且未完成，需要先灭火</p>
+              </div>
+              <div class="rounded-2xl border border-warm-200 bg-warm-50/80 px-4 py-4 shadow-sm backdrop-blur-sm">
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600">Today</p>
+                <p class="mt-3 text-3xl font-bold text-warm-700" x-text="stats.today"></p>
+                <p class="mt-1 text-xs text-warm-600">今天应推进的事项</p>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-stone-200 bg-white/80 px-4 py-4 shadow-sm">
+              <div class="flex items-center gap-3">
+                <span class="text-sm font-mono text-warm-600">&gt;</span>
+                <input x-model="quickInput"
+                       @keydown.enter.prevent="addQuick()"
+                       placeholder="快速新增：任务内容 #STUDY @周五"
+                       class="w-full bg-transparent text-sm text-stone-800 placeholder:text-stone-400 outline-none" />
+                <button @click="addQuick()"
+                        class="shrink-0 rounded-lg border border-warm-300 bg-warm-50 px-3 py-1.5 text-xs font-mono text-warm-700 transition hover:bg-warm-100">
+                  录入
+                </button>
+              </div>
+              <p class="mt-3 text-[11px] font-mono text-stone-500">支持 `#STUDY` 和 `@今天/@明天/@周五/@4-30`，作为你的低干扰命令行入口。</p>
+            </div>
+          </div>
+
+          <div class="grid gap-4 self-stretch sm:grid-cols-2 md:grid-cols-1">
+            <div class="rounded-2xl border border-stone-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Today Load</p>
+                  <p class="mt-2 text-lg font-semibold text-stone-900" x-text="pressureLabel"></p>
+                </div>
+                <span class="inline-flex h-3 w-3 rounded-full shadow-[0_0_14px_currentColor]"
+                      :class="pressureDotClass"></span>
+              </div>
+              <div class="mt-4 h-2 overflow-hidden rounded-full bg-stone-200">
+                <div class="h-full rounded-full bg-gradient-to-r from-warm-400 via-neon-400 to-neon-300 transition-all duration-300"
+                     :style="'width:' + pressurePercent + '%'"></div>
+              </div>
+              <p class="mt-3 text-xs leading-5 text-stone-500">
+                用过期和今日任务数量估算当前负载，帮助你快速判断今天是清火还是平推。
+              </p>
+            </div>
+
+            <div class="rounded-2xl border border-stone-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm">
+              <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Secondary Queue</p>
+              <div class="mt-4 space-y-3">
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-stone-600">本周稍后</span>
+                  <span class="font-mono text-stone-900" x-text="secondary.thisweek.length"></span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-stone-600">更晚安排</span>
+                  <span class="font-mono text-stone-900" x-text="secondary.later.length"></span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-stone-600">未排期</span>
+                  <span class="font-mono text-stone-900" x-text="secondary.unscheduled.length"></span>
+                </div>
+              </div>
+              <div class="mt-5 flex items-center gap-2 text-[11px] font-mono text-stone-500">
+                <span class="inline-block h-1.5 w-1.5 rounded-full bg-warm-400"></span>
+                <span x-text="trackerReady ? 'Tracker 映射已接入' : '尚未配置 Tracker 映射'"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <template x-if="!loading && !trackerReady">
+        <section class="rounded-2xl border border-dashed border-stone-300 bg-white/80 px-5 py-4 shadow-sm">
+          <p class="text-sm text-stone-600">
+            还没有把 Tracker 任务接进来。打开右上角设置，补充别名和关注的 Study 后，这里会自动汇总你的只读任务。
+          </p>
+        </section>
+      </template>
+
+      <template x-if="loading">
+        <section class="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+          <div class="space-y-4 rounded-3xl border border-stone-800 bg-stone-950/70 p-6">
+            <template x-for="n in [1,2,3,4]" :key="n">
+              <div class="skeleton h-5 rounded" :style="'width:' + (56 + n * 8) + '%'"></div>
+            </template>
+          </div>
+          <div class="space-y-4 rounded-3xl border border-stone-800 bg-stone-950/70 p-6">
+            <template x-for="n in [1,2,3]" :key="n">
+              <div class="skeleton h-4 rounded" :style="'width:' + (62 + n * 7) + '%'"></div>
+            </template>
+          </div>
+        </section>
+      </template>
+
+      <template x-if="!loading">
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+          <div class="space-y-6">
+            <section x-show="overdueTodos.length > 0"
+                     class="overflow-hidden rounded-[26px] border border-rose-200 bg-[linear-gradient(180deg,rgba(255,245,247,0.98),rgba(255,250,251,0.98))] shadow-sm">
+              <div class="flex items-center justify-between gap-4 border-b border-rose-200 px-5 py-3">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-rose-500">Critical Queue</p>
+                  <h3 class="mt-1 text-lg font-semibold text-stone-900">过期未完成</h3>
+                </div>
+                <span class="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-mono text-rose-600"
+                      x-text="overdueTodos.length + ' 条'"></span>
+              </div>
+              <div class="divide-y divide-rose-100">
+                <template x-for="todo in overdueTodos" :key="todo.key">
+                  <div class="group flex items-center gap-2 border-l-2 border-rose-400 bg-rose-50/60 px-4 py-2">
+                    <span class="shrink-0 text-[10px] font-mono text-rose-400 w-12 truncate" x-text="todo.role === 'qc' ? 'QC' : 'MAIN'"></span>
+                    <p class="flex-1 min-w-0 truncate text-sm font-semibold text-stone-900" x-text="todo.title"></p>
+                    <span class="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-2 py-0.5 text-[11px] font-mono text-stone-500">
+                      <span class="inline-block h-1.5 w-1.5 rounded-full" :class="studyDot(todo.study_id)"></span>
+                      <span x-text="todo.study_id || 'MISC'"></span>
+                    </span>
+                    <span class="shrink-0 w-12 text-right text-[11px] font-mono text-rose-600" x-text="ddlLabel(todo.ddl)"></span>
+                    <button x-show="todo.editable" @click="completeTodo(todo)"
+                            class="shrink-0 rounded border border-warm-300 px-2 py-0.5 text-[11px] font-mono text-warm-700 hover:bg-warm-50 transition">完成</button>
+                    <button x-show="todo.editable" @click.stop="deleteTodo(todo)"
+                            class="shrink-0 opacity-0 group-hover:opacity-100 rounded border border-rose-200 px-2 py-0.5 text-[11px] font-mono text-rose-500 hover:bg-rose-50 transition">×</button>
+                    <span x-show="!todo.editable" class="shrink-0 text-[10px] font-mono text-stone-400">只读</span>
+                  </div>
+                </template>
+              </div>
+            </section>
+
+            <section class="overflow-hidden rounded-[26px] border border-stone-200 bg-white shadow-sm">
+              <div class="flex items-center justify-between gap-4 border-b border-stone-200 px-5 py-3">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600">Action Queue</p>
+                  <h3 class="mt-1 text-lg font-semibold text-stone-900">今天要做</h3>
+                </div>
+                <span class="rounded-full border border-warm-200 bg-warm-50 px-3 py-1 text-xs font-mono text-warm-700"
+                      x-text="todayTodos.length + ' 条'"></span>
+              </div>
+
+              <template x-if="todayTodos.length === 0">
+                <div class="px-5 py-10 text-center">
+                  <p class="text-sm text-stone-600">今天没有明确压在当天的任务。</p>
+                  <p class="mt-2 text-xs font-mono text-stone-500">可以往下看次级队列，或者直接在上方快速录入新事项。</p>
+                </div>
+              </template>
+
+              <div x-show="todayTodos.length > 0" class="divide-y divide-stone-100">
+                <template x-for="todo in todayTodos" :key="todo.key">
+                  <div class="group flex items-center gap-2 px-4 py-2">
+                    <span class="shrink-0 text-[10px] font-mono text-stone-400 w-12 truncate" x-text="todo.role === 'qc' ? 'QC' : 'MAIN'"></span>
+                    <p class="flex-1 min-w-0 truncate text-sm font-medium text-stone-900" x-text="todo.title"></p>
+                    <span class="shrink-0 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-mono text-stone-500">
+                      <span class="inline-block h-1.5 w-1.5 rounded-full" :class="studyDot(todo.study_id)"></span>
+                      <span x-text="todo.study_id || 'MISC'"></span>
+                    </span>
+                    <span class="shrink-0 w-10 text-right text-[11px] font-mono text-warm-600" x-text="ddlLabel(todo.ddl)"></span>
+                    <button x-show="todo.editable" @click="completeTodo(todo)"
+                            class="shrink-0 rounded border border-warm-300 px-2 py-0.5 text-[11px] font-mono text-warm-700 hover:bg-warm-50 transition">完成</button>
+                    <button x-show="todo.editable" @click.stop="deleteTodo(todo)"
+                            class="shrink-0 opacity-0 group-hover:opacity-100 rounded border border-stone-200 px-2 py-0.5 text-[11px] font-mono text-stone-400 hover:text-rose-500 hover:border-rose-200 transition">×</button>
+                    <span x-show="!todo.editable" class="shrink-0 text-[10px] font-mono text-stone-400">只读</span>
+                  </div>
+                </template>
+              </div>
+            </section>
+
+            <template x-if="stats.total === 0">
+              <section class="rounded-[26px] border border-dashed border-stone-300 bg-white/80 px-6 py-14 text-center shadow-sm">
+                <p class="text-base text-stone-700">主视图已经清空。</p>
+                <p class="mt-2 text-xs font-mono text-stone-500">要么今天真的顺了，要么下一条任务还没进系统。</p>
+              </section>
+            </template>
+          </div>
+
+          <aside class="space-y-6">
+            <section class="overflow-hidden rounded-[24px] border border-stone-200 bg-white shadow-sm">
+              <button @click="secondaryOpen = !secondaryOpen"
+                      class="flex w-full items-center justify-between gap-3 px-5 py-4 text-left">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Secondary Queue</p>
+                  <h3 class="mt-1 text-base font-semibold text-stone-900">本周稍后 / 更晚 / 未安排</h3>
+                </div>
+                <svg class="h-4 w-4 text-stone-500 transition-transform" :class="secondaryOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+              <div x-show="secondaryOpen" x-collapse class="space-y-4 border-t border-stone-200 px-5 py-4">
+                <template x-for="section in secondarySections" :key="section.key">
+                  <div>
+                    <div class="mb-2 flex items-center justify-between">
+                      <p class="text-xs font-mono uppercase tracking-[0.16em] text-stone-400" x-text="section.label"></p>
+                      <span class="text-[11px] font-mono text-stone-500" x-text="section.items.length + ' 条'"></span>
+                    </div>
+                    <div class="divide-y divide-stone-100">
+                      <template x-if="section.items.length === 0">
+                        <p class="py-2 text-[11px] font-mono text-stone-400">// 空</p>
+                      </template>
+                      <template x-for="todo in section.items" :key="todo.key">
+                        <div class="flex items-center gap-2 py-1.5">
+                          <span class="shrink-0 inline-block h-1.5 w-1.5 rounded-full" :class="studyDot(todo.study_id)"></span>
+                          <p class="flex-1 min-w-0 truncate text-[13px] text-stone-700" x-text="todo.title"></p>
+                          <span class="shrink-0 text-[11px] font-mono text-stone-400" x-text="todo.study_id || 'MISC'"></span>
+                          <span class="shrink-0 w-10 text-right text-[11px] font-mono text-stone-400" x-text="ddlLabel(todo.ddl)"></span>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </section>
+
+            <section class="rounded-[24px] border border-stone-200 bg-white px-5 py-5 shadow-sm">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Workspace</p>
+                  <p class="mt-2 text-sm text-stone-700">
+                    已关注 <span class="font-mono text-stone-900" x-text="prefs.watched_studies.length"></span> 个 Study，
+                    最近活跃 {{ last_active[:10] if last_active != '-' else '-' }}。
+                  </p>
+                </div>
+              </div>
+              <div class="mt-4 flex gap-2">
+                <button @click="showSettings = true"
+                        class="flex-1 rounded-xl border border-warm-300 bg-warm-50 px-3 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition">
+                  打开设置
+                </button>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </template>
+    </div>
+  </main>
+
+  <template x-teleport="body">
+    <div x-show="showSettings" class="fixed inset-0 z-[198]">
+      <div x-show="showSettings"
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0"
+           x-transition:enter-end="opacity-100"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="opacity-100"
+           x-transition:leave-end="opacity-0"
+           @click="showSettings = false"
+           class="absolute inset-0 bg-ink-950/70 backdrop-blur-sm"></div>
+
+      <aside x-show="showSettings"
+             x-transition:enter="transition ease-out duration-250"
+             x-transition:enter-start="translate-x-full opacity-0"
+             x-transition:enter-end="translate-x-0 opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="translate-x-0 opacity-100"
+             x-transition:leave-end="translate-x-full opacity-0"
+             class="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto border-l border-stone-200 bg-white shadow-2xl">
+        <div class="sticky top-0 z-10 border-b border-stone-200 bg-white/95 px-5 py-4 backdrop-blur">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600">Configuration</p>
+              <h3 class="mt-1 text-lg font-semibold text-stone-900">别名与 Study 设置</h3>
+            </div>
+            <button @click="showSettings = false"
+                    class="rounded-lg border border-stone-200 bg-stone-50 p-2 text-stone-500 hover:text-stone-900 transition">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-6 px-5 py-5">
+          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-warm-600">Projects base path</p>
+            <p class="mt-2 text-sm text-stone-600">扫描 study 文件夹的根目录。修改后需重启 PEAK 才能生效。</p>
+            <div class="mt-3 space-y-2">
+              <input x-model="appSettings.projects_base_path"
+                     placeholder="例如 E:\Dev_2026\mnt\Development\Projects02"
+                     class="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-mono text-stone-800 outline-none placeholder:text-stone-400 focus:border-warm-400/40" />
+              <p class="text-[11px] font-mono text-stone-500">
+                当前生效：<span x-text="appSettings.projects_base_path_active || '未加载'"></span>
+              </p>
+              <p x-show="appSettingsLoaded && !appSettings.projects_base_path_exists"
+                 class="text-[11px] font-mono text-rose-600">⚠ 该路径当前不存在或不可访问</p>
+              <p x-show="appSettings.needs_restart"
+                 class="text-[11px] font-mono text-amber-600">已保存，重启 PEAK 后生效</p>
+            </div>
+            <div class="mt-3 flex gap-2">
+              <button @click="saveAppSettings()"
+                      class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition">
+                保存路径
+              </button>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-warm-600">Tracker aliases</p>
+            <p class="mt-2 text-sm text-stone-600">这些名字会用于匹配 Tracker 表里属于你的任务。</p>
+            <div class="mt-4 flex min-h-[2rem] flex-wrap gap-2">
+              <template x-for="(a, i) in prefs.tracker_aliases" :key="i">
+                <span class="inline-flex items-center gap-1 rounded-full border border-warm-300 bg-warm-50 px-3 py-1 text-xs font-mono text-warm-700">
+                  <span x-text="a"></span>
+                  <button @click="prefs.tracker_aliases.splice(i,1)" class="opacity-70 hover:opacity-100">✕</button>
+                </span>
+              </template>
+              <span x-show="prefs.tracker_aliases.length === 0" class="text-xs font-mono italic text-stone-500">尚未配置别名</span>
+            </div>
+            <div class="mt-4 flex gap-2">
+              <input x-model="aliasInput"
+                     @keydown.enter.prevent="addAlias()"
+                     @keydown.comma.prevent="addAlias()"
+                     placeholder="输入别名，回车确认"
+                     class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 outline-none placeholder:text-stone-400 focus:border-warm-400/40" />
+              <button @click="addAlias()"
+                      class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition">
+                添加
+              </button>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-warm-600">Watched studies</p>
+            <p class="mt-2 text-sm text-stone-600">只汇总这些 Study 中匹配到你别名的待办。</p>
+            <div class="mt-4 flex min-h-[2rem] flex-wrap gap-2">
+              <template x-for="(s, i) in prefs.watched_studies" :key="i">
+                <span class="inline-flex items-center gap-1 rounded-full border border-neon-300/50 bg-neon-50 px-3 py-1 text-xs font-mono text-neon-700">
+                  <span x-text="s"></span>
+                  <button @click="prefs.watched_studies.splice(i,1)" class="opacity-70 hover:opacity-100">✕</button>
+                </span>
+              </template>
+              <span x-show="prefs.watched_studies.length === 0" class="text-xs font-mono italic text-stone-500">尚未关注任何 Study</span>
+            </div>
+            <div class="mt-4 flex gap-2">
+              <input x-model="studyInput"
+                     @keydown.enter.prevent="addStudy()"
+                     @keydown.comma.prevent="addStudy()"
+                     placeholder="输入 Study ID，回车确认"
+                     class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 outline-none placeholder:text-stone-400 focus:border-neon-400/40" />
+              <button @click="addStudy()"
+                      class="rounded-xl border border-neon-300/50 bg-neon-50 px-4 py-2 text-xs font-mono text-neon-700 hover:bg-neon-100/50 transition">
+                添加
+              </button>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-warm-600">Actions</p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button @click="savePrefs()"
+                      class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition">
+                保存设置
+              </button>
+              <button @click="confirmResetPrefs()"
+                      class="ml-auto rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-mono text-rose-700 hover:bg-rose-100 transition">
+                重置偏好
+              </button>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
+  </template>
+</div>
+
+<script>
+function meApp() {
+  const DOT_COLORS = ['bg-cyan-500','bg-violet-500','bg-rose-500','bg-amber-500','bg-emerald-500','bg-blue-500'];
+  function studyHash(id) {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  }
+  const DAY_ZH = ['周日','周一','周二','周三','周四','周五','周六'];
+
+  function todayMidnight() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+  function parseDate(s) {
+    if (!s) return null;
+    const d = new Date(s + 'T00:00:00');
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function parseDateToken(token) {
+    const t = token.toLowerCase();
+    const today = todayMidnight();
+    if (t === '今天' || t === 'today') return today.toISOString().slice(0,10);
+    if (t === '明天' || t === 'tomorrow') {
+      const d = new Date(today); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10);
+    }
+    const wm = {'周一':1,'周二':2,'周三':3,'周四':4,'周五':5,'周六':6,'周日':0,'周天':0};
+    if (wm[t] !== undefined) {
+      const d = new Date(today);
+      const diff = ((wm[t] - d.getDay()) + 7) % 7 || 7;
+      d.setDate(d.getDate() + diff); return d.toISOString().slice(0,10);
+    }
+    if (/^\d{1,2}-\d{1,2}$/.test(t)) {
+      const [m, day] = t.split('-').map(Number);
+      return new Date(today.getFullYear(), m-1, day).toISOString().slice(0,10);
+    }
+    return null;
+  }
+  const ab = () => (typeof window.API_BASE !== 'undefined' && window.API_BASE) ? window.API_BASE : '';
+
+  return {
+    todos: [],
+    customTasksMap: {},
+    loading: true,
+    prefs: { tracker_aliases: [], watched_studies: [] },
+    appSettings: { projects_base_path: '', projects_base_path_active: '', projects_base_path_exists: false, needs_restart: false },
+    appSettingsLoaded: false,
+    showSettings: false,
+    secondaryOpen: true,
+    aliasInput: '',
+    studyInput: '',
+    quickInput: '',
+    completing: new Set(),
+
+    homeUrl() { const b = ab(); return b ? b + '/' : '/'; },
+    sourceLabel(todo) { return todo.source === 'tracker' ? 'tracker' : 'custom'; },
+    get trackerReady() { return this.prefs.watched_studies.length > 0; },
+
+    bucketOf(ddl) {
+      if (!ddl) return 'unscheduled';
+      const d = parseDate(ddl); if (!d) return 'unscheduled';
+      const today = todayMidnight();
+      const endWeek = new Date(today); endWeek.setDate(today.getDate() + (6 - today.getDay()));
+      if (d < today) return 'overdue';
+      if (d.getTime() === today.getTime()) return 'today';
+      if (d <= endWeek) return 'thisweek';
+      return 'later';
+    },
+
+    ddlLabel(ddl) {
+      if (!ddl) return '—';
+      const d = parseDate(ddl); if (!d) return String(ddl);
+      const today = todayMidnight();
+      const diff = Math.round((d - today) / 86400000);
+      if (diff < 0) return '-' + Math.abs(diff) + '天';
+      if (diff === 0) return '今天';
+      if (diff === 1) return '明天';
+      if (diff <= 6) return DAY_ZH[d.getDay()];
+      return (d.getMonth()+1) + '/' + d.getDate();
+    },
+
+    studyDot(id) { return DOT_COLORS[studyHash(id || '') % DOT_COLORS.length]; },
+
+    get sections() {
+      const buckets = { overdue:[], today:[], thisweek:[], later:[], unscheduled:[] };
+      for (const t of this.todos) {
+        const b = this.bucketOf(t.ddl);
+        buckets[b].push(t);
+      }
+      return [
+        { key:'overdue', label:'过期', items: buckets.overdue },
+        { key:'today', label:'今天', items: buckets.today },
+        { key:'thisweek', label:'本周', items: buckets.thisweek },
+        { key:'later', label:'稍后', items: buckets.later },
+        { key:'unscheduled', label:'未安排', items: buckets.unscheduled },
+      ];
+    },
+    get overdueTodos() { return this.sections.find(s => s.key === 'overdue')?.items || []; },
+    get todayTodos() { return this.sections.find(s => s.key === 'today')?.items || []; },
+    get secondary() {
+      return {
+        thisweek: this.sections.find(s => s.key === 'thisweek')?.items || [],
+        later: this.sections.find(s => s.key === 'later')?.items || [],
+        unscheduled: this.sections.find(s => s.key === 'unscheduled')?.items || [],
+      };
+    },
+    get secondarySections() {
+      return [
+        { key: 'thisweek', label: '本周稍后', items: this.secondary.thisweek },
+        { key: 'later', label: '更晚安排', items: this.secondary.later },
+        { key: 'unscheduled', label: '未安排', items: this.secondary.unscheduled },
+      ];
+    },
+    get stats() {
+      return {
+        total: this.todos.length,
+        overdue: this.overdueTodos.length,
+        today: this.todayTodos.length,
+      };
+    },
+    get pressurePercent() {
+      if (this.stats.total === 0) return 6;
+      const score = this.stats.overdue * 30 + this.stats.today * 14 + this.secondary.thisweek.length * 6 + this.secondary.later.length * 3;
+      return Math.max(8, Math.min(100, score));
+    },
+    get pressureLabel() {
+      if (this.stats.overdue >= 3) return '先清过期';
+      if (this.stats.overdue > 0 || this.stats.today >= 4) return '今天偏满';
+      if (this.stats.today > 0 || this.secondary.thisweek.length > 0) return '节奏正常';
+      return '比较轻松';
+    },
+    get pressureDotClass() {
+      if (this.stats.overdue >= 3) return 'bg-neon-400 text-neon-400';
+      if (this.stats.overdue > 0 || this.stats.today >= 4) return 'bg-amber-400 text-amber-400';
+      if (this.stats.today > 0 || this.secondary.thisweek.length > 0) return 'bg-warm-400 text-warm-400';
+      return 'bg-emerald-400 text-emerald-400';
+    },
+
+    async init() {
+      await Promise.all([this.loadPrefs(), this.loadTodos(), this.loadCustomTasks(), this.loadAppSettings()]);
+    },
+
+    async loadAppSettings() {
+      try {
+        const r = await fetch(ab() + '/api/settings');
+        if (r.ok) { this.appSettings = await r.json(); this.appSettingsLoaded = true; }
+      } catch(_) {}
+    },
+
+    async saveAppSettings() {
+      try {
+        const r = await fetch(ab() + '/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projects_base_path: this.appSettings.projects_base_path }),
+        });
+        if (!r.ok) { const err = await r.json().catch(() => ({})); throw new Error(err.detail || r.status); }
+        this.appSettings = await r.json();
+        Alpine.store('toast').push(this.appSettings.needs_restart ? '已保存，重启后生效' : '路径已保存', 'success');
+      } catch(e) {
+        Alpine.store('toast').push('保存失败：' + e.message, 'error');
+      }
+    },
+
+    async loadPrefs() {
+      try {
+        const r = await fetch(ab() + '/api/user/workstation');
+        if (r.ok) this.prefs = await r.json();
+      } catch(_) {}
+    },
+
+    async loadTodos() {
+      this.loading = true;
+      try {
+        const r = await fetch(ab() + '/api/tasks/my-todos');
+        if (r.ok) this.todos = await r.json();
+      } catch(e) {
+        Alpine.store('toast').push('加载失败：' + e, 'error');
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async loadCustomTasks() {
+      try {
+        const r = await fetch(ab() + '/api/custom-tasks');
+        if (r.ok) {
+          const tasks = await r.json();
+          this.customTasksMap = Object.fromEntries(tasks.map(t => [t.id, t]));
+        }
+      } catch(_) {}
+    },
+
+    async savePrefs() {
+      try {
+        await fetch(ab() + '/api/user/workstation', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.prefs),
+        });
+        Alpine.store('toast').push('设置已保存', 'success');
+        await Promise.all([this.loadTodos(), this.loadCustomTasks()]);
+        this.showSettings = false;
+      } catch(e) {
+        Alpine.store('toast').push('保存失败：' + e, 'error');
+      }
+    },
+
+    addAlias() {
+      const v = this.aliasInput.replace(/,/g,'').trim();
+      if (v && !this.prefs.tracker_aliases.includes(v)) this.prefs.tracker_aliases.push(v);
+      this.aliasInput = '';
+    },
+    addStudy() {
+      const v = this.studyInput.replace(/,/g,'').trim().toUpperCase();
+      if (v && !this.prefs.watched_studies.includes(v)) this.prefs.watched_studies.push(v);
+      this.studyInput = '';
+    },
+
+    async completeTodo(todo) {
+      if (this.completing.has(todo.key)) return;
+      this.completing.add(todo.key);
+      const id = todo.key.replace('custom:','');
+      const ct = this.customTasksMap[id];
+      if (!ct) { this.completing.delete(todo.key); return; }
+      try {
+        const r = await fetch(ab() + '/api/custom-tasks/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...ct, main_status: '已完成，可以QC' }),
+        });
+        if (!r.ok) throw new Error(r.status);
+        this.todos = this.todos.filter(t => t.key !== todo.key);
+        delete this.customTasksMap[id];
+      } catch(e) {
+        Alpine.store('toast').push('更新失败：' + e, 'error');
+      } finally {
+        this.completing.delete(todo.key);
+      }
+    },
+
+    async deleteTodo(todo) {
+      const id = todo.key.replace('custom:','');
+      const ok = await Alpine.store('confirm').ask('删除这个任务？');
+      if (!ok) return;
+      try {
+        const r = await fetch(ab() + '/api/custom-tasks/' + id, { method: 'DELETE' });
+        if (!r.ok) throw new Error(r.status);
+        this.todos = this.todos.filter(t => t.key !== todo.key);
+        delete this.customTasksMap[id];
+        Alpine.store('toast').push('已删除', 'success');
+      } catch(e) {
+        Alpine.store('toast').push('删除失败：' + e, 'error');
+      }
+    },
+
+    async addQuick() {
+      const raw = this.quickInput.trim();
+      if (!raw) return;
+      let study = '', ddl = null;
+      const titleParts = [];
+      for (const word of raw.split(/\s+/)) {
+        if (word.startsWith('#')) study = word.slice(1).toUpperCase();
+        else if (word.startsWith('@')) ddl = parseDateToken(word.slice(1));
+        else titleParts.push(word);
+      }
+      const title = titleParts.join(' ').trim() || raw;
+      this.quickInput = '';
+      try {
+        const r = await fetch(ab() + '/api/custom-tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            study_id: study || 'misc',
+            task_name: title,
+            description: '',
+            main_person: '',
+            main_status: '',
+            qc_person: '',
+            qc_status: '',
+            ddl: ddl,
+            tags: [],
+          }),
+        });
+        if (!r.ok) throw new Error(r.status);
+        const created = await r.json();
+        this.customTasksMap[created.id] = created;
+        await this.loadTodos();
+      } catch(e) {
+        Alpine.store('toast').push('新增失败：' + e, 'error');
+      }
+    },
+
+    async confirmResetPrefs() {
+      const ok = await Alpine.store('confirm').ask('重置偏好会清空筛选条件，确定吗？');
+      if (!ok) return;
+      try {
+        await fetch(ab() + '/api/user/preferences', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            selected_studies: [], selected_tracker_files: {}, person_filter: '',
+            role_filter: 'all', time_range: '', search_query: '', show_charts: true,
+          }),
+        });
+        await fetch(ab() + '/api/user/workstation', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tracker_aliases: [], watched_studies: [] }),
+        });
+        this.prefs = { tracker_aliases: [], watched_studies: [] };
+        Alpine.store('toast').push('偏好已重置', 'success');
+        await Promise.all([this.loadTodos(), this.loadCustomTasks()]);
+        this.showSettings = false;
+      } catch(e) {
+        Alpine.store('toast').push('重置失败：' + e, 'error');
+      }
+    },
+
+  };
+}
+</script>
+{% endblock %}

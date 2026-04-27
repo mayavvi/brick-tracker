@@ -1,0 +1,73 @@
+<!-- Summary cards · role-aware dynamic layout -->
+<div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+
+  <button @click="setStatusFilter(roleFilter === 'qc' ? 'completed_ready_qc' : 'total')"
+          class="summary-card"
+          :class="(statusFilter === 'total' && roleFilter !== 'qc') || (statusFilter === 'completed_ready_qc' && roleFilter === 'qc') ? 'summary-card-active' : ''">
+    <span class="summary-dot bg-warm-500"></span>
+    <span class="summary-label">POOL · <span x-text="roleFilter === 'qc' ? '可找茬' : '总量'"></span></span>
+    <strong class="summary-value" x-text="roleFilter === 'qc' ? summary.completed_ready_qc : summary.total">0</strong>
+  </button>
+
+  <button x-show="roleFilter !== 'qc'" @click="setStatusFilter('in_progress')"
+          class="summary-card" :class="statusFilter === 'in_progress' ? 'summary-card-active amber' : ''">
+    <span class="summary-dot bg-amber-500"></span>
+    <span class="summary-label">RUN · 进行</span>
+    <strong class="summary-value text-amber-700" data-stat="in_progress" x-text="summary.in_progress">0</strong>
+  </button>
+
+  <button x-show="roleFilter !== 'qc'" @click="setStatusFilter('completed_ready_qc')"
+          class="summary-card" :class="statusFilter === 'completed_ready_qc' && roleFilter !== 'qc' ? 'summary-card-active sky' : ''">
+    <span class="summary-dot bg-sky-500"></span>
+    <span class="summary-label">QC · 待检</span>
+    <strong class="summary-value text-sky-700" data-stat="completed_ready_qc" x-text="summary.completed_ready_qc">0</strong>
+  </button>
+
+  <button x-show="roleFilter !== 'main'" @click="setStatusFilter('waiting')"
+          class="summary-card" :class="statusFilter === 'waiting' ? 'summary-card-active fuchsia' : ''">
+    <span class="summary-dot bg-fuchsia-500"></span>
+    <span class="summary-label">WAIT · 等待</span>
+    <strong class="summary-value text-fuchsia-700" data-stat="waiting" x-text="summary.waiting || 0">0</strong>
+  </button>
+
+  <button @click="setStatusFilter('has_issues')"
+          class="summary-card" :class="statusFilter === 'has_issues' ? 'summary-card-active rose' : ''">
+    <span class="summary-dot bg-rose-500"></span>
+    <span class="summary-label">ERR · 异常</span>
+    <strong class="summary-value text-rose-700" data-stat="has_issues" x-text="summary.has_issues">0</strong>
+  </button>
+
+  <button @click="setStatusFilter('pending')"
+          class="summary-card" :class="statusFilter === 'pending' ? 'summary-card-active stone' : ''">
+    <span class="summary-dot bg-stone-500"></span>
+    <span class="summary-label">HOLD · 暂缓</span>
+    <strong class="summary-value text-stone-700" data-stat="pending" x-text="summary.pending">0</strong>
+  </button>
+
+  <button x-show="roleFilter !== 'main'" @click="setStatusFilter('closed')"
+          class="summary-card" :class="statusFilter === 'closed' ? 'summary-card-active emerald' : ''">
+    <span class="summary-dot bg-emerald-500"></span>
+    <span class="summary-label">DONE · 归档</span>
+    <strong class="summary-value text-emerald-700" data-stat="closed" x-text="summary.closed">0</strong>
+  </button>
+</div>
+
+<div x-show="statusFilter" x-transition
+     class="mt-3 flex items-center gap-2 rounded-xl border border-warm-200 bg-white/78 px-3 py-2 text-xs text-stone-600 shadow-sm">
+  <span class="font-semibold uppercase tracking-[0.16em] text-warm-700">Filter</span>
+  <strong class="font-semibold text-stone-900" x-text="({
+    total: '全部',
+    in_progress: '搬砖进行中',
+    waiting: '等待搬砖',
+    completed_ready_qc: roleFilter === 'qc' ? '可找茬' : '待 QC',
+    has_issues: '有异常',
+    pending: '暂缓',
+    closed: '已归档',
+  })[statusFilter]"></strong>
+  <span class="font-mono text-stone-500 tabular-nums" x-text="'[ ' + tasks.length + ' / ' + allTasks.length + ' ]'"></span>
+  <button @click="setStatusFilter(statusFilter)" class="ml-auto rounded-md p-1 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700">
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+    </svg>
+  </button>
+</div>

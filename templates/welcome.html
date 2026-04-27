@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}欢迎 — PEAK{% endblock %}
+{% block app_scripts %}{% endblock %}
+{% block body %}
+<div class="welcome-editorial flex flex-col h-full min-h-0">
+<script>
+function welcomePage() {
+  var jokes = [
+    "老板说「年轻人要多沉淀」-- 我看了看工资条，确实沉到底了。",
+    "需求文档写得像诗，代码跑得想死。",
+    "我不是拖延，我是在等一个「灵感」和「deadline」量子纠缠。",
+    "追踪日志：表面是表格，其实是大型连续剧分集梗概。",
+    "QC 说「再改一版」的时候，宇宙又膨胀了一像素。",
+    "我把 Excel 当 IDE 用，老板把 IDE 当 Excel 看。",
+    "周一到周五搬砖，周末把砖码整齐 -- 这叫「技术债重组」。",
+    "这个网页的初衷？让搬砖搬得有点仪式感，顺便知道自己还没 solo 完全部坑。",
+  ];
+  return {
+    jokes: jokes,
+    joke: "",
+    figSeed: 1,
+    nav(path) {
+      var b = typeof window.API_BASE !== "undefined" && window.API_BASE ? window.API_BASE : "";
+      if (path === "/") return b ? b + "/" : "/";
+      return b + path;
+    },
+    figUrl() {
+      var b = typeof window.API_BASE !== "undefined" && window.API_BASE ? window.API_BASE : "";
+      var n = String(this.figSeed).padStart(3, "0");
+      return b + "/static/img/welcome/fig_" + n + ".jpg";
+    },
+    pickJoke() {
+      this.joke = this.jokes[Math.floor(Math.random() * this.jokes.length)];
+    },
+    pickFig() {
+      var next;
+      do { next = Math.floor(Math.random() * 100) + 1; } while (next === this.figSeed);
+      this.figSeed = next;
+    },
+    init() {
+      this.figSeed = Math.floor(Math.random() * 100) + 1;
+      this.pickJoke();
+    },
+  };
+}
+</script>
+
+<main class="welcome-editorial-main flex-1 overflow-y-auto min-h-0">
+  <div class="welcome-editorial-inner max-w-6xl mx-auto px-5 sm:px-6 lg:px-8 py-12 md:py-16" x-data="welcomePage()" x-init="init()">
+    <section class="welcome-hero mb-10 md:mb-12">
+      <div class="max-w-4xl">
+        <h2 class="welcome-title text-6xl sm:text-7xl md:text-8xl tracking-tight leading-none mb-5">
+          PEAK
+        </h2>
+        <p class="welcome-subtitle text-base sm:text-lg mb-6">
+          Project Efficiency &amp; Automation Kernel
+        </p>
+        <p class="welcome-lede text-xl md:text-2xl leading-relaxed max-w-3xl">
+          把散落在 study 文件夹、追踪表和个人待办里的工作线索收拢成一个清晰入口：少点翻找，多点判断。
+        </p>
+      </div>
+    </section>
+
+    <section class="mb-10 md:mb-12" aria-labelledby="welcome-entry-title">
+      <div class="flex items-end justify-between gap-4 mb-4">
+        <div>
+          <h3 id="welcome-entry-title" class="welcome-heading text-2xl md:text-3xl font-bold">选择今天要进入的工作区</h3>
+        </div>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-3">
+        <a :href="nav('/tracker')" class="welcome-entry-card group">
+          <span class="welcome-entry-kicker">TRACK</span>
+          <span class="welcome-entry-title">日志追踪</span>
+          <span class="welcome-entry-copy">查看 study 进度、QC 节点和 DDL 压力，适合每天先扫一眼。</span>
+          <span class="welcome-entry-action">进入追踪</span>
+        </a>
+        <a :href="nav('/file-compare')" class="welcome-entry-card group">
+          <span class="welcome-entry-kicker">COMPARE</span>
+          <span class="welcome-entry-title">文件预览与比对</span>
+          <span class="welcome-entry-copy">快速打开结果文件、看快照差异，把文件变化放到台面上。</span>
+          <span class="welcome-entry-action">打开比对</span>
+        </a>
+        <a :href="nav('/me')" class="welcome-entry-card group">
+          <span class="welcome-entry-kicker">PERSONAL</span>
+          <span class="welcome-entry-title">个人工作台</span>
+          <span class="welcome-entry-copy">整理自己的任务、偏好和小提醒，让零散事项有地方落脚。</span>
+          <span class="welcome-entry-action">进入工作台</span>
+        </a>
+      </div>
+    </section>
+
+    <section class="grid gap-5 lg:grid-cols-2" aria-label="今日辅助内容">
+      <article class="welcome-panel overflow-hidden">
+        <div class="welcome-panel-header">
+          <div>
+            <p class="welcome-section-label mb-1">FIG.01</p>
+            <h3 class="welcome-panel-title">今日图景</h3>
+          </div>
+          <button type="button" @click="pickFig()" class="welcome-small-button">
+            换一张
+          </button>
+        </div>
+        <div class="welcome-figure">
+          <img :src="figUrl()" alt="FIG.01 今日图景" class="w-full h-full object-cover" loading="lazy" />
+        </div>
+      </article>
+
+      <article class="welcome-panel">
+        <div class="welcome-panel-header">
+          <div>
+            <p class="welcome-section-label mb-1">NOTE</p>
+            <h3 class="welcome-panel-title">今日段子</h3>
+          </div>
+          <button type="button" @click="pickJoke()" class="welcome-small-button">
+            换一条
+          </button>
+        </div>
+        <div class="welcome-note">
+          <p x-text="joke"></p>
+        </div>
+      </article>
+    </section>
+
+    <p class="welcome-footnote mt-10 text-xs font-mono">
+      // 左上角菜单保留全局导航；首页只保留轻量入口和低动效背景。
+    </p>
+  </div>
+</main>
+</div>
+{% endblock %}
