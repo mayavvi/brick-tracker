@@ -113,7 +113,7 @@
       <div x-show="!scopeCollapsed" class="p-4 space-y-4 overflow-auto">
         <section class="space-y-3">
           <div>
-            <label for="program-search" class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">搜索</label>
+            <label for="program-search" class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">搜索</label>
             <input id="program-search"
                    type="text"
                    x-model="searchQuery"
@@ -124,7 +124,7 @@
 
           <div class="grid grid-cols-1 gap-3">
             <div>
-              <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Compound</label>
+              <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">Compound</label>
               <div class="relative" @click.outside="compoundOpen = false">
                 <input type="text"
                        x-model="compoundSearch"
@@ -148,7 +148,7 @@
             </div>
 
             <div>
-              <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Project</label>
+              <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">Project</label>
               <div class="relative" @click.outside="projectOpen = false">
                 <input type="text"
                        x-model="projectSearch"
@@ -172,7 +172,7 @@
             </div>
 
             <div>
-              <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Task</label>
+              <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">Task</label>
               <div class="relative" @click.outside="taskOpen = false">
                 <input type="text"
                        x-model="taskSearch"
@@ -197,7 +197,7 @@
 
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Type</label>
+                <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">Type</label>
                 <select x-model="filters.extension" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 bg-white px-3 text-sm">
                   <option value="">All</option>
                   <template x-for="item in contexts.extensions" :key="item">
@@ -206,7 +206,7 @@
                 </select>
               </div>
               <div>
-                <label class="block text-[11px] uppercase tracking-[0.16em] text-stone-400 mb-2">Role</label>
+                <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">Role</label>
                 <select x-model="filters.role" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 bg-white px-3 text-sm">
                   <option value="">All</option>
                   <option value="main">main</option>
@@ -223,7 +223,7 @@
                   @click="toggleBrowserPanel()"
                   class="w-full px-4 py-3 border-b border-stone-200 flex items-center justify-between gap-3 text-left">
             <div>
-              <p class="text-[11px] uppercase tracking-[0.16em] text-stone-400">版本浏览 Versions</p>
+              <p class="text-[11px] uppercase tracking-[0.16em] text-warm-400">版本浏览 Versions</p>
               <p class="mt-1 text-xs text-stone-500">展开程序后，把任意版本加入右侧 P/Q。</p>
             </div>
             <div class="flex items-center gap-3 shrink-0">
@@ -268,7 +268,7 @@
 
                   <div x-show="programIsSelected(program)" class="px-2 pb-2">
                     <div class="px-2 py-2 flex items-center justify-between gap-2 text-[11px]">
-                      <span class="uppercase tracking-[0.14em] text-stone-400">Versions</span>
+                      <span class="uppercase tracking-[0.14em] text-warm-400">Versions</span>
                       <button type="button"
                               @click="compareLatestTwo()"
                               :disabled="timeline.length < 2"
@@ -501,7 +501,7 @@
         <div class="flex items-center justify-between gap-2">
           <div class="min-w-0">
             <h3 class="text-sm font-semibold text-stone-800">
-              比较篮 P/Q <span class="text-[11px] uppercase tracking-[0.14em] text-stone-400">Compare</span>
+              比较篮 P/Q <span class="text-[11px] uppercase tracking-[0.14em] text-warm-400">Compare</span>
             </h3>
           </div>
           <div class="flex items-center gap-2">
@@ -540,7 +540,7 @@
 
         <section class="rounded-xl border border-stone-200 bg-stone-50/70 p-3 space-y-3">
           <div class="flex items-center justify-between gap-2">
-            <p class="text-[11px] uppercase tracking-[0.16em] text-stone-400">比较设置 Diff</p>
+            <p class="text-[11px] uppercase tracking-[0.16em] text-warm-400">比较设置 Diff</p>
             <span class="text-[11px] font-mono text-stone-500" x-show="diffResult" x-text="diffSummary()"></span>
           </div>
           <div class="inline-flex w-full rounded-lg border border-stone-300 overflow-hidden">
@@ -565,7 +565,7 @@
 
         <section class="rounded-xl border border-stone-200 bg-white overflow-hidden">
           <div class="px-3 py-2 border-b border-stone-200 bg-stone-50/80 flex items-center justify-between">
-            <p class="text-[11px] uppercase tracking-[0.16em] text-stone-400">快照 Snapshots</p>
+            <p class="text-[11px] uppercase tracking-[0.16em] text-warm-400">快照 Snapshots</p>
             <span class="text-[11px] font-mono text-stone-500" x-text="snapshots.length"></span>
           </div>
           <template x-if="snapshots.length === 0">
@@ -590,7 +590,7 @@
         <section class="file-compare-qc-mini rounded-xl border border-stone-200 bg-white overflow-hidden">
           <div class="px-3 py-2 border-b border-stone-200 bg-stone-50/80 flex items-center justify-between gap-2">
             <div>
-              <p class="text-[11px] uppercase tracking-[0.16em] text-stone-400">QC 状态</p>
+              <p class="text-[11px] uppercase tracking-[0.16em] text-warm-400">QC 状态</p>
               <p class="mt-0.5 text-[10px] text-stone-500">当前筛选或预览范围</p>
             </div>
             <button type="button" @click="loadQcRows()" class="h-7 px-2 rounded-lg border border-stone-300 text-[10px] font-semibold">刷新</button>

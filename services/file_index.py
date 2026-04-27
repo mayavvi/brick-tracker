@@ -6,6 +6,7 @@ import logging
 import re
 import threading
 import time
+from itertools import chain
 from pathlib import Path
 from typing import Literal
 
@@ -15,7 +16,8 @@ from services.scanner import discover_studies
 
 logger = logging.getLogger(__name__)
 
-_TARGET_SUFFIXES = {".sas", ".log", ".lst"}
+_TARGET_SUFFIXES = {".sas", ".log"}
+_TARGET_GLOBS = ("*.sas", "*.log")
 
 
 class _FileIndexCache:
@@ -68,14 +70,12 @@ def build_index(study_id: str) -> list[FileEntry]:
     out: list[FileEntry] = []
     t0 = time.monotonic()
 
-    for f in study_dir.rglob("*"):
+    for f in chain.from_iterable(study_dir.rglob(g) for g in _TARGET_GLOBS):
         if not f.is_file():
             continue
         if _is_archive_file(f, study_dir):
             continue
         suffix = f.suffix.lower()
-        if suffix not in _TARGET_SUFFIXES:
-            continue
         stat = f.stat()
         rel_path = f.relative_to(PROJECTS_BASE_PATH).as_posix()
         rel_in_study = f.relative_to(study_dir).as_posix()

@@ -2060,6 +2060,14 @@ html.dark .welcome-editorial-main {
 }
 
 /* ================================================================
+   File compare workbench — section label color (mirrors tracker-page)
+   ================================================================ */
+.file-compare-workbench .text-warm-300,
+.file-compare-workbench .text-warm-400 {
+  color: #205f51 !important;
+}
+
+/* ================================================================
    File compare workbench — fixed horizontal grid with side rails
    ================================================================ */
 .file-compare-workbench-grid {

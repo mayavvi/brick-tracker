@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -24,13 +26,16 @@ from services.file_reader import read_text, read_text_full
 
 logger = logging.getLogger(__name__)
 
-TARGET_EXTENSIONS = {".sas", ".log", ".lst"}
+TARGET_EXTENSIONS = {".sas", ".log"}
 ROLE_ROOTS = {"prog", "qcprog", "data", "qcdata", "outputs"}
+
+_SKIP_DIRS = {"archive", "documents", ".git", "__pycache__", ".svn"}
 
 _INDEX_BOOTSTRAPPED = False
 _REBUILD_LOCK = asyncio.Lock()
 _INSERT_BATCH_SIZE = 500
 _HASH_CHUNK_BYTES = 65_536
+_HASH_WORKERS = 8
 
 
 def _file_sha256_hex(path: Path) -> str:
@@ -43,6 +48,29 @@ def _file_sha256_hex(path: Path) -> str:
                 break
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _walk_target_files(root: Path, extensions: set[str]) -> list[Path]:
+    """Walk *root* using os.scandir, pruning irrelevant directories early."""
+    result: list[Path] = []
+    stack = [root]
+    while stack:
+        current = stack.pop()
+        try:
+            entries = os.scandir(current)
+        except (PermissionError, OSError):
+            continue
+        with entries:
+            for entry in entries:
+                name_lower = entry.name.lower()
+                if entry.is_dir(follow_symlinks=False):
+                    if name_lower not in _SKIP_DIRS and "archive" not in name_lower:
+                        stack.append(Path(entry.path))
+                elif entry.is_file(follow_symlinks=False):
+                    ext = os.path.splitext(name_lower)[1]
+                    if ext in extensions and "temp" not in name_lower:
+                        result.append(Path(entry.path))
+    return result
 
 
 def parse_index_entry(path: Path, base_path: Path | None = None) -> dict | None:
@@ -133,36 +161,86 @@ def _extract_task_context(
 
 
 def _collect_index_rows(scan_root: Path, base_path: Path | None = None) -> list[tuple]:
-    """Scan *scan_root* on disk and return rows ready for ``indexed_files`` insert."""
+    """Scan *scan_root* using os.scandir + parallel hashing (full rebuild, no cache reuse)."""
     actual_base = (base_path or scan_root).resolve()
-    rows: list[tuple] = []
-    for path in scan_root.rglob("*"):
-        if not path.is_file():
-            continue
+    target_files = _walk_target_files(scan_root, TARGET_EXTENSIONS)
+
+    def _process(path: Path) -> tuple | None:
         try:
             entry = parse_index_entry(path, base_path=actual_base)
         except (FileNotFoundError, PermissionError, OSError):
             logger.warning("Skipping unreadable file during indexing: %s", path)
-            continue
+            return None
         if not entry:
-            continue
-        rows.append(
-            (
-                entry["full_path"],
-                entry["rel_path"],
-                entry["compound"],
-                entry["project"],
-                entry["task"],
-                entry["file_name"],
-                entry["program_key"],
-                entry["extension"],
-                entry["role"],
-                entry["modified_time"],
-                entry["size"],
-                entry["content_hash"],
-            )
-        )
+            return None
+        return _entry_to_tuple(entry)
+
+    rows: list[tuple] = []
+    with ThreadPoolExecutor(max_workers=_HASH_WORKERS) as pool:
+        for result in pool.map(_process, target_files):
+            if result is not None:
+                rows.append(result)
     return rows
+
+
+def _collect_index_rows_incremental(
+    scan_root: Path,
+    base_path: Path | None,
+    existing: dict[str, tuple[float, int, str]],
+) -> list[tuple]:
+    """Incremental variant: reuse content_hash when mtime+size unchanged.
+
+    *existing* maps ``full_path`` -> ``(modified_time, size, content_hash)``.
+    """
+    actual_base = (base_path or scan_root).resolve()
+    files = _walk_target_files(scan_root, TARGET_EXTENSIONS)
+
+    def _process(path: Path) -> tuple | None:
+        try:
+            resolved = path.resolve(strict=False)
+            fp = str(resolved)
+            prev = existing.get(fp)
+            if prev is not None:
+                stat = resolved.stat()
+                if stat.st_mtime == prev[0] and stat.st_size == prev[1]:
+                    entry = parse_index_entry(path, base_path=actual_base)
+                    if entry is None:
+                        return None
+                    entry["content_hash"] = prev[2]
+                    entry["modified_time"] = prev[0]
+                    entry["size"] = prev[1]
+                    return _entry_to_tuple(entry)
+            entry = parse_index_entry(path, base_path=actual_base)
+        except (FileNotFoundError, PermissionError, OSError):
+            logger.warning("Skipping unreadable file during indexing: %s", path)
+            return None
+        if not entry:
+            return None
+        return _entry_to_tuple(entry)
+
+    rows: list[tuple] = []
+    with ThreadPoolExecutor(max_workers=_HASH_WORKERS) as pool:
+        for result in pool.map(_process, files):
+            if result is not None:
+                rows.append(result)
+    return rows
+
+
+def _entry_to_tuple(entry: dict) -> tuple:
+    return (
+        entry["full_path"],
+        entry["rel_path"],
+        entry["compound"],
+        entry["project"],
+        entry["task"],
+        entry["file_name"],
+        entry["program_key"],
+        entry["extension"],
+        entry["role"],
+        entry["modified_time"],
+        entry["size"],
+        entry["content_hash"],
+    )
 
 
 def _scan_available_scopes_sync() -> list[dict]:
@@ -211,8 +289,11 @@ async def _rebuild_index_locked() -> dict[str, int | str]:
     if not base.is_dir():
         raise FileNotFoundError(f"Projects base path does not exist: {base}")
 
-    rows = await asyncio.to_thread(_collect_index_rows, base, base)
     db = await _get_index_db()
+    existing = await _load_existing_index(db)
+    rows = await asyncio.to_thread(
+        _collect_index_rows_incremental, base, base, existing,
+    )
 
     insert_sql = """
             INSERT INTO indexed_files (
@@ -324,8 +405,11 @@ async def index_scope(compound: str, project: str | None = None) -> dict:
     if not scan_root.is_dir():
         raise FileNotFoundError(f"Scope path does not exist: {scan_root}")
 
-    rows = await asyncio.to_thread(_collect_index_rows, scan_root, base)
     db = await _get_index_db()
+    existing = await _load_existing_index(db, compound=compound, project=project)
+    rows = await asyncio.to_thread(
+        _collect_index_rows_incremental, scan_root, base, existing,
+    )
 
     insert_sql = """
         INSERT INTO indexed_files (
@@ -851,6 +935,28 @@ async def _distinct_values(db, column: str) -> list[str]:
 async def _fetchone(db, sql: str, params: tuple[object, ...] = ()) -> object | None:
     rows = await db.execute_fetchall(sql, params)
     return rows[0] if rows else None
+
+
+async def _load_existing_index(
+    db,
+    compound: str | None = None,
+    project: str | None = None,
+) -> dict[str, tuple[float, int, str]]:
+    """Load existing indexed entries as {full_path: (mtime, size, hash)} for incremental comparison."""
+    clauses = []
+    params: list[object] = []
+    if compound:
+        clauses.append("compound = ?")
+        params.append(compound)
+    if project:
+        clauses.append("project = ?")
+        params.append(project)
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    rows = await db.execute_fetchall(
+        f"SELECT full_path, modified_time, size, content_hash FROM indexed_files {where}",
+        tuple(params),
+    )
+    return {r["full_path"]: (r["modified_time"], r["size"], r["content_hash"]) for r in rows}
 
 
 async def _get_index_db():
