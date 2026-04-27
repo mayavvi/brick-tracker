@@ -260,10 +260,6 @@
                 </div>
               </div>
               <div class="mt-4 flex gap-2">
-                <button @click="exportCsv()"
-                        class="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-mono text-stone-600 hover:bg-stone-100 transition">
-                  导出 CSV
-                </button>
                 <button @click="showSettings = true"
                         class="flex-1 rounded-xl border border-warm-300 bg-warm-50 px-3 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition">
                   打开设置
@@ -368,10 +364,6 @@
               <button @click="savePrefs()"
                       class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition">
                 保存设置
-              </button>
-              <button @click="exportCsv()"
-                      class="rounded-xl border border-stone-200 bg-stone-50 px-4 py-2 text-xs font-mono text-stone-600 hover:bg-stone-100 transition">
-                导出 CSV
               </button>
               <button @click="confirmResetPrefs()"
                       class="ml-auto rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-mono text-rose-700 hover:bg-rose-100 transition">
@@ -677,20 +669,6 @@ function meApp() {
       }
     },
 
-    exportCsv() {
-      const custom = this.todos.filter(t => t.source === 'custom');
-      if (!custom.length) { Alpine.store('toast').push('没有自定义任务可导出', 'info'); return; }
-      const headers = ['项目','任务名','角色','状态','截止日'];
-      const rows = custom.map(t => [t.study_id, t.title, t.role, t.status, t.ddl || '']);
-      const BOM = '﻿';
-      const csv = BOM + [headers, ...rows].map(r =>
-        r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')
-      ).join('\n');
-      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-      const a = document.createElement('a'); a.href = url; a.download = '我的任务.csv'; a.click();
-      URL.revokeObjectURL(url);
-      Alpine.store('toast').push('CSV 已下载', 'success');
-    },
   };
 }
 </script>
