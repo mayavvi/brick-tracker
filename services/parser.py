@@ -31,9 +31,9 @@ _COL_ALIASES: dict[str, set[str]] = {
     "qc_person": {"审阅人", "QC程序撰写人", "qc程序撰写人"},
     "qc_content": {"QC内容", "qc内容"},
     "qc_status": set(),  # positional: second "状态" column
-    "ddl": {"DDL", "ddl"},
-    "batch": {"Batch", "batch"},
-    "comment": {"Comment", "comment"},
+    "ddl": {"ddl", "timeline"},
+    "batch": {"batch"},
+    "comment": {"comment"},
 }
 
 
@@ -101,8 +101,9 @@ def _build_column_map(ws: Worksheet, header_row: int) -> dict[str, int]:
             status_indices.append(col_idx)
             continue
 
+        text_lower = text.lower()
         for canonical, aliases in _COL_ALIASES.items():
-            if text in aliases and canonical not in col_map:
+            if text_lower in aliases and canonical not in col_map:
                 col_map[canonical] = col_idx
                 break
 
@@ -126,7 +127,7 @@ def _extract_global_ddl(ws: Worksheet) -> date | None:
     """Extract the global DDL date from the header area (typically row 7)."""
     for row_idx in range(1, min(10, ws.max_row + 1)):
         cell = ws.cell(row=row_idx, column=1)
-        if cell.value and "DDL" in str(cell.value):
+        if cell.value and re.search(r"\b(DDL|timeline)\b", str(cell.value), re.IGNORECASE):
             text = str(cell.value)
             m = re.search(r"(\d{1,2}[A-Za-z]{3}\d{4})", text)
             if m:
