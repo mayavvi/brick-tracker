@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from models import DashboardFilter, DashboardResponse, StatusSummary, TaskItem
+
+_PERSON_SEPARATORS = re.compile(r"[/,，、;；]+")
+
+
+def _split_person_tokens(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [tok.strip() for tok in _PERSON_SEPARATORS.split(value) if tok.strip()]
 
 _TIME_RANGE_DAYS: dict[str, tuple[int, int | None]] = {
     "3d": (0, 3),
@@ -16,15 +25,23 @@ _TIME_RANGE_DAYS: dict[str, tuple[int, int | None]] = {
 
 
 def _matches_person(task: TaskItem, name: str, role: str) -> bool:
-    """Check whether *task* involves *name* on the specified role side (exact, case-insensitive)."""
-    lower = name.strip().lower()
-    if role == "main":
-        if task.main_person and task.main_person.strip().lower() == lower:
-            return True
-    if role == "qc":
-        if task.qc_person and task.qc_person.strip().lower() == lower:
-            return True
-    return False
+    """Check whether *task* involves *name* on the role side.
+
+    Splits the stored person field on common separators (`/`, `,`, `，`, `、`, `;`,
+    `；`) so handover values like ``"A/B"`` match a query of ``"B"``. Matching is
+    case-insensitive; if no token equals the query exactly, falls back to a
+    substring check so partial typing still narrows the list.
+    """
+    query = name.strip().lower()
+    if not query:
+        return False
+    field = task.main_person if role == "main" else task.qc_person if role == "qc" else None
+    if not field:
+        return False
+    tokens = [tok.lower() for tok in _split_person_tokens(field)]
+    if any(tok == query for tok in tokens):
+        return True
+    return any(query in tok for tok in tokens)
 
 
 def _ddl_in_range(
@@ -120,13 +137,17 @@ def build_summary(
 
 
 def collect_persons(tasks: list[TaskItem]) -> list[str]:
-    """Return a sorted, deduplicated list of all person names."""
+    """Return a sorted, deduplicated list of all person names.
+
+    Handover values like ``"A/B"`` are split into individual tokens so the
+    operator dropdown surfaces both A and B as separate suggestions.
+    """
     names: set[str] = set()
     for t in tasks:
-        if t.main_person:
-            names.add(t.main_person.strip())
-        if t.qc_person:
-            names.add(t.qc_person.strip())
+        for tok in _split_person_tokens(t.main_person):
+            names.add(tok)
+        for tok in _split_person_tokens(t.qc_person):
+            names.add(tok)
     return sorted(names)
 
 

@@ -20,6 +20,7 @@ _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS users (
     username     TEXT PRIMARY KEY,
     display_name TEXT NOT NULL DEFAULT '',
+    avatar_path  TEXT NOT NULL DEFAULT '',
     first_seen   TEXT NOT NULL,
     last_active  TEXT NOT NULL
 );
@@ -72,6 +73,7 @@ CREATE TABLE IF NOT EXISTS indexed_files (
     compound      TEXT NOT NULL,
     project       TEXT NOT NULL,
     task          TEXT NOT NULL,
+    category      TEXT NOT NULL DEFAULT '',
     file_name     TEXT NOT NULL,
     program_key   TEXT NOT NULL,
     extension     TEXT NOT NULL,
@@ -85,6 +87,7 @@ CREATE INDEX IF NOT EXISTS idx_index_rel_path ON indexed_files(rel_path);
 CREATE INDEX IF NOT EXISTS idx_index_program ON indexed_files(program_key, extension, modified_time DESC);
 CREATE INDEX IF NOT EXISTS idx_index_context ON indexed_files(compound, project, task);
 CREATE INDEX IF NOT EXISTS idx_index_role ON indexed_files(role, extension);
+CREATE INDEX IF NOT EXISTS idx_index_category ON indexed_files(category);
 
 CREATE TABLE IF NOT EXISTS code_index_runs (
     id              INTEGER PRIMARY KEY CHECK (id = 1),
@@ -109,8 +112,33 @@ async def init_db() -> None:
     _db = await aiosqlite.connect(str(DATABASE_PATH))
     _db.row_factory = aiosqlite.Row
     await _db.executescript(_SCHEMA_SQL)
+    await _migrate_users_avatar(_db)
     await _db.commit()
     logger.info("Database initialised at %s", DATABASE_PATH)
+
+
+async def _migrate_users_avatar(db: aiosqlite.Connection) -> None:
+    cols = await db.execute_fetchall("PRAGMA table_info(users)")
+    if not any(row[1] == "avatar_path" for row in cols):
+        await db.execute("ALTER TABLE users ADD COLUMN avatar_path TEXT NOT NULL DEFAULT ''")
+
+    icols = await db.execute_fetchall("PRAGMA table_info(indexed_files)")
+    if icols and not any(row[1] == "category" for row in icols):
+        await db.execute("ALTER TABLE indexed_files ADD COLUMN category TEXT NOT NULL DEFAULT ''")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_index_category ON indexed_files(category)")
+        # Backfill from rel_path: SDTM/ADAM/TFL keyword after prog or qcprog segment.
+        await db.execute(
+            """
+            UPDATE indexed_files SET category = CASE
+                WHEN UPPER(rel_path) LIKE '%/PROG/SDTM/%'   OR UPPER(rel_path) LIKE '%/QCPROG/SDTM/%'   THEN 'SDTM'
+                WHEN UPPER(rel_path) LIKE '%/PROG/ADAM/%'   OR UPPER(rel_path) LIKE '%/QCPROG/ADAM/%'   THEN 'ADAM'
+                WHEN UPPER(rel_path) LIKE '%/PROG/TFL/%'    OR UPPER(rel_path) LIKE '%/QCPROG/TFL/%'    THEN 'TFL'
+                WHEN UPPER(rel_path) LIKE '%/PROG/TFLS/%'   OR UPPER(rel_path) LIKE '%/QCPROG/TFLS/%'   THEN 'TFL'
+                ELSE 'OTHER'
+            END
+            WHERE category = ''
+            """
+        )
 
 
 async def close_db() -> None:
@@ -135,10 +163,42 @@ async def upsert_user(username: str, display_name: str = "") -> None:
         INSERT INTO users (username, display_name, first_seen, last_active)
         VALUES (?, ?, ?, ?)
         ON CONFLICT(username) DO UPDATE SET
-            display_name = COALESCE(NULLIF(excluded.display_name, ''), users.display_name),
-            last_active  = excluded.last_active
+            last_active = excluded.last_active
         """,
         (username, display_name, now, now),
+    )
+    await db.commit()
+
+
+async def get_user_profile(username: str) -> dict[str, str]:
+    """Return display_name and avatar_path for *username* (empty if missing)."""
+    db = await get_db()
+    rows = await db.execute_fetchall(
+        "SELECT display_name, avatar_path FROM users WHERE username = ?",
+        (username,),
+    )
+    if rows:
+        return {
+            "display_name": rows[0]["display_name"] or "",
+            "avatar_path": rows[0]["avatar_path"] or "",
+        }
+    return {"display_name": "", "avatar_path": ""}
+
+
+async def update_user_display_name(username: str, display_name: str) -> None:
+    db = await get_db()
+    await db.execute(
+        "UPDATE users SET display_name = ? WHERE username = ?",
+        (display_name, username),
+    )
+    await db.commit()
+
+
+async def update_user_avatar(username: str, avatar_path: str) -> None:
+    db = await get_db()
+    await db.execute(
+        "UPDATE users SET avatar_path = ? WHERE username = ?",
+        (avatar_path, username),
     )
     await db.commit()
 

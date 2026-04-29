@@ -347,6 +347,7 @@ async def code_index_programs(
     compound: str | None = Query(None),
     project: str | None = Query(None),
     task: str | None = Query(None),
+    category: str | None = Query(None),
     extension: str | None = Query(None),
     role: str | None = Query(None),
     limit: int = Query(200, ge=1, le=500),
@@ -359,6 +360,7 @@ async def code_index_programs(
             compound=compound,
             project=project,
             task=task,
+            category=category,
             extension=extension,
             role=role,
             limit=limit,
@@ -503,6 +505,7 @@ async def code_index_qc_timing(
     compound: str | None = Query(None),
     project: str | None = Query(None),
     task: str | None = Query(None),
+    category: str | None = Query(None),
     _: User = Depends(get_current_user),
 ) -> list[QcTimingRow]:
     """QC timing view backed by the global index."""
@@ -511,6 +514,7 @@ async def code_index_qc_timing(
             compound=compound,
             project=project,
             task=task,
+            category=category,
         )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))

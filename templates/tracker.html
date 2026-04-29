@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block title %}日志追踪 — PEAK{% endblock %}
 {% block body %}
-<div id="tracker-root" data-tracker-app x-data="trackerApp()" x-init="init()" class="tracker-page flex flex-col h-full">
+<div id="tracker-root" data-tracker-app x-data="trackerApp()" x-init="init()" class="tracker-page flex flex-col">
 
   <!-- ==================== Layout ==================== -->
-  <div class="flex flex-1 overflow-hidden max-w-[1920px] mx-auto w-full">
+  <div class="flex flex-1 max-w-[1920px] mx-auto w-full">
 
     <!-- ==================== Sidebar ==================== -->
-    <div class="tracker-sidebar sidebar-wrapper flex-shrink-0 bg-white border-r border-stone-200 relative"
+    <div class="tracker-sidebar sidebar-wrapper flex-shrink-0 bg-white border-r border-stone-200 relative sticky top-20 self-start max-h-[calc(100vh-5rem)] overflow-y-auto"
          :class="sidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'">
 
       <button x-show="!sidebarOpen" @click="toggleSidebar()"
@@ -171,14 +171,15 @@
             <span class="inline-block w-1.5 h-1.5 rounded-full bg-warm-500"></span>
             ▸ 操作员
           </label>
-          <select x-model="personFilter"
-                  class="w-full rounded-md border border-stone-300 bg-white px-3 h-9 text-sm
-                         text-stone-900                         focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none transition">
-            <option value="">// 全员</option>
-            <template x-for="p in personList" :key="p">
-              <option :value="p" x-text="p"></option>
-            </template>
-          </select>
+          <div class="relative">
+            <input type="text" x-model.debounce.250ms="personFilter" list="dl-persons"
+                   placeholder="// 全员（可输入姓名）"
+                   class="w-full rounded-md border border-stone-300 bg-white pl-3 pr-7 h-9 text-sm
+                          text-stone-900 focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none transition" />
+            <button type="button" x-show="personFilter" @click="personFilter = ''"
+                    class="absolute inset-y-0 right-0 px-2 text-stone-400 hover:text-stone-700"
+                    aria-label="清除">×</button>
+          </div>
         </div>
 
         <!-- Role -->
@@ -234,7 +235,7 @@
     </div>
 
     <!-- ==================== Main Content ==================== -->
-    <main class="tracker-main flex-1 overflow-y-auto p-6 space-y-4 bg-stone-50">
+    <main class="tracker-main flex-1 min-w-0 p-6 space-y-4 bg-stone-50">
 
       <!-- Empty state -->
       <template x-if="!dashboardLoaded && !loadingDashboard">

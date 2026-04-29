@@ -78,3 +78,5 @@ DATABASE_PATH: Path = Path(
         str(_APP_ROOT / "data" / "tracker.db"),
     )
 )
+
+AVATARS_DIR: Path = DATABASE_PATH.parent / "avatars"

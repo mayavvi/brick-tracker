@@ -3,6 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 echo [1/3] Installing dependencies...
+python -m pip uninstall -y pywebview pythonnet clr_loader >nul 2>&1
 python -m pip install -r requirements.txt || goto :error
 
 echo [2/3] Cleaning previous build...

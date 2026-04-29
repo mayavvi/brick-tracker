@@ -101,21 +101,38 @@ def parse_index_entry(path: Path, base_path: Path | None = None) -> dict | None:
     task = context["task"]
     file_name = resolved.name
     program_key = resolved.stem.upper()
+    rel_posix = relative.as_posix()
 
     return {
         "full_path": str(resolved),
-        "rel_path": relative.as_posix(),
+        "rel_path": rel_posix,
         "compound": compound,
         "project": project,
         "task": task,
+        "category": _infer_category(rel_posix),
         "file_name": file_name,
         "program_key": program_key,
         "extension": resolved.suffix.lower(),
-        "role": _infer_role(relative.as_posix()),
+        "role": _infer_role(rel_posix),
         "modified_time": stat.st_mtime,
         "size": stat.st_size,
         "content_hash": _file_sha256_hex(resolved),
     }
+
+
+def _infer_category(rel_path: str) -> str:
+    """Pick the segment after prog/qcprog and normalise to SDTM/ADAM/TFL/OTHER."""
+    parts = [p.lower() for p in rel_path.split("/") if p]
+    for idx, part in enumerate(parts[:-1]):
+        if part in {"prog", "qcprog"}:
+            nxt = parts[idx + 1]
+            if nxt == "sdtm":
+                return "SDTM"
+            if nxt == "adam":
+                return "ADAM"
+            if nxt in {"tfl", "tfls"}:
+                return "TFL"
+    return "OTHER"
 
 
 def _extract_task_context(
@@ -233,6 +250,7 @@ def _entry_to_tuple(entry: dict) -> tuple:
         entry["compound"],
         entry["project"],
         entry["task"],
+        entry.get("category", "OTHER"),
         entry["file_name"],
         entry["program_key"],
         entry["extension"],
@@ -297,11 +315,11 @@ async def _rebuild_index_locked() -> dict[str, int | str]:
 
     insert_sql = """
             INSERT INTO indexed_files (
-                full_path, rel_path, compound, project, task,
+                full_path, rel_path, compound, project, task, category,
                 file_name, program_key, extension, role,
                 modified_time, size, content_hash
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
 
     await db.execute("BEGIN IMMEDIATE")
@@ -413,11 +431,11 @@ async def index_scope(compound: str, project: str | None = None) -> dict:
 
     insert_sql = """
         INSERT INTO indexed_files (
-            full_path, rel_path, compound, project, task,
+            full_path, rel_path, compound, project, task, category,
             file_name, program_key, extension, role,
             modified_time, size, content_hash
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
     await db.execute("BEGIN IMMEDIATE")
@@ -527,7 +545,21 @@ async def get_filter_options(
             (compound,),
         )
     tasks = [r["value"] for r in rows_t if r["value"]]
-    return CodeIndexFilterOptions(projects=projects, tasks=tasks)
+
+    cat_clauses = ["category <> ''"]
+    cat_params: list[object] = []
+    if compound:
+        cat_clauses.append("compound = ?")
+        cat_params.append(compound)
+    if project:
+        cat_clauses.append("project = ?")
+        cat_params.append(project)
+    rows_c = await db.execute_fetchall(
+        f"SELECT DISTINCT category AS value FROM indexed_files WHERE {' AND '.join(cat_clauses)} ORDER BY category ASC",
+        tuple(cat_params),
+    )
+    categories = [r["value"] for r in rows_c if r["value"]]
+    return CodeIndexFilterOptions(projects=projects, tasks=tasks, categories=categories)
 
 
 async def query_program_groups(
@@ -535,6 +567,7 @@ async def query_program_groups(
     compound: str | None = None,
     project: str | None = None,
     task: str | None = None,
+    category: str | None = None,
     extension: str | None = None,
     role: str | None = None,
     limit: int = 200,
@@ -548,6 +581,7 @@ async def query_program_groups(
         compound=compound,
         project=project,
         task=task,
+        category=category,
         extension=extension,
         role=role,
     )
@@ -676,11 +710,14 @@ async def get_qc_timing_rows(
     compound: str | None = None,
     project: str | None = None,
     task: str | None = None,
+    category: str | None = None,
 ) -> list[QcTimingRow]:
     """Compare main vs QC log mtimes using indexed data (SQL window aggregation)."""
     await ensure_index()
     db = await _get_index_db()
-    where_sql, params = _build_filters(compound=compound, project=project, task=task)
+    where_sql, params = _build_filters(
+        compound=compound, project=project, task=task, category=category
+    )
 
     sql = f"""
         WITH base AS (
@@ -691,6 +728,7 @@ async def get_qc_timing_rows(
                 compound,
                 project,
                 task,
+                category,
                 file_name,
                 program_key,
                 extension,
@@ -713,6 +751,7 @@ async def get_qc_timing_rows(
                     full_path,
                     project,
                     task,
+                    category,
                     pair_key,
                     modified_time,
                     ROW_NUMBER() OVER (
@@ -774,6 +813,7 @@ async def get_qc_timing_rows(
         )
         SELECT
             ml.task AS task,
+            ml.category AS category,
             ml.pair_key AS program,
             ml.modified_time AS main_log_mtime,
             ql.modified_time AS qc_log_mtime,
@@ -820,6 +860,7 @@ async def get_qc_timing_rows(
         out.append(
             QcTimingRow(
                 task=row["task"],
+                category=row["category"] or "OTHER",
                 program=row["program"],
                 main_log_mtime=datetime.fromtimestamp(row["main_log_mtime"]),
                 qc_log_mtime=datetime.fromtimestamp(qc_mtime) if qc_mtime is not None else None,
@@ -856,6 +897,7 @@ def _build_filters(
     compound: str | None = None,
     project: str | None = None,
     task: str | None = None,
+    category: str | None = None,
     extension: str | None = None,
     role: str | None = None,
 ) -> tuple[str, tuple[object, ...]]:
@@ -870,6 +912,9 @@ def _build_filters(
     if task:
         clauses.append("task = ?")
         params.append(task)
+    if category and category != "ALL":
+        clauses.append("category = ?")
+        params.append(category.upper())
     if extension:
         clauses.append("extension = ?")
         params.append(extension.lower())

@@ -167,6 +167,13 @@ class UserInfo(BaseModel):
 
     username: str
     display_name: str = ""
+    avatar_url: str = ""
+
+
+class UserProfileUpdate(BaseModel):
+    """Payload for updating the user's display name."""
+
+    display_name: str = Field(default="", max_length=64)
 
 
 class WorkstationPrefs(BaseModel):
@@ -268,6 +275,7 @@ class CodeIndexFilterOptions(BaseModel):
 
     projects: list[str] = Field(default_factory=list)
     tasks: list[str] = Field(default_factory=list)
+    categories: list[str] = Field(default_factory=list)
 
 
 class CodeIndexStatus(BaseModel):
@@ -301,6 +309,7 @@ class QcTimingRow(BaseModel):
     """QC timing check row for one (task, program)."""
 
     task: str
+    category: str = "OTHER"
     program: str
     main_log_mtime: datetime | None = None
     qc_log_mtime: datetime | None = None

@@ -2,8 +2,8 @@
 {% block title %}工作台 — PEAK{% endblock %}
 {% block app_scripts %}{% endblock %}
 {% block body %}
-<div x-data="meApp()" x-init="init()" class="min-h-full flex flex-col">
-  <main class="flex-1 overflow-y-auto px-6 py-8">
+<div x-data="meApp()" x-init="init()">
+  <main class="px-6 py-8">
     <div class="max-w-6xl mx-auto space-y-8">
       <section class="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -21,12 +21,19 @@
         <div class="relative grid gap-6 px-6 py-6 md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)] md:px-8 md:py-8">
           <div class="space-y-6">
             <div class="flex items-start gap-4">
-              <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-warm-400 via-warm-500 to-neon-500 text-lg font-bold text-white shadow-glow-lg">
-                {{ (user.display_name or user.username or '?')[0] | upper }}
+              <div class="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-warm-400 via-warm-500 to-neon-500 shadow-glow-lg">
+                <img x-show="profile.avatar_url"
+                     :src="avatarSrc"
+                     class="absolute inset-0 h-full w-full object-cover"
+                     alt="avatar" />
+                <span x-show="!profile.avatar_url"
+                      class="absolute inset-0 flex items-center justify-center text-lg font-bold text-white"
+                      x-text="(profile.display_name || profile.username || '?').slice(0,1).toUpperCase()"></span>
               </div>
               <div class="min-w-0">
                 <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-warm-600">Operator Feed</p>
-                <h2 class="mt-2 text-2xl font-bold tracking-tight text-stone-900 md:text-3xl">{{ user.display_name or user.username }}</h2>
+                <h2 class="mt-2 text-2xl font-bold tracking-tight text-stone-900 md:text-3xl"
+                    x-text="profile.display_name || profile.username || '本机用户'"></h2>
                 <p class="mt-2 max-w-xl text-sm leading-6 text-stone-600">
                   当前主屏只追踪最值得你先动手的事：过期未完成、今天要做，以及下一批待进入视线的任务。
                 </p>
@@ -56,14 +63,14 @@
                 <span class="text-sm font-mono text-warm-600">&gt;</span>
                 <input x-model="quickInput"
                        @keydown.enter.prevent="addQuick()"
-                       placeholder="快速新增：任务内容 #STUDY @周五"
+                       placeholder="快速新增：任务内容 #STUDY @周五 &gt;负责人"
                        class="w-full bg-transparent text-sm text-stone-800 placeholder:text-stone-400 outline-none" />
                 <button @click="addQuick()"
                         class="shrink-0 rounded-lg border border-warm-300 bg-warm-50 px-3 py-1.5 text-xs font-mono text-warm-700 transition hover:bg-warm-100">
                   录入
                 </button>
               </div>
-              <p class="mt-3 text-[11px] font-mono text-stone-500">支持 `#STUDY` 和 `@今天/@明天/@周五/@4-30`，作为你的低干扰命令行入口。</p>
+              <p class="mt-3 text-[11px] font-mono text-stone-500">支持 `#STUDY`、`@今天/@明天/@后天/@周五/@4-30/@2026-04-28/@+3d`、`&gt;负责人`，作为你的低干扰命令行入口。</p>
             </div>
           </div>
 
@@ -87,22 +94,38 @@
             </div>
 
             <div class="rounded-2xl border border-stone-200 bg-white/80 p-5 shadow-sm backdrop-blur-sm">
-              <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Secondary Queue</p>
-              <div class="mt-4 space-y-3">
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-stone-600">本周稍后</span>
-                  <span class="font-mono text-stone-900" x-text="secondary.thisweek.length"></span>
-                </div>
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-stone-600">更晚安排</span>
-                  <span class="font-mono text-stone-900" x-text="secondary.later.length"></span>
-                </div>
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-stone-600">未排期</span>
-                  <span class="font-mono text-stone-900" x-text="secondary.unscheduled.length"></span>
-                </div>
+              <div class="flex items-center justify-between">
+                <p class="text-[11px] font-mono uppercase tracking-[0.2em] text-stone-500">Secondary Queue</p>
+                <span class="text-[11px] font-mono text-stone-500"
+                      x-text="(secondary.thisweek.length + secondary.later.length + secondary.unscheduled.length) + ' 条'"></span>
               </div>
-              <div class="mt-5 flex items-center gap-2 text-[11px] font-mono text-stone-500">
+              <div class="mt-3 space-y-3">
+                <template x-for="section in secondarySections" :key="'mini-' + section.key">
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-[11px] font-mono uppercase tracking-[0.16em] text-stone-400" x-text="section.label"></span>
+                      <span class="text-[11px] font-mono text-stone-500" x-text="section.items.length + ' 条'"></span>
+                    </div>
+                    <template x-if="section.items.length === 0">
+                      <p class="text-[11px] font-mono text-stone-400 pl-1">// 空</p>
+                    </template>
+                    <ul class="space-y-0.5">
+                      <template x-for="todo in section.items.slice(0, 3)" :key="'mini-' + todo.key">
+                        <li class="flex items-center gap-2 text-[12px]">
+                          <span class="shrink-0 inline-block h-1.5 w-1.5 rounded-full" :class="studyDot(todo.study_id)"></span>
+                          <span class="flex-1 min-w-0 truncate text-stone-700" x-text="todo.title"></span>
+                          <span class="shrink-0 text-[11px] font-mono text-stone-400" x-text="todo.study_id || 'MISC'"></span>
+                          <span class="shrink-0 w-12 text-right text-[11px] font-mono text-stone-400" x-text="ddlLabel(todo.ddl)"></span>
+                        </li>
+                      </template>
+                      <template x-if="section.items.length > 3">
+                        <li class="pl-3 text-[11px] font-mono text-stone-400" x-text="'+ 余 ' + (section.items.length - 3) + ' 条'"></li>
+                      </template>
+                    </ul>
+                  </div>
+                </template>
+              </div>
+              <div class="mt-4 flex items-center gap-2 text-[11px] font-mono text-stone-500">
                 <span class="inline-block h-1.5 w-1.5 rounded-full bg-warm-400"></span>
                 <span x-text="trackerReady ? 'Tracker 映射已接入' : '尚未配置 Tracker 映射'"></span>
               </div>
@@ -309,6 +332,39 @@
 
         <div class="space-y-6 px-5 py-5">
           <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-mono uppercase tracking-[0.18em] text-warm-600">Profile</p>
+            <p class="mt-2 text-sm text-stone-600">显示名称和头像。本机单用户模式，仅本地保存。</p>
+            <div class="mt-4 flex items-center gap-4">
+              <div class="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-warm-400 via-warm-500 to-neon-500">
+                <img x-show="profile.avatar_url" :src="avatarSrc" class="absolute inset-0 h-full w-full object-cover" alt="avatar" />
+                <span x-show="!profile.avatar_url"
+                      class="absolute inset-0 flex items-center justify-center text-xl font-bold text-white"
+                      x-text="(profile.display_name || profile.username || '?').slice(0,1).toUpperCase()"></span>
+              </div>
+              <div class="flex flex-col gap-2">
+                <label class="rounded-xl border border-warm-300 bg-warm-50 px-3 py-1.5 text-xs font-mono text-warm-700 hover:bg-warm-100 transition cursor-pointer text-center">
+                  <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" @change="onAvatarPicked($event)" />
+                  <span x-text="avatarUploading ? '上传中…' : '更换头像'"></span>
+                </label>
+                <p class="text-[11px] font-mono text-stone-500">PNG / JPG / WebP / GIF，最大 2 MB</p>
+              </div>
+            </div>
+            <div class="mt-4 space-y-2">
+              <label class="text-[11px] font-mono uppercase tracking-[0.16em] text-stone-500">显示名称</label>
+              <input x-model="profile.display_name"
+                     placeholder="本机用户"
+                     maxlength="64"
+                     class="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 outline-none focus:border-warm-400/40" />
+            </div>
+            <div class="mt-3 flex gap-2">
+              <button @click="saveProfile()"
+                      class="rounded-xl border border-warm-300 bg-warm-50 px-4 py-2 text-xs font-mono text-warm-700 hover:bg-warm-100 transition">
+                保存名称
+              </button>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <p class="text-xs font-mono uppercase tracking-[0.18em] text-warm-600">Projects base path</p>
             <p class="mt-2 text-sm text-stone-600">扫描 study 文件夹的根目录。修改后需重启 PEAK 才能生效。</p>
             <div class="mt-3 space-y-2">
@@ -416,22 +472,40 @@ function meApp() {
     const d = new Date(s + 'T00:00:00');
     return isNaN(d.getTime()) ? null : d;
   }
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function fmtYMD(d) { return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()); }
   function parseDateToken(token) {
-    const t = token.toLowerCase();
+    const t = token.toLowerCase().trim();
+    if (!t) return null;
     const today = todayMidnight();
-    if (t === '今天' || t === 'today') return today.toISOString().slice(0,10);
+    if (t === '今天' || t === 'today') return fmtYMD(today);
     if (t === '明天' || t === 'tomorrow') {
-      const d = new Date(today); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10);
+      const d = new Date(today); d.setDate(d.getDate()+1); return fmtYMD(d);
+    }
+    if (t === '后天') {
+      const d = new Date(today); d.setDate(d.getDate()+2); return fmtYMD(d);
     }
     const wm = {'周一':1,'周二':2,'周三':3,'周四':4,'周五':5,'周六':6,'周日':0,'周天':0};
     if (wm[t] !== undefined) {
       const d = new Date(today);
       const diff = ((wm[t] - d.getDay()) + 7) % 7 || 7;
-      d.setDate(d.getDate() + diff); return d.toISOString().slice(0,10);
+      d.setDate(d.getDate() + diff); return fmtYMD(d);
     }
-    if (/^\d{1,2}-\d{1,2}$/.test(t)) {
-      const [m, day] = t.split('-').map(Number);
-      return new Date(today.getFullYear(), m-1, day).toISOString().slice(0,10);
+    let m;
+    if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) {
+      const d = new Date(+m[1], +m[2]-1, +m[3]);
+      return isNaN(d.getTime()) ? null : fmtYMD(d);
+    }
+    if ((m = t.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/))) {
+      const d = new Date(+m[1], +m[2]-1, +m[3]);
+      return isNaN(d.getTime()) ? null : fmtYMD(d);
+    }
+    if ((m = t.match(/^(\d{1,2})-(\d{1,2})$/)) || (m = t.match(/^(\d{1,2})\/(\d{1,2})$/))) {
+      const d = new Date(today.getFullYear(), +m[1]-1, +m[2]);
+      return isNaN(d.getTime()) ? null : fmtYMD(d);
+    }
+    if ((m = t.match(/^\+?(\d+)d?$/))) {
+      const d = new Date(today); d.setDate(d.getDate() + +m[1]); return fmtYMD(d);
     }
     return null;
   }
@@ -444,12 +518,21 @@ function meApp() {
     prefs: { tracker_aliases: [], watched_studies: [] },
     appSettings: { projects_base_path: '', projects_base_path_active: '', projects_base_path_exists: false, needs_restart: false },
     appSettingsLoaded: false,
+    profile: { username: '', display_name: '', avatar_url: '' },
+    avatarUploading: false,
+    avatarBust: 0,
     showSettings: false,
     secondaryOpen: true,
     aliasInput: '',
     studyInput: '',
     quickInput: '',
     completing: new Set(),
+
+    get avatarSrc() {
+      if (!this.profile.avatar_url) return '';
+      const sep = this.profile.avatar_url.includes('?') ? '&' : '?';
+      return ab() + this.profile.avatar_url + sep + 'v=' + this.avatarBust;
+    },
 
     homeUrl() { const b = ab(); return b ? b + '/' : '/'; },
     sourceLabel(todo) { return todo.source === 'tracker' ? 'tracker' : 'custom'; },
@@ -536,7 +619,59 @@ function meApp() {
     },
 
     async init() {
-      await Promise.all([this.loadPrefs(), this.loadTodos(), this.loadCustomTasks(), this.loadAppSettings()]);
+      await Promise.all([this.loadPrefs(), this.loadTodos(), this.loadCustomTasks(), this.loadAppSettings(), this.loadProfile()]);
+    },
+
+    async loadProfile() {
+      try {
+        const r = await fetch(ab() + '/api/user/me');
+        if (r.ok) {
+          this.profile = await r.json();
+          this.avatarBust = Date.now();
+        }
+      } catch (_) {}
+    },
+
+    async saveProfile() {
+      try {
+        const r = await fetch(ab() + '/api/user/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ display_name: this.profile.display_name || '' }),
+        });
+        if (!r.ok) throw new Error(r.status);
+        this.profile = await r.json();
+        Alpine.store('toast').push('名称已保存', 'success');
+      } catch (e) {
+        Alpine.store('toast').push('保存失败：' + e, 'error');
+      }
+    },
+
+    async onAvatarPicked(ev) {
+      const file = ev.target.files && ev.target.files[0];
+      ev.target.value = '';
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        Alpine.store('toast').push('文件太大（限 2 MB）', 'error');
+        return;
+      }
+      this.avatarUploading = true;
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const r = await fetch(ab() + '/api/user/avatar', { method: 'POST', body: fd });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.detail || r.status);
+        }
+        this.profile = await r.json();
+        this.avatarBust = Date.now();
+        Alpine.store('toast').push('头像已更新', 'success');
+      } catch (e) {
+        Alpine.store('toast').push('上传失败：' + e.message, 'error');
+      } finally {
+        this.avatarUploading = false;
+      }
     },
 
     async loadAppSettings() {
@@ -656,11 +791,12 @@ function meApp() {
     async addQuick() {
       const raw = this.quickInput.trim();
       if (!raw) return;
-      let study = '', ddl = null;
+      let study = '', ddl = null, mainPerson = '';
       const titleParts = [];
       for (const word of raw.split(/\s+/)) {
         if (word.startsWith('#')) study = word.slice(1).toUpperCase();
         else if (word.startsWith('@')) ddl = parseDateToken(word.slice(1));
+        else if (word.startsWith('>')) mainPerson = word.slice(1).trim();
         else titleParts.push(word);
       }
       const title = titleParts.join(' ').trim() || raw;
@@ -670,10 +806,10 @@ function meApp() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            study_id: study || 'misc',
+            study_id: study || 'MISC',
             task_name: title,
             description: '',
-            main_person: '',
+            main_person: mainPerson || '',
             main_status: '',
             qc_person: '',
             qc_status: '',

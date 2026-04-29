@@ -4,627 +4,546 @@
 {% block body %}
 <div x-data="codeIndexWorkbench()" x-init="init()"
      @keydown.window="$event.ctrlKey && $event.key === '`' && ($event.preventDefault() || toggleCli())"
-     class="file-compare-workbench h-[calc(100vh-5rem)] px-6 py-5 max-w-[1920px] mx-auto flex flex-col gap-4">
-  <section class="shrink-0 rounded-xl border border-stone-200 bg-white/90 shadow-sm overflow-hidden">
-    <div class="px-5 py-4 bg-stone-50/80">
-      <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
-        <div class="min-w-0">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-[11px] uppercase tracking-[0.18em] text-warm-600 font-semibold">Program Replay</span>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-900 text-white">程序回放台</span>
+     class="file-compare-v2 px-6 py-5 max-w-[1920px] mx-auto flex flex-col gap-4">
+
+  <!-- ============ Header ============ -->
+  <section class="rounded-xl border border-stone-200 bg-white/90 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 bg-stone-50/80 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] uppercase tracking-[0.18em] text-warm-600 font-semibold">Program Replay</span>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-900 text-white">程序回放台</span>
+        </div>
+        <h2 class="mt-1.5 text-lg font-semibold text-stone-800"
+            x-text="selectedProgram ? selectedProgram.display_name : '横向 Scope · 横向 P/Q · 下方代码阅读'"></h2>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 text-[11px]">
+        <span class="text-[11px] font-mono text-stone-500" x-text="status.indexed_files + ' files · ' + status.program_groups + ' programs'"></span>
+        <button type="button" @click="rebuildIndex()" :disabled="reindexing"
+                class="h-7 px-3 rounded-lg border border-stone-300 bg-white text-[11px] font-semibold text-stone-700 hover:bg-stone-100 transition disabled:opacity-50">
+          <span x-text="reindexing ? '重建中…' : '重建索引'"></span>
+        </button>
+        <button type="button" @click="toggleCli()"
+                class="inline-flex items-center gap-1.5 h-7 px-3 rounded-lg border border-stone-300 text-stone-500 hover:text-stone-800 hover:border-stone-500 transition font-mono">
+          <span>>_</span><span>CLI</span><span class="text-[9px] text-stone-400">Ctrl+`</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Top: horizontal Scope ============ -->
+  <section class="rounded-xl border border-stone-200 bg-white/90 shadow-sm">
+    <div class="flex items-center justify-between px-5 pt-4 pb-2">
+      <h3 class="text-sm font-semibold text-stone-800">程序范围 Scope</h3>
+      <button type="button" @click="shelfOpen = !shelfOpen; if(shelfOpen && !availableScopes.length) loadAvailableScopes()"
+              class="h-7 px-3 rounded-lg bg-stone-900 text-white text-[11px] font-semibold transition">
+        <span x-text="shelfOpen ? '收起目录' : '+ 添加范围'"></span>
+      </button>
+    </div>
+
+    <div class="px-5 pb-4 grid gap-3 lg:grid-cols-7 md:grid-cols-4 sm:grid-cols-2 grid-cols-1 items-end">
+      <div class="lg:col-span-1 min-w-0">
+        <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-1">Compound</label>
+        <div class="relative" @click.outside="compoundOpen = false">
+          <input type="text" x-model="compoundSearch" @focus="compoundOpen = true"
+                 placeholder="全部 / 输入筛选…"
+                 class="w-full h-9 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-warm-400/40" />
+          <div x-show="compoundOpen" class="absolute z-[60] mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-stone-300 bg-white shadow-lg py-1">
+            <button type="button" class="block w-full text-left px-3 py-1.5 text-sm hover:bg-stone-100 text-stone-600" @click="pickCompound('')">全部 Compound</button>
+            <template x-for="item in compoundOptionItems()" :key="'cmp-' + item">
+              <button type="button" class="block w-full text-left px-3 py-1.5 text-sm hover:bg-stone-100 truncate" @click="pickCompound(item)" x-text="item"></button>
+            </template>
           </div>
-          <h2 class="mt-2 text-lg font-semibold text-stone-800"
-              x-text="selectedProgram ? selectedProgram.display_name : '选择程序查看版本与差异'"></h2>
-          <p class="mt-1 text-xs text-stone-500 leading-5"
-             x-text="selectedVersion ? (selectedVersion.project + ' / ' + selectedVersion.task + ' · ' + selectedVersion.file_name) : '左侧限定范围，中间阅读/比较，右侧固定 P/Q 与 QC。'"></p>
+        </div>
+      </div>
+
+      <div class="lg:col-span-1 min-w-0">
+        <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-1">Project</label>
+        <div class="relative" @click.outside="projectOpen = false">
+          <input type="text" x-model="projectSearch" @focus="projectOpen = true"
+                 placeholder="全部 / 输入筛选…"
+                 class="w-full h-9 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-warm-400/40" />
+          <div x-show="projectOpen" class="absolute z-[60] mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-stone-300 bg-white shadow-lg py-1">
+            <button type="button" class="block w-full text-left px-3 py-1.5 text-sm hover:bg-stone-100 text-stone-600" @click="pickProject('')">全部 Project</button>
+            <template x-for="item in projectOptionItems()" :key="'prj-' + item">
+              <button type="button" class="block w-full text-left px-3 py-1.5 text-sm hover:bg-stone-100 truncate" @click="pickProject(item)" x-text="item"></button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-1 min-w-0">
+        <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-1">Task</label>
+        <div class="relative" @click.outside="taskOpen = false">
+          <input type="text" x-model="taskSearch" @focus="taskOpen = true"
+                 placeholder="全部 / 输入筛选…"
+                 class="w-full h-9 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-warm-400/40" />
+          <div x-show="taskOpen" class="absolute z-[60] mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-stone-300 bg-white shadow-lg py-1">
+            <button type="button" class="block w-full text-left px-3 py-1.5 text-sm hover:bg-stone-100 text-stone-600" @click="pickTask('')">全部 Task</button>
+            <template x-for="item in taskOptionItems()" :key="'tsk-' + item">
+              <button type="button" class="block w-full text-left px-3 py-1.5 text-sm hover:bg-stone-100 truncate" @click="pickTask(item)" x-text="item"></button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-1 min-w-0">
+        <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-1">Category</label>
+        <select x-model="filters.category" @change.debounce.200ms="loadPrograms(); loadQcRows()"
+                class="w-full h-9 rounded-lg border border-stone-300 bg-white px-3 text-sm">
+          <option value="">All</option>
+          <option value="SDTM">SDTM</option>
+          <option value="ADAM">ADaM</option>
+          <option value="TFL">TFL</option>
+          <option value="OTHER">其他</option>
+        </select>
+      </div>
+
+      <div class="lg:col-span-1 min-w-0">
+        <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-1">Type</label>
+        <select x-model="filters.extension" @change.debounce.200ms="loadPrograms()"
+                class="w-full h-9 rounded-lg border border-stone-300 bg-white px-3 text-sm">
+          <option value="">All</option>
+          <template x-for="item in contexts.extensions" :key="item">
+            <option :value="item" x-text="item"></option>
+          </template>
+        </select>
+      </div>
+
+      <div class="lg:col-span-1 min-w-0">
+        <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-1">Role</label>
+        <select x-model="filters.role" @change.debounce.200ms="loadPrograms()"
+                class="w-full h-9 rounded-lg border border-stone-300 bg-white px-3 text-sm">
+          <option value="">All</option>
+          <option value="main">main</option>
+          <option value="qc">qc</option>
+          <option value="unknown">unknown</option>
+        </select>
+      </div>
+
+      <div class="lg:col-span-1 min-w-0">
+        <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-1">搜索</label>
+        <input type="text" x-model="searchQuery" @input.debounce.300ms="loadPrograms()"
+               placeholder="A1 / AE / re:pattern"
+               class="w-full h-9 rounded-lg border border-stone-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-warm-400/40" />
+      </div>
+    </div>
+
+    <!-- Indexed scopes chips -->
+    <div class="px-5 pb-3 -mt-1 flex flex-wrap gap-1.5" x-show="indexedScopes.length > 0">
+      <template x-for="s in indexedScopes" :key="s.compound + '/' + s.project">
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-warm-500/10 text-warm-700 border border-warm-200">
+          <span x-text="s.compound + '/' + s.project"></span>
+          <span class="opacity-60" x-text="'(' + s.file_count + ')'"></span>
+        </span>
+      </template>
+    </div>
+
+    <!-- Add-scope shelf -->
+    <div x-show="shelfOpen" x-transition class="px-5 pb-4 space-y-2">
+      <input type="text" x-model="shelfSearch" placeholder="搜索 compound / project..."
+             class="w-full h-8 rounded-lg border border-stone-300 bg-white px-3 text-xs outline-none focus:ring-2 focus:ring-warm-400/40" />
+      <div class="max-h-48 overflow-y-auto rounded-lg border border-stone-200 bg-stone-50 divide-y divide-stone-100">
+        <template x-if="availableScopes.length === 0">
+          <p class="px-3 py-3 text-xs text-stone-500 text-center">正在加载目录...</p>
+        </template>
+        <template x-for="scope in filteredAvailableScopes()" :key="scope.compound">
+          <div>
+            <template x-for="prj in scope.projects" :key="scope.compound + '/' + prj">
+              <div class="flex items-center justify-between gap-2 px-3 py-1.5">
+                <p class="min-w-0 text-[11px] font-mono text-stone-600 truncate" x-text="scope.compound + ' / ' + prj"></p>
+                <template x-if="isScopeIndexed(scope.compound, prj)">
+                  <button type="button" @click="removeScope(scope.compound, prj)"
+                          class="shrink-0 h-6 px-2 rounded text-[10px] font-semibold bg-rose-500/10 text-rose-600 hover:bg-rose-500/20">移除</button>
+                </template>
+                <template x-if="!isScopeIndexed(scope.compound, prj)">
+                  <button type="button" @click="addScope(scope.compound, prj)"
+                          :disabled="isScopeIndexing(scope.compound, prj)"
+                          class="shrink-0 h-6 px-2 rounded text-[10px] font-semibold bg-warm-500/10 text-warm-700 hover:bg-warm-500/20 disabled:opacity-50">
+                    <span x-text="isScopeIndexing(scope.compound, prj) ? '索引中...' : '+ 加入'"></span>
+                  </button>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Middle: horizontal P/Q cards ============ -->
+  <section class="grid gap-3 lg:grid-cols-2">
+    <div class="rounded-xl border border-sky-200 bg-sky-50/50 px-4 py-3 min-w-0">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-600 text-white text-[11px] font-bold">P</span>
+          <span class="text-[11px] uppercase tracking-[0.16em] text-sky-700 font-semibold">Program</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" @click="swapCompareSides()" :disabled="!compareP || !compareQ"
+                  class="h-7 px-2 rounded border border-stone-300 bg-white text-[11px] font-semibold disabled:opacity-50 hover:bg-stone-100 transition">交换</button>
+          <button type="button" @click="clearCompareSlot('p')" :disabled="!compareP"
+                  class="h-7 px-2 rounded text-[11px] font-semibold text-sky-700 hover:bg-sky-100 disabled:opacity-50 transition">清除</button>
+        </div>
+      </div>
+      <p class="mt-2 text-sm font-semibold text-stone-800 truncate" x-text="compareLabel(compareP) || '— 未选择 —'"></p>
+      <p class="mt-1 text-[11px] text-stone-500 truncate" x-text="compareContext(compareP)"></p>
+    </div>
+
+    <div class="rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-3 min-w-0">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-[11px] font-bold">Q</span>
+          <span class="text-[11px] uppercase tracking-[0.16em] text-emerald-700 font-semibold">QC</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" @click="runDiff()" :disabled="!compareP || !compareQ || diffLoading"
+                  class="h-7 px-2 rounded border border-stone-300 bg-white text-[11px] font-semibold disabled:opacity-50 hover:bg-stone-100 transition"
+                  x-text="diffLoading ? '比较中…' : '刷新比较'"></button>
+          <button type="button" @click="clearCompareSlot('q')" :disabled="!compareQ"
+                  class="h-7 px-2 rounded text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 transition">清除</button>
+        </div>
+      </div>
+      <p class="mt-2 text-sm font-semibold text-stone-800 truncate" x-text="compareLabel(compareQ) || '— 未选择 —'"></p>
+      <p class="mt-1 text-[11px] text-stone-500 truncate" x-text="compareContext(compareQ)"></p>
+    </div>
+  </section>
+
+  <!-- Diff config strip (only relevant when comparing) -->
+  <section class="flex flex-wrap items-center gap-3 rounded-xl border border-stone-200 bg-white/90 px-4 py-2">
+    <div class="inline-flex rounded-lg border border-stone-300 overflow-hidden">
+      <button type="button" @click="setResultMode('preview')"
+              class="px-3 h-8 text-xs font-semibold transition"
+              :class="resultMode === 'preview' ? 'bg-stone-900 text-white' : 'bg-white text-stone-700'">预览</button>
+      <button type="button" @click="setResultMode('compare')"
+              class="px-3 h-8 text-xs font-semibold transition border-l border-stone-300"
+              :class="resultMode === 'compare' ? 'bg-stone-900 text-white' : 'bg-white text-stone-700'">比较</button>
+    </div>
+    <div class="inline-flex rounded-lg border border-stone-300 overflow-hidden" x-show="resultMode === 'compare'">
+      <button type="button" @click="setDiffViewMode('side-by-side')"
+              class="px-3 h-8 text-xs font-semibold transition"
+              :class="diffViewMode === 'side-by-side' ? 'bg-stone-900 text-white' : 'bg-white'">side-by-side</button>
+      <button type="button" @click="setDiffViewMode('unified')"
+              class="px-3 h-8 text-xs font-semibold transition border-l border-stone-300"
+              :class="diffViewMode === 'unified' ? 'bg-stone-900 text-white' : 'bg-white'">unified</button>
+    </div>
+    <label class="text-[11px] flex items-center gap-1.5 text-stone-600" x-show="resultMode === 'compare'">
+      <input type="checkbox" x-model="diffIgnoreWhitespace" @change="rerunDiff()" /> 忽略空白
+    </label>
+    <label class="text-[11px] flex items-center gap-1.5 text-stone-600" x-show="resultMode === 'compare'">
+      <input type="checkbox" x-model="diffIgnoreCase" @change="rerunDiff()" /> 忽略大小写
+    </label>
+    <span class="text-[11px] font-mono text-stone-500" x-show="diffResult" x-text="diffSummary()"></span>
+    <span class="ml-auto"></span>
+    <button type="button" @click="takeSnapshot()" :disabled="!preview || !preview.file"
+            class="h-8 px-3 rounded-lg bg-stone-900 text-white text-xs font-semibold disabled:opacity-40">创建快照</button>
+    <button type="button" @click="compareLatestTwo()" :disabled="timeline.length < 2"
+            class="h-8 px-3 rounded-lg border border-stone-300 bg-white text-xs font-semibold disabled:opacity-40">最近两版 → P/Q</button>
+  </section>
+
+  <!-- ============ Programs strip + version timeline ============ -->
+  <section class="rounded-xl border border-stone-200 bg-white/90 shadow-sm">
+    <button type="button" @click="toggleBrowserPanel()"
+            class="w-full px-4 py-3 border-b border-stone-200 flex items-center justify-between gap-3 text-left">
+      <div>
+        <p class="text-[11px] uppercase tracking-[0.16em] text-warm-400">版本浏览 Versions</p>
+        <p class="mt-0.5 text-xs text-stone-500">展开程序后，把版本送进上方 P/Q。</p>
+      </div>
+      <div class="flex items-center gap-3 shrink-0">
+        <span class="text-[11px] font-mono text-stone-500" x-text="programs.length + ' rows'"></span>
+        <span class="text-stone-500 text-sm" x-text="browserPanelOpen ? '▾' : '▸'"></span>
+      </div>
+    </button>
+
+    <div x-show="browserPanelOpen" class="p-3">
+      <template x-if="programLoading">
+        <div class="px-4 py-8 text-center text-xs font-mono text-warm-400 animate-pulse">正在加载程序列表...</div>
+      </template>
+      <template x-if="!programLoading && programs.length === 0">
+        <div class="px-4 py-8 text-center">
+          <p class="text-sm font-semibold text-stone-700">没有匹配结果</p>
+          <p class="mt-2 text-xs font-mono text-stone-500">放宽筛选或换一个程序名。</p>
+        </div>
+      </template>
+
+      <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]" x-show="!programLoading && programs.length > 0">
+        <!-- programs list -->
+        <div class="rounded-lg border border-stone-200 bg-stone-50/40 divide-y divide-stone-200">
+          <template x-for="program in programs" :key="program.display_name">
+            <button type="button" @click="selectProgram(program)"
+                    class="w-full text-left px-3 py-2 transition"
+                    :class="programIsSelected(program) ? 'bg-warm-500/10' : 'hover:bg-warm-500/5'">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-warm-500/10 text-warm-700" x-text="program.extension"></span>
+                    <p class="text-[13px] font-semibold text-stone-800 truncate" x-text="program.display_name"></p>
+                  </div>
+                  <p class="mt-1 text-[11px] text-stone-500 truncate" x-text="joinCompact(program.tasks)"></p>
+                </div>
+                <div class="shrink-0 text-right">
+                  <p class="text-[12px] font-semibold text-stone-800" x-text="program.version_count"></p>
+                  <p class="mt-0.5 text-[10px] font-mono text-stone-500" x-text="formatDateTime(program.latest_modified_time)"></p>
+                </div>
+              </div>
+            </button>
+          </template>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2 text-[11px]">
-          <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 text-sky-700 border border-sky-100">
-            <span class="font-semibold">P</span>
-            <span class="truncate max-w-[18rem]" x-text="compareLabel(compareP)"></span>
-          </span>
-          <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-100">
-            <span class="font-semibold">Q</span>
-            <span class="truncate max-w-[18rem]" x-text="compareLabel(compareQ)"></span>
-          </span>
-          <button type="button" @click="toggleCli()"
-                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-stone-300 text-stone-500 hover:text-stone-800 hover:border-stone-500 transition font-mono text-[11px]">
-            <span>>_</span><span>CLI</span><span class="text-[9px] text-stone-400">Ctrl+`</span>
-          </button>
+        <!-- timeline / version detail -->
+        <div class="rounded-lg border border-stone-200 bg-white p-3">
+          <template x-if="!selectedProgram">
+            <p class="text-xs text-stone-500 text-center py-6">选一个程序查看版本历史</p>
+          </template>
+          <template x-if="selectedProgram && timelineLoading">
+            <p class="text-xs font-mono text-warm-400 animate-pulse text-center py-6">正在加载版本历史...</p>
+          </template>
+          <template x-if="selectedProgram && !timelineLoading">
+            <div class="space-y-2">
+              <p class="text-[11px] uppercase tracking-[0.14em] text-warm-400 mb-1" x-text="selectedProgram ? selectedProgram.display_name : ''"></p>
+              <template x-for="version in timeline" :key="version.id">
+                <div class="rounded-lg border border-stone-200 bg-stone-50/50 px-2.5 py-2"
+                     :class="selectedVersion && selectedVersion.id === version.id ? 'ring-1 ring-warm-400/50 border-warm-300' : ''">
+                  <button type="button" @click="selectVersion(version)" class="w-full text-left">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="min-w-0">
+                        <p class="text-[12px] font-semibold text-stone-800 truncate" x-text="version.file_name"></p>
+                        <p class="mt-0.5 text-[10px] text-stone-500 truncate" x-text="version.project + ' / ' + version.task"></p>
+                      </div>
+                      <span class="text-[10px] font-mono text-stone-500" x-text="formatDateTime(version.modified_time)"></span>
+                    </div>
+                  </button>
+                  <div class="mt-2 flex items-center gap-2">
+                    <button type="button" @click="setCompareVersion('p', version)" class="h-6 px-2 rounded bg-sky-600 text-white text-[10px] font-semibold">→ P</button>
+                    <button type="button" @click="setCompareVersion('q', version)" class="h-6 px-2 rounded bg-emerald-600 text-white text-[10px] font-semibold">→ Q</button>
+                    <button type="button" @click="openPreviewModal(version)" class="h-6 px-2 rounded border border-stone-300 text-[10px] font-semibold">预览</button>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
         </div>
       </div>
     </div>
   </section>
 
-  <div class="file-compare-workbench-grid flex-1 min-h-0 gap-4"
-       :class="{ 'is-scope-collapsed': scopeCollapsed, 'is-tray-collapsed': trayCollapsed }">
-    <aside class="file-compare-scope-panel min-h-0 rounded-xl border border-stone-200 bg-white/90 shadow-sm flex flex-col overflow-hidden"
-           :class="{ 'is-collapsed': scopeCollapsed }">
-      <div class="file-compare-panel-rail" x-show="scopeCollapsed" x-cloak>
-        <button type="button" @click="toggleScopePanel()"
-                class="file-compare-rail-button"
-                title="展开程序范围">
-          <span class="file-compare-rail-title">Scope</span>
-          <span class="file-compare-rail-icon">›</span>
-        </button>
-      </div>
-
-      <div x-show="!scopeCollapsed" class="px-4 py-3 border-b border-stone-200">
-        <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <h3 class="text-sm font-semibold text-stone-800">程序范围 Scope</h3>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="text-[11px] font-mono text-stone-500" x-text="status.indexed_files + ' files'"></div>
-            <button type="button" @click="shelfOpen = !shelfOpen; if(shelfOpen && !availableScopes.length) loadAvailableScopes()"
-                    class="h-7 px-2.5 rounded-lg bg-stone-900 text-white text-[11px] font-semibold transition">
-              <span x-text="shelfOpen ? '收起' : '+ 添加'"></span>
-            </button>
-            <button type="button" @click="toggleScopePanel()"
-                    class="h-7 w-7 rounded-lg border border-stone-300 bg-white text-sm font-semibold text-stone-600 hover:bg-stone-100 transition"
-                    title="收起程序范围">‹</button>
-          </div>
+  <!-- ============ Code reader modal ============ -->
+  <template x-teleport="body">
+    <div x-show="readerOpen" x-cloak class="fixed inset-0 z-[200]" @keydown.escape.window="closeReader()">
+      <div x-show="readerOpen"
+           x-transition:enter="transition ease-out duration-150"
+           x-transition:enter-start="opacity-0"
+           x-transition:enter-end="opacity-100"
+           x-transition:leave="transition ease-in duration-100"
+           x-transition:leave-start="opacity-100"
+           x-transition:leave-end="opacity-0"
+           @click="closeReader()"
+           class="absolute inset-0 bg-ink-950/70 backdrop-blur-sm"></div>
+      <div x-show="readerOpen"
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0 translate-y-2"
+           x-transition:enter-end="opacity-100 translate-y-0"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="opacity-100 translate-y-0"
+           x-transition:leave-end="opacity-0 translate-y-2"
+           class="absolute inset-0 flex items-center justify-center p-4">
+        <section class="rounded-xl border border-stone-200 bg-white shadow-2xl flex flex-col w-[min(96vw,1280px)] h-[min(92vh,900px)] overflow-hidden">
+    <div class="px-5 py-3 border-b border-stone-200 bg-stone-50/80 flex flex-wrap items-center gap-3 justify-between">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warm-500/10 text-warm-700"
+                x-show="preview && preview.file" x-text="preview.file.extension"></span>
+          <h3 class="text-base font-semibold text-stone-800 truncate"
+              x-text="preview && preview.file ? preview.file.file_name : (resultMode === 'compare' ? '程序比较' : '代码阅读')"></h3>
         </div>
-
-        <div x-show="shelfOpen" x-transition class="mt-3 space-y-2">
-          <input type="text" x-model="shelfSearch" placeholder="搜索 compound / project..."
-                 class="w-full h-8 rounded-lg border border-stone-300 bg-white px-3 text-xs text-stone-800 focus:ring-2 focus:ring-warm-400/40 outline-none" />
-          <div class="max-h-48 overflow-y-auto rounded-lg border border-stone-200 bg-stone-50 divide-y divide-stone-100">
-            <template x-if="availableScopes.length === 0">
-              <p class="px-3 py-3 text-xs text-stone-500 text-center">正在加载目录...</p>
-            </template>
-            <template x-for="scope in filteredAvailableScopes()" :key="scope.compound">
-              <div>
-                <template x-for="prj in scope.projects" :key="scope.compound + '/' + prj">
-                  <div class="flex items-center justify-between gap-2 px-3 py-1.5">
-                    <p class="min-w-0 text-[11px] font-mono text-stone-600 truncate" x-text="scope.compound + ' / ' + prj"></p>
-                    <template x-if="isScopeIndexed(scope.compound, prj)">
-                      <button type="button" @click="removeScope(scope.compound, prj)"
-                              class="shrink-0 h-6 px-2 rounded text-[10px] font-semibold bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 transition">移除</button>
-                    </template>
-                    <template x-if="!isScopeIndexed(scope.compound, prj)">
-                      <button type="button" @click="addScope(scope.compound, prj)"
-                              :disabled="isScopeIndexing(scope.compound, prj)"
-                              class="shrink-0 h-6 px-2 rounded text-[10px] font-semibold bg-warm-500/10 text-warm-700 hover:bg-warm-500/20 disabled:opacity-50 transition">
-                        <span x-text="isScopeIndexing(scope.compound, prj) ? '索引中...' : '+ 加入'"></span>
-                      </button>
-                    </template>
-                  </div>
-                </template>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <div x-show="!shelfOpen && indexedScopes.length > 0" class="mt-2 flex flex-wrap gap-1.5">
-          <template x-for="s in indexedScopes" :key="s.compound + '/' + s.project">
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-warm-500/10 text-warm-700 border border-warm-200">
-              <span x-text="s.compound + '/' + s.project"></span>
-              <span class="opacity-60" x-text="'(' + s.file_count + ')'"></span>
-            </span>
-          </template>
-        </div>
-        <template x-if="!shelfOpen && indexedScopes.length === 0">
-          <p class="mt-2 text-[11px] text-stone-500 font-mono">点击「+ 添加」把项目加入货架后即可索引</p>
-        </template>
-      </div>
-
-      <div x-show="!scopeCollapsed" class="p-4 space-y-4 overflow-auto">
-        <section class="space-y-3">
-          <div>
-            <label for="program-search" class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">搜索</label>
-            <input id="program-search"
-                   type="text"
-                   x-model="searchQuery"
-                   @input.debounce.300ms="loadPrograms()"
-                   placeholder="A1 / AE / re:pattern"
-                   class="w-full h-10 rounded-lg border border-stone-300 bg-white px-3 text-sm text-stone-800 focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none" />
-          </div>
-
-          <div class="grid grid-cols-1 gap-3">
-            <div>
-              <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">Compound</label>
-              <div class="relative" @click.outside="compoundOpen = false">
-                <input type="text"
-                       x-model="compoundSearch"
-                       @focus="compoundOpen = true"
-                       placeholder="全部 / 输入筛选..."
-                       class="w-full h-10 rounded-lg border border-stone-300 bg-white px-3 text-sm text-stone-800 focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none" />
-                <div x-show="compoundOpen"
-                     x-transition
-                     class="absolute z-[60] mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-stone-300 bg-white shadow-lg py-1">
-                  <button type="button"
-                          class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 text-stone-600"
-                          @click="pickCompound('')">全部 Compound</button>
-                  <template x-for="item in compoundOptionItems()" :key="'cmp-' + item">
-                    <button type="button"
-                            class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 truncate"
-                            @click="pickCompound(item)"
-                            x-text="item"></button>
-                  </template>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">Project</label>
-              <div class="relative" @click.outside="projectOpen = false">
-                <input type="text"
-                       x-model="projectSearch"
-                       @focus="projectOpen = true"
-                       placeholder="全部 / 输入筛选..."
-                       class="w-full h-10 rounded-lg border border-stone-300 bg-white px-3 text-sm text-stone-800 focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none" />
-                <div x-show="projectOpen"
-                     x-transition
-                     class="absolute z-[60] mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-stone-300 bg-white shadow-lg py-1">
-                  <button type="button"
-                          class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 text-stone-600"
-                          @click="pickProject('')">全部 Project</button>
-                  <template x-for="item in projectOptionItems()" :key="'prj-' + item">
-                    <button type="button"
-                            class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 truncate"
-                            @click="pickProject(item)"
-                            x-text="item"></button>
-                  </template>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">Task</label>
-              <div class="relative" @click.outside="taskOpen = false">
-                <input type="text"
-                       x-model="taskSearch"
-                       @focus="taskOpen = true"
-                       placeholder="全部 / 输入筛选..."
-                       class="w-full h-10 rounded-lg border border-stone-300 bg-white px-3 text-sm text-stone-800 focus:ring-2 focus:ring-warm-400/40 focus:border-warm-400 outline-none" />
-                <div x-show="taskOpen"
-                     x-transition
-                     class="absolute z-[60] mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-stone-300 bg-white shadow-lg py-1">
-                  <button type="button"
-                          class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 text-stone-600"
-                          @click="pickTask('')">全部 Task</button>
-                  <template x-for="item in taskOptionItems()" :key="'tsk-' + item">
-                    <button type="button"
-                            class="block w-full text-left px-3 py-2 text-sm hover:bg-stone-100 truncate"
-                            @click="pickTask(item)"
-                            x-text="item"></button>
-                  </template>
-                </div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">Type</label>
-                <select x-model="filters.extension" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 bg-white px-3 text-sm">
-                  <option value="">All</option>
-                  <template x-for="item in contexts.extensions" :key="item">
-                    <option :value="item" x-text="item"></option>
-                  </template>
-                </select>
-              </div>
-              <div>
-                <label class="block text-[11px] uppercase tracking-[0.16em] text-warm-400 mb-2">Role</label>
-                <select x-model="filters.role" @change.debounce.300ms="loadPrograms()" class="w-full h-10 rounded-lg border border-stone-300 bg-white px-3 text-sm">
-                  <option value="">All</option>
-                  <option value="main">main</option>
-                  <option value="qc">qc</option>
-                  <option value="unknown">unknown</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="rounded-xl border border-stone-200 bg-stone-50/80 overflow-hidden">
-          <button type="button"
-                  @click="toggleBrowserPanel()"
-                  class="w-full px-4 py-3 border-b border-stone-200 flex items-center justify-between gap-3 text-left">
-            <div>
-              <p class="text-[11px] uppercase tracking-[0.16em] text-warm-400">版本浏览 Versions</p>
-              <p class="mt-1 text-xs text-stone-500">展开程序后，把任意版本加入右侧 P/Q。</p>
-            </div>
-            <div class="flex items-center gap-3 shrink-0">
-              <span class="text-[11px] font-mono text-stone-500" x-text="programs.length + ' rows'"></span>
-              <span class="text-stone-500 text-sm" x-text="browserPanelOpen ? '▾' : '▸'"></span>
-            </div>
-          </button>
-
-          <div x-show="browserPanelOpen">
-            <template x-if="programLoading">
-              <div class="px-4 py-8 text-center text-xs font-mono text-warm-400 animate-pulse">正在加载程序列表...</div>
-            </template>
-
-            <template x-if="!programLoading && programs.length === 0">
-              <div class="px-4 py-8 text-center">
-                <p class="text-sm font-semibold text-stone-700">没有匹配结果</p>
-                <p class="mt-2 text-xs font-mono text-stone-500">试着放宽筛选条件或换一个程序名。</p>
-              </div>
-            </template>
-
-            <div class="divide-y divide-stone-200 max-h-[min(55vh,32rem)] overflow-y-auto" x-show="!programLoading && programs.length > 0">
-              <template x-for="program in programs" :key="program.display_name">
-                <div>
-                  <button type="button"
-                          @click="selectProgram(program)"
-                          class="w-full text-left px-3 py-2 transition"
-                          :class="programIsSelected(program) ? 'bg-warm-500/10' : 'hover:bg-warm-500/5'">
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="min-w-0">
-                        <div class="flex items-center gap-2">
-                          <span class="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-warm-500/10 text-warm-700" x-text="program.extension"></span>
-                          <p class="text-[13px] font-semibold text-stone-800 truncate" x-text="program.display_name"></p>
-                        </div>
-                        <p class="mt-1 text-[11px] text-stone-500 truncate" x-text="joinCompact(program.tasks)"></p>
-                      </div>
-                      <div class="shrink-0 text-right">
-                        <p class="text-[12px] font-semibold text-stone-800" x-text="program.version_count"></p>
-                        <p class="mt-0.5 text-[10px] font-mono text-stone-500" x-text="formatDateTime(program.latest_modified_time)"></p>
-                      </div>
-                    </div>
-                  </button>
-
-                  <div x-show="programIsSelected(program)" class="px-2 pb-2">
-                    <div class="px-2 py-2 flex items-center justify-between gap-2 text-[11px]">
-                      <span class="uppercase tracking-[0.14em] text-warm-400">Versions</span>
-                      <button type="button"
-                              @click="compareLatestTwo()"
-                              :disabled="timeline.length < 2"
-                              class="h-7 px-2 rounded border border-stone-300 text-[11px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
-                        最近两版
-                      </button>
-                    </div>
-
-                    <template x-if="timelineLoading">
-                      <div class="px-2 py-3 text-xs font-mono text-warm-400 animate-pulse">正在加载版本历史...</div>
-                    </template>
-
-                    <div class="space-y-1" x-show="!timelineLoading">
-                      <template x-for="version in timeline" :key="version.id">
-                        <div class="rounded-lg border border-stone-200 bg-white px-2.5 py-2"
-                             :class="selectedVersion && selectedVersion.id === version.id ? 'ring-1 ring-warm-400/50 border-warm-300' : ''">
-                          <button type="button" @click="selectVersion(version)" class="w-full text-left">
-                            <div class="flex items-start justify-between gap-2">
-                              <div class="min-w-0">
-                                <p class="text-[12px] font-semibold text-stone-800 truncate" x-text="version.file_name"></p>
-                                <p class="mt-0.5 text-[10px] text-stone-500 truncate" x-text="version.project + ' / ' + version.task"></p>
-                              </div>
-                              <span class="text-[10px] font-mono text-stone-500" x-text="formatDateTime(version.modified_time)"></span>
-                            </div>
-                          </button>
-                          <div class="mt-2 flex items-center gap-2">
-                            <button type="button" @click="setCompareVersion('p', version)" class="h-6 px-2 rounded bg-sky-600 text-white text-[10px] font-semibold">P</button>
-                            <button type="button" @click="setCompareVersion('q', version)" class="h-6 px-2 rounded bg-emerald-600 text-white text-[10px] font-semibold">Q</button>
-                            <button type="button" @click="selectVersion(version)" class="h-6 px-2 rounded border border-stone-300 text-[10px] font-semibold">预览</button>
-                          </div>
-                        </div>
-                      </template>
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </div>
-          </div>
-        </section>
-      </div>
-    </aside>
-
-    <main class="file-compare-reader-panel min-h-0 rounded-xl border border-stone-200 bg-white/90 shadow-sm flex flex-col overflow-hidden">
-      <div class="file-compare-reader-toolbar px-5 py-3 border-b border-stone-200 bg-stone-50/80 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-        <div class="min-w-0">
-          <div class="flex items-center gap-2 flex-wrap">
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warm-500/10 text-warm-700"
-                  x-show="preview && preview.file"
-                  x-text="preview.file.extension"></span>
-            <h3 class="text-base font-semibold text-stone-800 truncate"
-                x-text="preview && preview.file ? preview.file.file_name : (resultMode === 'compare' ? '程序比较' : '代码阅读')"></h3>
-          </div>
-          <div class="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-stone-500" x-show="preview">
-            <span x-text="preview ? preview.file.project + ' / ' + preview.file.task : ''"></span>
-            <span x-text="preview ? 'Lines: ' + preview.line_count : ''"></span>
-            <span x-text="preview ? 'Size: ' + formatSize(preview.size_bytes) : ''"></span>
-            <span x-text="preview ? 'Hash: ' + preview.file.content_hash.slice(0, 10) : ''"></span>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2 shrink-0">
-          <div class="inline-flex rounded-lg border border-stone-300 overflow-hidden">
-            <button type="button"
-                    @click="setResultMode('preview')"
-                    class="px-3 h-8 text-xs font-semibold transition"
-                    :class="resultMode === 'preview' ? 'bg-stone-900 text-white' : 'bg-white text-stone-700'">
-              预览
-            </button>
-            <button type="button"
-                    @click="setResultMode('compare')"
-                    class="px-3 h-8 text-xs font-semibold transition border-l border-stone-300"
-                    :class="resultMode === 'compare' ? 'bg-stone-900 text-white' : 'bg-white text-stone-700'">
-              比较
-            </button>
-          </div>
-          <button type="button" @click="takeSnapshot()" :disabled="!preview || !preview.file"
-                  class="h-8 px-3 rounded-lg bg-stone-900 text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed">创建快照</button>
-          <button type="button" @click="loadQcRows()"
-                  class="h-8 px-3 rounded-lg border border-stone-300 bg-white text-xs font-semibold text-stone-700 hover:bg-stone-100 transition">刷新 QC</button>
+        <div class="mt-0.5 flex flex-wrap items-center gap-3 text-[11px] text-stone-500" x-show="preview">
+          <span x-text="preview ? preview.file.project + ' / ' + preview.file.task : ''"></span>
+          <span x-text="preview ? 'Lines: ' + preview.line_count : ''"></span>
+          <span x-text="preview ? 'Size: ' + formatSize(preview.size_bytes) : ''"></span>
         </div>
       </div>
+      <button type="button" @click="closeReader()"
+              class="shrink-0 rounded-lg border border-stone-200 bg-white p-2 text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition"
+              aria-label="关闭">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
 
-      <p x-show="preview && preview.truncated" class="px-5 py-2 border-b border-amber-200 bg-amber-50 text-[11px] font-medium text-amber-700">文件较大，当前只显示截断后的预览内容。</p>
+    <p x-show="preview && preview.truncated" class="px-5 py-2 border-b border-amber-200 bg-amber-50 text-[11px] font-medium text-amber-700">文件较大，当前只显示截断后的预览内容。</p>
 
-      <template x-if="!selectedProgram && resultMode !== 'compare'">
-        <div class="h-full flex items-center justify-center px-10 text-center">
-          <div>
-            <p class="text-base font-semibold text-stone-700">等待选择程序</p>
-            <p class="mt-3 text-xs font-mono text-stone-500">左侧展开版本用于阅读，或直接加入右侧 P/Q 开始比较。</p>
-          </div>
+    <template x-if="!selectedProgram && resultMode !== 'compare'">
+      <div class="px-10 py-12 text-center">
+        <p class="text-sm font-semibold text-stone-700">等待选择程序</p>
+        <p class="mt-2 text-xs font-mono text-stone-500">在上方挑一个程序的版本，或把两个版本送到 P/Q 后切到「比较」。</p>
+      </div>
+    </template>
+
+    <div x-show="resultMode === 'preview'" class="min-h-0">
+      <template x-if="selectedProgram && !preview">
+        <div class="px-8 py-10 text-center">
+          <p class="text-sm font-semibold text-stone-700">还没有预览内容</p>
+          <p class="mt-2 text-xs font-mono text-stone-500">在上面选一个版本，下方会直接打开预览。</p>
         </div>
       </template>
 
-      <div x-show="resultMode === 'preview'" class="h-full min-h-0 flex flex-col">
-        <template x-if="selectedProgram && !preview">
-          <div class="h-full flex items-center justify-center px-8 text-center">
-            <div>
-              <p class="text-sm font-semibold text-stone-700">还没有预览内容</p>
-              <p class="mt-2 text-xs font-mono text-stone-500">在左侧选择一个版本，右侧会直接打开预览。</p>
-            </div>
-          </div>
-        </template>
-
-        <template x-if="preview">
-          <div x-ref="previewScrollContainer" @scroll="onPreviewScroll($event)"
-               class="flex-1 min-h-0 overflow-auto bg-white">
-            <table class="w-full border-collapse">
-              <tbody>
-                <tr x-show="previewTopSpacer() > 0" :style="'height:' + previewTopSpacer() + 'px'">
-                  <td colspan="2" class="p-0 border-0"></td>
+      <template x-if="preview">
+        <div x-ref="previewScrollContainer" @scroll="onPreviewScroll($event)"
+             class="max-h-[70vh] overflow-auto bg-white">
+          <table class="w-full border-collapse">
+            <tbody>
+              <tr x-show="previewTopSpacer() > 0" :style="'height:' + previewTopSpacer() + 'px'">
+                <td colspan="2" class="p-0 border-0"></td>
+              </tr>
+              <template x-for="row in visiblePreviewRows()" :key="'pv-' + row.n">
+                <tr class="align-top border-b border-stone-100">
+                  <td class="w-16 text-right pr-3 py-0.5 text-[11px] font-mono sticky left-0 text-stone-500 bg-stone-50" x-text="row.n"></td>
+                  <td class="py-0.5 pr-3">
+                    <pre class="text-[12px] leading-5 font-mono whitespace-pre-wrap break-words"
+                         :class="row.isSas ? '' : 'text-stone-800'"
+                         x-html="row.html || '&nbsp;'"></pre>
+                  </td>
                 </tr>
-                <template x-for="row in visiblePreviewRows()" :key="'pv-' + row.n">
+              </template>
+              <tr x-show="previewBottomSpacer() > 0" :style="'height:' + previewBottomSpacer() + 'px'">
+                <td colspan="2" class="p-0 border-0"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
+    </div>
+
+    <div x-show="resultMode === 'compare'" class="min-h-0">
+      <template x-if="!compareP || !compareQ">
+        <div class="px-8 py-10 text-center">
+          <p class="text-sm font-semibold text-stone-700">等待比较对象</p>
+          <p class="mt-2 text-xs font-mono text-stone-500">把两个版本分别送到 P 和 Q。</p>
+        </div>
+      </template>
+
+      <template x-if="compareP && compareQ && diffLoading">
+        <div class="px-8 py-10 text-center">
+          <p class="text-xs font-mono text-warm-400 animate-pulse">正在计算结构化比较结果...</p>
+        </div>
+      </template>
+
+      <template x-if="compareP && compareQ && diffResult && !diffLoading">
+        <div>
+          <div class="px-4 py-2 border-b border-stone-200 bg-stone-50/80 flex flex-wrap items-center gap-2">
+            <span class="text-[11px] font-semibold text-sky-600" x-text="diffResult.a_label"></span>
+            <span class="text-stone-400">→</span>
+            <span class="text-[11px] font-semibold text-emerald-600" x-text="diffResult.b_label"></span>
+          </div>
+
+          <div x-ref="diffSideScrollContainer" @scroll="onDiffSideScroll($event)" class="max-h-[70vh] overflow-auto" x-show="diffViewMode === 'side-by-side'">
+            <table class="w-full border-collapse text-[12px]">
+              <thead class="sticky top-0 z-10 bg-stone-100">
+                <tr class="text-[11px]">
+                  <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 text-sky-600">P#</th>
+                  <th class="text-left py-1 border-b border-stone-200 text-sky-600">P</th>
+                  <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 text-emerald-600">Q#</th>
+                  <th class="text-left py-1 border-b border-stone-200 text-emerald-600">Q</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr x-show="diffTopSpacer() > 0" :style="'height:' + diffTopSpacer() + 'px'">
+                  <td colspan="4" class="p-0 border-0"></td>
+                </tr>
+                <template x-for="wrap in visibleDiffLines()" :key="'ds-' + wrap.idx">
                   <tr class="align-top border-b border-stone-100">
-                    <td class="w-16 text-right pr-3 py-0.5 text-[11px] font-mono sticky left-0 text-stone-500 bg-stone-50"
-                        x-text="row.n"></td>
-                    <td class="py-0.5 pr-3">
-                      <pre class="text-[12px] leading-5 font-mono whitespace-pre-wrap break-words"
-                           :class="row.isSas ? '' : 'text-stone-800'"
-                           x-html="row.html || '&nbsp;'"></pre>
-                    </td>
+                    <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.a_lineno || ''"></td>
+                    <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(wrap.line.op, 'p')" x-text="wrap.line.a_text || ' '"></pre></td>
+                    <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.b_lineno || ''"></td>
+                    <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(wrap.line.op, 'q')" x-text="wrap.line.b_text || ' '"></pre></td>
                   </tr>
                 </template>
-                <tr x-show="previewBottomSpacer() > 0" :style="'height:' + previewBottomSpacer() + 'px'">
-                  <td colspan="2" class="p-0 border-0"></td>
+                <tr x-show="diffBottomSpacer() > 0" :style="'height:' + diffBottomSpacer() + 'px'">
+                  <td colspan="4" class="p-0 border-0"></td>
                 </tr>
               </tbody>
             </table>
           </div>
-        </template>
-      </div>
 
-      <div x-show="resultMode === 'compare'" class="h-full min-h-0 flex flex-col">
-        <template x-if="!compareP || !compareQ">
-          <div class="h-full flex items-center justify-center px-8 text-center">
-            <div>
-              <p class="text-sm font-semibold text-stone-700">等待比较对象</p>
-              <p class="mt-2 text-xs font-mono text-stone-500">在左侧版本列表或右侧 QC 行里设置 P / Q。</p>
-            </div>
-          </div>
-        </template>
-
-        <template x-if="compareP && compareQ && diffLoading">
-          <div class="h-full flex items-center justify-center">
-            <p class="text-xs font-mono text-warm-400 animate-pulse">正在计算结构化比较结果...</p>
-          </div>
-        </template>
-
-        <template x-if="compareP && compareQ && diffResult && !diffLoading">
-          <div class="flex-1 min-h-0 flex flex-col">
-            <div class="px-4 py-2 border-b border-stone-200 bg-stone-50/80 flex flex-wrap items-center gap-2">
-              <span class="text-[11px] font-semibold text-sky-600" x-text="diffResult.a_label"></span>
-              <span class="text-stone-400">→</span>
-              <span class="text-[11px] font-semibold text-emerald-600" x-text="diffResult.b_label"></span>
-            </div>
-
-            <div x-ref="diffSideScrollContainer" @scroll="onDiffSideScroll($event)" class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'side-by-side'">
-              <table class="w-full border-collapse text-[12px]">
-                <thead class="sticky top-0 z-10 bg-stone-100">
-                  <tr class="text-[11px]">
-                    <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 text-sky-600">P#</th>
-                    <th class="text-left py-1 border-b border-stone-200 text-sky-600">P</th>
-                    <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 text-emerald-600">Q#</th>
-                    <th class="text-left py-1 border-b border-stone-200 text-emerald-600">Q</th>
+          <div x-ref="diffUnifiedScrollContainer" @scroll="onDiffUnifiedScroll($event)" class="max-h-[70vh] overflow-auto" x-show="diffViewMode === 'unified'">
+            <table class="w-full border-collapse text-[12px]">
+              <thead class="sticky top-0 z-10 bg-stone-100">
+                <tr class="text-[11px]">
+                  <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 text-sky-600">P#</th>
+                  <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 text-emerald-600">Q#</th>
+                  <th class="text-left py-1 border-b border-stone-200">Unified Diff</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr x-show="diffUnifiedTopSpacer() > 0" :style="'height:' + diffUnifiedTopSpacer() + 'px'">
+                  <td colspan="3" class="p-0 border-0"></td>
+                </tr>
+                <template x-for="wrap in visibleUnifiedLines()" :key="'du-' + wrap.idx">
+                  <tr class="align-top border-b border-stone-100">
+                    <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.kind === 'hunk' ? '' : (wrap.line.a_lineno || '')"></td>
+                    <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.kind === 'hunk' ? '' : (wrap.line.b_lineno || '')"></td>
+                    <td class="py-1 pr-2">
+                      <pre class="font-mono whitespace-pre-wrap break-words" :class="unifiedLineClass(wrap.line)" x-text="wrap.line.text || ' '"></pre>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  <tr x-show="diffTopSpacer() > 0" :style="'height:' + diffTopSpacer() + 'px'">
-                    <td colspan="4" class="p-0 border-0"></td>
-                  </tr>
-                  <template x-for="wrap in visibleDiffLines()" :key="'ds-' + wrap.idx">
-                    <tr class="align-top border-b border-stone-100">
-                      <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.a_lineno || ''"></td>
-                      <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(wrap.line.op, 'p')" x-text="wrap.line.a_text || ' '"></pre></td>
-                      <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.b_lineno || ''"></td>
-                      <td class="py-1 pr-2"><pre class="font-mono whitespace-pre-wrap break-words" :class="diffCellClass(wrap.line.op, 'q')" x-text="wrap.line.b_text || ' '"></pre></td>
-                    </tr>
-                  </template>
-                  <tr x-show="diffBottomSpacer() > 0" :style="'height:' + diffBottomSpacer() + 'px'">
-                    <td colspan="4" class="p-0 border-0"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div x-ref="diffUnifiedScrollContainer" @scroll="onDiffUnifiedScroll($event)" class="flex-1 min-h-0 overflow-auto" x-show="diffViewMode === 'unified'">
-              <table class="w-full border-collapse text-[12px]">
-                <thead class="sticky top-0 z-10 bg-stone-100">
-                  <tr class="text-[11px]">
-                    <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 text-sky-600">P#</th>
-                    <th class="w-16 text-right pr-2 py-1 border-b border-stone-200 text-emerald-600">Q#</th>
-                    <th class="text-left py-1 border-b border-stone-200">Unified Diff</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr x-show="diffUnifiedTopSpacer() > 0" :style="'height:' + diffUnifiedTopSpacer() + 'px'">
-                    <td colspan="3" class="p-0 border-0"></td>
-                  </tr>
-                  <template x-for="wrap in visibleUnifiedLines()" :key="'du-' + wrap.idx">
-                    <tr class="align-top border-b border-stone-100">
-                      <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.kind === 'hunk' ? '' : (wrap.line.a_lineno || '')"></td>
-                      <td class="text-right pr-2 py-1 font-mono text-stone-500" x-text="wrap.line.kind === 'hunk' ? '' : (wrap.line.b_lineno || '')"></td>
-                      <td class="py-1 pr-2">
-                        <pre class="font-mono whitespace-pre-wrap break-words" :class="unifiedLineClass(wrap.line)" x-text="wrap.line.text || ' '"></pre>
-                      </td>
-                    </tr>
-                  </template>
-                  <tr x-show="diffUnifiedBottomSpacer() > 0" :style="'height:' + diffUnifiedBottomSpacer() + 'px'">
-                    <td colspan="3" class="p-0 border-0"></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </template>
-      </div>
-    </main>
-
-    <aside class="file-compare-tray-panel min-h-0 rounded-xl border border-stone-200 bg-white/90 shadow-sm flex flex-col overflow-hidden"
-           :class="{ 'is-collapsed': trayCollapsed }">
-      <div class="file-compare-panel-rail" x-show="trayCollapsed" x-cloak>
-        <button type="button" @click="toggleTrayPanel()"
-                class="file-compare-rail-button"
-                title="展开比较篮">
-          <span class="file-compare-rail-title">P/Q</span>
-          <span class="file-compare-rail-icon">‹</span>
-        </button>
-      </div>
-
-      <div x-show="!trayCollapsed" class="px-4 py-3 border-b border-stone-200 bg-stone-50/80">
-        <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <h3 class="text-sm font-semibold text-stone-800">
-              比较篮 P/Q <span class="text-[11px] uppercase tracking-[0.14em] text-warm-400">Compare</span>
-            </h3>
-          </div>
-          <div class="flex items-center gap-2">
-            <button type="button" @click="clearCompareTray()"
-                    class="h-7 px-2 rounded-lg border border-stone-300 bg-white text-[11px] font-semibold text-stone-600 hover:bg-stone-100 transition">清空</button>
-            <button type="button" @click="toggleTrayPanel()"
-                    class="h-7 w-7 rounded-lg border border-stone-300 bg-white text-sm font-semibold text-stone-600 hover:bg-stone-100 transition"
-                    title="收起比较篮">›</button>
+                </template>
+                <tr x-show="diffUnifiedBottomSpacer() > 0" :style="'height:' + diffUnifiedBottomSpacer() + 'px'">
+                  <td colspan="3" class="p-0 border-0"></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
+      </template>
+    </div>
+        </section>
       </div>
+    </div>
+  </template>
 
-      <div x-show="!trayCollapsed" class="flex-1 min-h-0 overflow-auto p-4 space-y-4">
-        <section class="space-y-2">
-          <div class="rounded-xl border-l-4 border-sky-600 bg-sky-50/70 px-3 py-3 min-w-0">
-            <div class="flex items-center justify-between gap-2">
-              <p class="text-[10px] uppercase tracking-[0.16em] text-sky-700 font-semibold">P</p>
-              <button type="button" @click="clearCompareSlot('p')" class="text-[10px] font-semibold text-sky-700 hover:text-sky-900">清除</button>
-            </div>
-            <p class="mt-1 text-sm font-semibold text-stone-800 truncate" x-text="compareLabel(compareP)"></p>
-            <p class="mt-1 text-[11px] text-stone-500 truncate" x-text="compareContext(compareP)"></p>
+  <!-- ============ QC status (grouped by category) ============ -->
+  <section class="rounded-xl border border-stone-200 bg-white shadow-sm">
+    <div class="px-5 py-3 border-b border-stone-200 bg-stone-50/80 flex items-center justify-between gap-3">
+      <div>
+        <p class="text-[11px] uppercase tracking-[0.16em] text-warm-400">QC 状态</p>
+        <p class="mt-0.5 text-[11px] text-stone-500">按 SDTM / ADaM / TFL 分组，依据当前 Scope 筛选。</p>
+      </div>
+      <button type="button" @click="loadQcRows()"
+              class="h-7 px-3 rounded-lg border border-stone-300 text-[11px] font-semibold hover:bg-stone-100 transition">刷新</button>
+    </div>
+    <template x-if="qcLoading">
+      <p class="px-5 py-6 text-xs font-mono text-warm-400 animate-pulse">正在加载...</p>
+    </template>
+    <template x-if="!qcLoading && qcRows.length === 0">
+      <p class="px-5 py-6 text-xs text-stone-500">无 QC 行。在上方筛选 compound / project / category 后刷新。</p>
+    </template>
+    <div x-show="!qcLoading && qcRows.length > 0" class="divide-y divide-stone-200">
+      <template x-for="group in qcGroupedRows()" :key="group.key">
+        <div>
+          <div class="flex items-center justify-between px-5 py-2 bg-stone-50/40">
+            <span class="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-700" x-text="group.label"></span>
+            <span class="text-[11px] font-mono text-stone-500" x-text="group.items.length + ' 项'"></span>
           </div>
-
-          <button type="button" @click="swapCompareSides()" :disabled="!compareP || !compareQ"
-                  class="w-full h-9 rounded-lg border border-stone-300 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">交换 P/Q</button>
-
-          <div class="rounded-xl border-l-4 border-emerald-600 bg-emerald-50/70 px-3 py-3 min-w-0">
-            <div class="flex items-center justify-between gap-2">
-              <p class="text-[10px] uppercase tracking-[0.16em] text-emerald-700 font-semibold">Q</p>
-              <button type="button" @click="clearCompareSlot('q')" class="text-[10px] font-semibold text-emerald-700 hover:text-emerald-900">清除</button>
-            </div>
-            <p class="mt-1 text-sm font-semibold text-stone-800 truncate" x-text="compareLabel(compareQ)"></p>
-            <p class="mt-1 text-[11px] text-stone-500 truncate" x-text="compareContext(compareQ)"></p>
-          </div>
-        </section>
-
-        <section class="rounded-xl border border-stone-200 bg-stone-50/70 p-3 space-y-3">
-          <div class="flex items-center justify-between gap-2">
-            <p class="text-[11px] uppercase tracking-[0.16em] text-warm-400">比较设置 Diff</p>
-            <span class="text-[11px] font-mono text-stone-500" x-show="diffResult" x-text="diffSummary()"></span>
-          </div>
-          <div class="inline-flex w-full rounded-lg border border-stone-300 overflow-hidden">
-            <button type="button" @click="setDiffViewMode('side-by-side')" class="flex-1 px-3 h-8 text-xs font-semibold transition" :class="diffViewMode === 'side-by-side' ? 'bg-stone-900 text-white' : 'bg-white'">side-by-side</button>
-            <button type="button" @click="setDiffViewMode('unified')" class="flex-1 px-3 h-8 text-xs font-semibold transition border-l border-stone-300" :class="diffViewMode === 'unified' ? 'bg-stone-900 text-white' : 'bg-white'">unified</button>
-          </div>
-          <label class="text-[11px] flex items-center gap-1.5 text-stone-500">
-            <input type="checkbox" x-model="diffIgnoreWhitespace" @change="rerunDiff()" />
-            忽略空白
-          </label>
-          <label class="text-[11px] flex items-center gap-1.5 text-stone-500">
-            <input type="checkbox" x-model="diffIgnoreCase" @change="rerunDiff()" />
-            忽略大小写
-          </label>
-          <button type="button"
-                  @click="runDiff()"
-                  :disabled="!compareP || !compareQ || diffLoading"
-                  class="w-full h-8 rounded-lg bg-stone-900 text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-            <span x-text="diffLoading ? '比较中...' : '刷新比较'"></span>
-          </button>
-        </section>
-
-        <section class="rounded-xl border border-stone-200 bg-white overflow-hidden">
-          <div class="px-3 py-2 border-b border-stone-200 bg-stone-50/80 flex items-center justify-between">
-            <p class="text-[11px] uppercase tracking-[0.16em] text-warm-400">快照 Snapshots</p>
-            <span class="text-[11px] font-mono text-stone-500" x-text="snapshots.length"></span>
-          </div>
-          <template x-if="snapshots.length === 0">
-            <p class="px-3 py-4 text-xs font-mono text-stone-500">No snapshots yet.</p>
-          </template>
-          <div class="divide-y divide-stone-100 max-h-52 overflow-auto" x-show="snapshots.length > 0">
-            <template x-for="snap in snapshots" :key="snap.id">
-              <div class="px-3 py-2">
-                <div class="flex items-start justify-between gap-2">
-                  <div class="min-w-0">
-                    <p class="text-xs font-semibold text-stone-800" x-text="'#' + snap.id"></p>
-                    <p class="mt-0.5 text-[10px] font-mono text-stone-500 truncate" x-text="formatDateTime(snap.snapshot_ts)"></p>
-                    <p class="mt-0.5 text-[10px] text-stone-500 truncate" x-text="snap.note || 'No note'"></p>
-                  </div>
-                  <button type="button" @click="compareSnapshotWithCurrent(snap)" class="h-7 px-2 rounded-lg border border-stone-300 text-[10px] font-semibold shrink-0">比较</button>
+          <div class="divide-y divide-stone-100">
+            <template x-for="(row, idx) in group.items" :key="group.key + '::' + row.task + '::' + row.program + '::' + idx">
+              <div class="px-5 py-2 flex items-start justify-between gap-3" :class="row.stale ? 'bg-rose-50/70' : ''">
+                <div class="min-w-0">
+                  <p class="text-xs font-semibold text-stone-800 truncate" x-text="row.program"></p>
+                  <p class="mt-0.5 text-[10px] font-mono text-stone-500 truncate" x-text="row.task"></p>
+                  <span class="mt-1 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold" :class="qcBadgeClass(row.reason)" x-text="qcText(row.reason)"></span>
                 </div>
+                <button type="button" @click="compareQcRow(row)" :disabled="!row.main_sas_path || !row.qc_sas_path"
+                        class="shrink-0 h-7 px-2 rounded-lg border border-stone-300 text-[10px] font-semibold disabled:opacity-40">送 P/Q</button>
               </div>
             </template>
           </div>
-        </section>
+        </div>
+      </template>
+    </div>
+  </section>
 
-        <section class="file-compare-qc-mini rounded-xl border border-stone-200 bg-white overflow-hidden">
-          <div class="px-3 py-2 border-b border-stone-200 bg-stone-50/80 flex items-center justify-between gap-2">
-            <div>
-              <p class="text-[11px] uppercase tracking-[0.16em] text-warm-400">QC 状态</p>
-              <p class="mt-0.5 text-[10px] text-stone-500">当前筛选或预览范围</p>
-            </div>
-            <button type="button" @click="loadQcRows()" class="h-7 px-2 rounded-lg border border-stone-300 text-[10px] font-semibold">刷新</button>
-          </div>
-
-          <template x-if="qcLoading">
-            <p class="px-3 py-4 text-xs font-mono text-warm-400 animate-pulse">正在加载...</p>
-          </template>
-
-          <template x-if="!qcLoading && qcRows.length === 0">
-            <p class="px-3 py-4 text-xs text-stone-500">无 QC 行。选择 project/task 或版本后刷新。</p>
-          </template>
-
-          <div class="divide-y divide-stone-100 max-h-64 overflow-auto" x-show="!qcLoading && qcRows.length > 0">
-            <template x-for="(row, idx) in qcRows" :key="row.task + '::' + row.program + '::' + idx">
-              <div class="px-3 py-2" :class="row.stale ? 'bg-rose-50/70' : ''">
-                <div class="flex items-start justify-between gap-2">
-                  <div class="min-w-0">
-                    <p class="text-xs font-semibold text-stone-800 truncate" x-text="row.program"></p>
-                    <p class="mt-0.5 text-[10px] font-mono text-stone-500 truncate" x-text="row.task"></p>
-                    <span class="mt-1 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold" :class="qcBadgeClass(row.reason)" x-text="qcText(row.reason)"></span>
-                  </div>
-                  <button type="button" @click="compareQcRow(row)" :disabled="!row.main_sas_path || !row.qc_sas_path"
-                          class="h-7 px-2 rounded-lg border border-stone-300 text-[10px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed shrink-0">P/Q</button>
-                </div>
-              </div>
-            </template>
-          </div>
-        </section>
-      </div>
-    </aside>
-  </div>
-
-  <!-- Web CLI overlay — iTerm2-style centered floating terminal -->
+  <!-- ============ Web CLI overlay ============ -->
   <div x-show="cli.open" x-cloak
        @keydown.escape.window="cli.open = false"
        @click.self="cli.open = false"
@@ -635,7 +554,6 @@
        x-transition:leave-start="opacity-100"
        x-transition:leave-end="opacity-0"
        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-
     <div x-transition:enter="transition ease-out duration-150"
          x-transition:enter-start="opacity-0 scale-95 translate-y-2"
          x-transition:enter-end="opacity-100 scale-100 translate-y-0"
@@ -645,7 +563,6 @@
          @click.stop
          class="w-[min(860px,92vw)] h-[min(560px,80vh)] flex flex-col rounded-xl overflow-hidden shadow-2xl border border-stone-700/60"
          style="background: #1a1b26;">
-
       <div class="flex items-center gap-2 px-4 py-3 shrink-0 select-none" style="background: #16171f; border-bottom: 1px solid rgba(255,255,255,0.07);">
         <button type="button" @click="cli.open = false"
                 class="w-3 h-3 rounded-full bg-rose-500 hover:bg-rose-400 transition shrink-0 flex items-center justify-center group">
@@ -656,10 +573,7 @@
         <span class="flex-1 text-center text-[11px] text-stone-500 font-mono tracking-wider">PEAK CLI - <span x-text="cli.cwd.length ? '/' + cli.cwd.join('/') : '/'"></span></span>
         <span class="text-[10px] text-stone-600 font-mono shrink-0">Ctrl+`</span>
       </div>
-
-      <div x-ref="cliOutput"
-           class="flex-1 overflow-auto px-4 py-3 font-mono text-[13px] leading-6"
-           style="color: #c0caf5;">
+      <div x-ref="cliOutput" class="flex-1 overflow-auto px-4 py-3 font-mono text-[13px] leading-6" style="color: #c0caf5;">
         <template x-for="(line, i) in cli.output" :key="i">
           <pre class="whitespace-pre-wrap break-words m-0 leading-6" :class="cliLineClass(line.type)" x-text="line.text"></pre>
         </template>
@@ -667,12 +581,10 @@
           <p class="text-stone-600 text-xs font-mono">PEAK 程序回放台 · 输入 <span class="text-warm-400">help</span> 查看命令列表</p>
         </template>
       </div>
-
       <div class="flex items-center gap-0 px-4 py-3 shrink-0 font-mono text-[13px]"
            style="border-top: 1px solid rgba(255,255,255,0.07); background: #16171f;">
         <span class="text-warm-400 shrink-0 select-none" x-text="cliPrompt()"></span>
-        <input type="text" x-model="cli.input"
-               x-ref="cliInput"
+        <input type="text" x-model="cli.input" x-ref="cliInput"
                @keydown.enter.prevent="cliRunLine(cli.input); cli.input = ''"
                @keydown.tab.prevent="cliTabComplete()"
                @keydown.up.prevent="cliHistoryUp()"

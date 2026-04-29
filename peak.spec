@@ -1,11 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks import collect_submodules
 
 hiddenimports = []
 hiddenimports += collect_submodules("uvicorn")
 hiddenimports += collect_submodules("aiosqlite")
 hiddenimports += collect_submodules("openpyxl")
-hiddenimports += collect_submodules("webview")
 hiddenimports += [
     "main",
     "auth",
@@ -30,7 +29,6 @@ datas = [
     ("PEAK logo.png", "."),
     ("manifest.json", "."),
 ]
-datas += collect_data_files("webview")
 
 a = Analysis(
     ["desktop.py"],
@@ -41,6 +39,7 @@ a = Analysis(
     hookspath=[],
     runtime_hooks=[],
     excludes=[
+        "webview", "pywebview", "pythonnet", "clr", "clr_loader",
         "torch", "torchvision", "torchaudio",
         "transformers", "tokenizers", "safetensors", "huggingface_hub",
         "cv2", "av",
@@ -70,7 +69,7 @@ exe = EXE(
     debug=False,
     strip=False,
     upx=False,
-    console=False,
+    console=True,
 )
 
 coll = COLLECT(

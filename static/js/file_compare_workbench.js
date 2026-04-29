@@ -2,7 +2,8 @@ function codeIndexWorkbench() {
   return {
     status: { indexed_files: 0, program_groups: 0, last_indexed_at: null },
     contexts: { compounds: [], projects: [], tasks: [], extensions: [] },
-    filters: { compound: '', project: '', task: '', extension: '', role: '' },
+    filters: { compound: '', project: '', task: '', category: '', extension: '', role: '' },
+    categoryOptions: ['SDTM', 'ADAM', 'TFL', 'OTHER'],
     searchQuery: '',
     programs: [],
     programLoading: false,
@@ -22,6 +23,7 @@ function codeIndexWorkbench() {
     previewVisibleEnd: 0,
     snapshots: [],
     resultMode: 'preview',
+    readerOpen: false,
     compareP: null,
     compareQ: null,
     diffLoading: false,
@@ -249,6 +251,7 @@ function codeIndexWorkbench() {
       if (this.filters.compound) params.set('compound', this.filters.compound);
       if (this.filters.project) params.set('project', this.filters.project);
       if (this.filters.task) params.set('task', this.filters.task);
+      if (this.filters.category) params.set('category', this.filters.category);
       if (this.filters.extension) params.set('extension', this.filters.extension);
       if (this.filters.role) params.set('role', this.filters.role);
       params.set('limit', '300');
@@ -400,6 +403,11 @@ function codeIndexWorkbench() {
       await this.loadPreview(version.id);
     },
 
+    async openPreviewModal(version) {
+      await this.selectVersion(version, false);
+      this.readerOpen = true;
+    },
+
     async loadPreview(fileId) {
       try {
         this.preview = await this.api('/api/files/indexed-preview/' + fileId);
@@ -540,6 +548,7 @@ function codeIndexWorkbench() {
       this.diffResult = null;
       this.resetDiffScrollState();
       this.resultMode = 'compare';
+      this.readerOpen = true;
       await this.runDiff();
     },
 
@@ -719,12 +728,19 @@ function codeIndexWorkbench() {
 
     async setResultMode(mode) {
       this.resultMode = mode;
+      if (mode === 'preview' || mode === 'compare') {
+        this.readerOpen = true;
+      }
       if (mode === 'qc') {
         await this.loadQcRows();
       }
       if (mode === 'compare' && this.compareP && this.compareQ && !this.diffResult) {
         await this.runDiff();
       }
+    },
+
+    closeReader() {
+      this.readerOpen = false;
     },
 
     async loadQcRows() {
@@ -737,6 +753,7 @@ function codeIndexWorkbench() {
         if (compound) params.set('compound', compound);
         if (project) params.set('project', project);
         if (task) params.set('task', task);
+        if (this.filters.category) params.set('category', this.filters.category);
         this.qcRows = await this.api('/api/files/indexed-qc-timing?' + params.toString());
       } catch (err) {
         this.qcRows = [];
@@ -744,6 +761,20 @@ function codeIndexWorkbench() {
       } finally {
         this.qcLoading = false;
       }
+    },
+
+    qcGroupedRows() {
+      const groups = { SDTM: [], ADAM: [], TFL: [], OTHER: [] };
+      for (const row of this.qcRows || []) {
+        const cat = (row.category || 'OTHER').toUpperCase();
+        (groups[cat] || groups.OTHER).push(row);
+      }
+      return [
+        { key: 'SDTM', label: 'SDTM', items: groups.SDTM },
+        { key: 'ADAM', label: 'ADaM', items: groups.ADAM },
+        { key: 'TFL', label: 'TFL', items: groups.TFL },
+        { key: 'OTHER', label: '其他', items: groups.OTHER },
+      ].filter((g) => g.items.length > 0);
     },
 
     diffSummary() {
