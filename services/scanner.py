@@ -123,6 +123,16 @@ def search_studies(base_path: Path, query: str) -> list[StudyInfo]:
             results.extend(discover_studies(base_path, comp))
         return results
 
+    prefixed_compounds = [c for c in all_compounds if q.startswith(c.upper() + "-")]
+    if prefixed_compounds:
+        results: list[StudyInfo] = []
+        for comp in prefixed_compounds:
+            results.extend(discover_studies(base_path, comp))
+        return [
+            s for s in results
+            if _matches(q, s.compound) or _matches(q, s.study_id)
+        ]
+
     # Fallback: query may be a study-ID fragment — scan everything
     all_studies = discover_studies(base_path)
     return [

@@ -12,6 +12,7 @@
 
       <button x-show="!sidebarOpen" @click="toggleSidebar()"
               class="absolute inset-0 w-full h-full flex items-start pt-6 justify-center
+                     tracker-sidebar-expand-toggle z-10
                      text-stone-400 hover:text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer"
               title="展开面板">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -19,8 +20,9 @@
         </svg>
       </button>
 
-      <aside class="sidebar-content p-5 space-y-5"
+      <aside class="sidebar-content flex h-full flex-col p-5"
              :class="sidebarOpen ? 'sidebar-content-visible' : 'sidebar-content-hidden'">
+        <div class="sidebar-scroll flex-1 space-y-5 overflow-y-auto pr-1">
 
         <div class="flex items-center justify-between -mt-2 -mr-2">
           <span id="tracker-hud-ticker" class="hud-ticker truncate">ONLINE · --:--:-- · UP 00:00:00</span>
@@ -217,19 +219,23 @@
           </div>
         </div>
 
+        </div>
+
         <!-- Load -->
-        <button @click="loadDashboard()"
-                :disabled="selectedStudies.length === 0 || loadingDashboard"
-                :class="loadingDashboard ? 'is-loading' : ''"
-                class="btn-neon w-full text-sm h-10 rounded-md tracking-wider">
-          <span x-show="!loadingDashboard" class="flex items-center justify-center gap-2">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-            </svg>
-            启动 · 装载看板
-          </span>
-          <span x-show="loadingDashboard" class="font-mono animate-pulse">▰▰▰ LOADING</span>
-        </button>
+        <div class="sidebar-footer shrink-0 pt-3">
+          <button @click="loadDashboard()"
+                  :disabled="selectedStudies.length === 0 || loadingDashboard"
+                  :class="loadingDashboard ? 'is-loading' : ''"
+                  class="btn-neon w-full text-sm h-10 rounded-md tracking-wider">
+            <span x-show="!loadingDashboard" class="flex items-center justify-center gap-2">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+              启动 · 装载看板
+            </span>
+            <span x-show="loadingDashboard" class="font-mono animate-pulse">▰▰▰ LOADING</span>
+          </button>
+        </div>
       </aside>
     </div>
 
@@ -363,7 +369,7 @@
 
       <!-- Dashboard -->
       <template x-if="dashboardLoaded">
-        <div :key="animationKey" class="dashboard-content-enter space-y-4">
+        <div class="dashboard-content-enter space-y-4">
           <!-- Pivot panel -->
           <div class="tracker-panel rounded-lg border border-stone-200 bg-white overflow-hidden">
             <button @click="toggleCharts()"

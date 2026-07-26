@@ -18,8 +18,8 @@ def _load_tasks_for_studies(
     tracker_file_paths: list[str] | None = None,
 ) -> list[TaskItem]:
     """Load and cache-parse tasks, optionally filtered by file paths."""
-    all_studies = discover_studies(PROJECTS_BASE_PATH)
     id_set = set(study_ids)
+    all_studies = _discover_selected_studies(study_ids)
     path_set = set(tracker_file_paths) if tracker_file_paths else None
     tasks: list[TaskItem] = []
     for study in all_studies:
@@ -30,6 +30,31 @@ def _load_tasks_for_studies(
                 continue
             tasks.extend(tracker_cache.get_tasks(tracker_file))
     return tasks
+
+
+def _discover_selected_studies(study_ids: list[str]):
+    """Scan only compounds implied by selected study IDs.
+
+    Study IDs in this workspace are compound-prefixed, e.g. QLC5508-201.
+    Loading a remembered selection should therefore scan QLC5508 only, not
+    every compound under the projects root.
+    """
+    compounds: list[str] = []
+    seen: set[str] = set()
+    for study_id in study_ids:
+        candidate = study_id.strip().split("-", 1)[0]
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        compounds.append(candidate)
+
+    if not compounds:
+        return discover_studies(PROJECTS_BASE_PATH)
+
+    studies = []
+    for compound in compounds:
+        studies.extend(discover_studies(PROJECTS_BASE_PATH, compound))
+    return studies
 
 
 @router.post("/dashboard", response_model=DashboardResponse)

@@ -58,7 +58,6 @@ function trackerApp() {
     taskGroups: [],
     sidebarOpen: true,
     sidebarCollapsing: false,
-    animationKey: 0,
     // --- custom tasks ---
     customTasks: [],
     showCustomTaskModal: false,
@@ -97,7 +96,6 @@ function trackerApp() {
       await this._loadCustomTasks();
 
       if (this.selectedStudies.length > 0) {
-        await this.searchStudies();
         await this.loadDashboard();
       }
     },
@@ -295,7 +293,6 @@ function trackerApp() {
       }
       this.tasks = filtered;
       this.taskGroups = this._groupTasks(filtered);
-      this.animationKey++;
     },
 
     // --- sidebar ---
@@ -449,7 +446,6 @@ function trackerApp() {
         this.tasks = data.tasks;
         this.taskGroups = this._groupTasks(data.tasks);
         this.dashboardLoaded = true;
-        this.animationKey++;
         await this._loadCustomTasks();
         // Render charts after data is loaded
         this.$nextTick(() => {

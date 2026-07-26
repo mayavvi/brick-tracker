@@ -175,14 +175,26 @@ html.dark .dark\:text-stone-200 { color: #E8EDFA !important; }
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .sidebar-content-hidden {
   opacity: 0;
   transform: translateX(-8px);
   pointer-events: none;
   position: absolute;
+  inset: 0;
   overflow: hidden;
+}
+.sidebar-scroll {
+  min-height: 0;
+  scrollbar-color: rgba(46, 146, 121, 0.32) transparent;
+  overscroll-behavior: contain;
+}
+.sidebar-footer {
+  background: linear-gradient(180deg, rgba(255, 253, 248, 0), rgba(255, 253, 248, 0.96) 28%);
+}
+.tracker-sidebar-expand-toggle {
+  z-index: 10;
 }
 
 /* ================================================================
@@ -2013,6 +2025,7 @@ html.dark .welcome-editorial-main {
 .tracker-page .ddl-overdue::before,
 .tracker-page .ddl-urgent::before,
 .tracker-page .ddl-soon::before {
+  animation: none;
   box-shadow: none;
 }
 

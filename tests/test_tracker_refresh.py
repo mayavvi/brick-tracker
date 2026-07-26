@@ -55,6 +55,80 @@ class TrackerRoleFilterTests(unittest.TestCase):
         self.assertEqual(qc_summary.has_issues, 1)
 
 
+class TrackerDashboardScanTests(unittest.TestCase):
+    def test_study_id_search_scans_prefixed_compound_before_global_fallback(self) -> None:
+        from models import StudyInfo
+        import services.scanner as scanner
+
+        calls: list[str | None] = []
+        original_compounds = scanner.discover_compounds
+        original_studies = scanner.discover_studies
+
+        def fake_compounds(_base_path):
+            return ["QLC5508", "QLC7401"]
+
+        def fake_studies(_base_path, compound=None):
+            calls.append(compound)
+            if compound is None:
+                raise AssertionError("study-id search must not trigger a global scan")
+            if compound == "QLC5508":
+                return [StudyInfo(compound="QLC5508", study_id="QLC5508-201", tracker_files=[])]
+            return []
+
+        try:
+            scanner.discover_compounds = fake_compounds
+            scanner.discover_studies = fake_studies
+
+            matches = scanner.search_studies(Path("C:/Projects"), "QLC5508-201")
+        finally:
+            scanner.discover_compounds = original_compounds
+            scanner.discover_studies = original_studies
+
+        self.assertEqual(calls, ["QLC5508"])
+        self.assertEqual([study.study_id for study in matches], ["QLC5508-201"])
+
+    def test_selected_study_loading_scans_only_candidate_compound(self) -> None:
+        from models import StudyInfo, TrackerFileInfo
+        import routers.dashboard as dashboard
+
+        tracker_file = TrackerFileInfo(
+            file_path="C:/Projects/QLC5508/QLC5508-201/tracker.xlsx",
+            file_name="tracker.xlsx",
+            task_purpose="dryrun",
+            study_id="QLC5508-201",
+            compound="QLC5508",
+            last_modified=1.0,
+        )
+        study = StudyInfo(compound="QLC5508", study_id="QLC5508-201", tracker_files=[tracker_file])
+        calls: list[str | None] = []
+        original_discover = dashboard.discover_studies
+        original_cache = dashboard.tracker_cache
+
+        class FakeCache:
+            def get_tasks(self, file_info):
+                return [TaskItem(study_id=file_info.study_id, compound=file_info.compound, task_purpose=file_info.task_purpose, sheet_type="SPEC")]
+
+        def fake_discover(_base_path, compound=None):
+            calls.append(compound)
+            if compound is None:
+                raise AssertionError("selected dashboard loading must not trigger a global scan")
+            if compound == "QLC5508":
+                return [study]
+            return []
+
+        try:
+            dashboard.discover_studies = fake_discover
+            dashboard.tracker_cache = FakeCache()
+
+            tasks = dashboard._load_tasks_for_studies(["QLC5508-201"], [tracker_file.file_path])
+        finally:
+            dashboard.discover_studies = original_discover
+            dashboard.tracker_cache = original_cache
+
+        self.assertEqual(calls, ["QLC5508"])
+        self.assertEqual(len(tasks), 1)
+
+
 class TrackerUiRefreshTests(unittest.TestCase):
     def read(self, rel: str) -> str:
         return (ROOT / rel).read_text(encoding="utf-8")
@@ -128,6 +202,39 @@ class TrackerUiRefreshTests(unittest.TestCase):
         self.assertIn('"有问题，请修改": "tracker-status-badge tracker-status-rework"', app_js)
         self.assertIn('"待定，请留意": "tracker-status-badge tracker-status-paused"', app_js)
         self.assertIn('"tracker-status-badge tracker-status-empty"', app_js)
+
+    def test_dashboard_updates_do_not_force_replay_enter_animation(self) -> None:
+        tracker = self.read("templates/tracker.html")
+        app_js = self.read("static/js/app.js")
+
+        self.assertNotIn(':key="animationKey"', tracker)
+        self.assertNotIn("animationKey++", app_js)
+
+    def test_restoring_saved_selection_does_not_replay_search_scan(self) -> None:
+        app_js = self.read("static/js/app.js")
+
+        restore_start = app_js.index("if (this.selectedStudies.length > 0)")
+        restore_block = app_js[restore_start:app_js.index("_setupKeyboard", restore_start)]
+
+        self.assertIn("await this.loadDashboard();", restore_block)
+        self.assertNotIn("await this.searchStudies();", restore_block)
+
+    def test_tracker_sidebar_has_reliable_collapse_and_bottom_action_layout(self) -> None:
+        tracker = self.read("templates/tracker.html")
+
+        self.assertIn("tracker-sidebar-expand-toggle", tracker)
+        self.assertIn("z-10", tracker)
+        self.assertIn('class="sidebar-scroll flex-1 space-y-5 overflow-y-auto pr-1"', tracker)
+        self.assertIn('class="sidebar-footer shrink-0 pt-3"', tracker)
+
+    def test_tracker_page_disables_continuous_status_pulse(self) -> None:
+        css = self.read("static/css/style.css")
+
+        selector = ".tracker-page .ddl-overdue::before,"
+        rule_start = css.index(selector)
+        rule = css[rule_start:css.index("}", rule_start)]
+
+        self.assertIn("animation: none", rule)
 
 
 if __name__ == "__main__":
